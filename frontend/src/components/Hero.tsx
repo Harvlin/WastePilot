@@ -1,0 +1,145 @@
+import { motion, useScroll, useTransform } from "motion/react";
+import { ArrowUpRight, Play } from "lucide-react";
+import { useRef } from "react";
+import { Link } from "react-router-dom";
+import BlurText from "./BlurText";
+import { isMockAuthenticated } from "@/lib/mock-auth";
+import { toast } from "sonner";
+
+const techStack = ["Spring Boot", "Next.js 15", "Gemini Flash", "Docker", "MySQL", "Oauth2"];
+
+const Hero = () => {
+  const sectionRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start start", "end start"],
+  });
+
+  const videoScale = useTransform(scrollYProgress, [0, 1], [1, 1.2]);
+  const videoOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
+  const contentY = useTransform(scrollYProgress, [0, 0.5], [0, -80]);
+  const ctaPath = isMockAuthenticated() ? "/dashboard" : "/auth";
+
+  const handleWatchDemo = () => {
+    const section = document.getElementById("how-it-works");
+    if (section) {
+      const topOffset = 100;
+      const sectionTop = section.getBoundingClientRect().top + window.scrollY - topOffset;
+      window.scrollTo({ top: sectionTop, behavior: "smooth" });
+    }
+    toast.info("Demo section ready below.");
+  };
+
+  return (
+    <section ref={sectionRef} id="home" className="relative overflow-visible h-[1000px] bg-black">
+      {/* Background video with parallax */}
+      <motion.video
+        style={{ scale: videoScale, opacity: videoOpacity }}
+        className="absolute top-[20%] w-full h-auto object-contain z-0"
+        autoPlay
+        loop
+        muted
+        playsInline
+        poster="/images/hero_bg.jpeg"
+        src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260307_083826_e938b29f-a43a-41ec-a153-3d4730578ab8.mp4"
+      />
+
+      <div className="absolute inset-0 bg-black/5 z-0" />
+      <div
+        className="absolute bottom-0 left-0 right-0 z-[1] h-[300px]"
+        style={{ background: "linear-gradient(to bottom, transparent, black)" }}
+      />
+
+      {/* Content with scroll parallax */}
+      <motion.div
+        style={{ y: contentY }}
+        className="relative z-10 flex flex-col items-center text-center pt-[150px] h-full px-6"
+      >
+        {/* Badge */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="liquid-glass rounded-full px-1.5 py-1 flex items-center gap-2 mb-8"
+        >
+          <span className="bg-white text-black font-body font-medium text-xs px-2.5 py-0.5 rounded-full">
+            New
+          </span>
+          <span className="text-white/80 font-body text-sm pr-3">
+            Introducing AI-powered circular intelligence.
+          </span>
+        </motion.div>
+
+        {/* Heading */}
+        <BlurText
+          text="Smart Circular Economy for Your Business"
+          className="text-5xl md:text-7xl lg:text-[5.5rem] font-heading italic text-white leading-[0.8] tracking-[-4px] max-w-5xl"
+        />
+
+        {/* Subtext */}
+        <motion.p
+          initial={{ opacity: 0, filter: "blur(10px)" }}
+          animate={{ opacity: 1, filter: "blur(0px)" }}
+          transition={{ duration: 0.6, delay: 0.8 }}
+          className="text-white/60 font-body font-light text-sm md:text-base max-w-xl mt-8"
+        >
+          Transform waste into opportunity. Waste Pilot uses AI to optimize materials,
+          predict anomalies, and maximize your circularity score — all automatically.
+        </motion.p>
+
+        {/* CTA */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 1.1 }}
+          className="flex items-center gap-4 mt-8"
+        >
+          <Link to={ctaPath}>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="liquid-glass-strong rounded-full px-6 py-3 font-body font-medium text-sm text-white flex items-center gap-2 hover:bg-white/10 transition-colors"
+            >
+              Get Started Free <ArrowUpRight className="w-4 h-4" />
+            </motion.button>
+          </Link>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleWatchDemo}
+            className="font-body font-medium text-sm text-white/80 flex items-center gap-2 hover:text-white transition-colors"
+          >
+            <Play className="w-4 h-4" /> Watch Demo
+          </motion.button>
+        </motion.div>
+
+        {/* Core tech stack */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.4, duration: 0.8 }}
+          className="mt-auto pb-8 pt-16 flex flex-col items-center"
+        >
+          <div className="liquid-glass rounded-full px-3.5 py-1 text-xs font-medium text-white font-body inline-block mb-6">
+            Core Technology Stack
+          </div>
+          <div className="flex items-center gap-8 md:gap-12 flex-wrap justify-center">
+            {techStack.map((name, i) => (
+              <motion.span
+                key={name}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.6 + i * 0.1 }}
+                className="text-2xl md:text-3xl font-heading italic text-white/70 hover:text-white transition-colors cursor-default"
+              >
+                {name}
+              </motion.span>
+            ))}
+          </div>
+        </motion.div>
+      </motion.div>
+    </section>
+  );
+};
+
+export default Hero;
