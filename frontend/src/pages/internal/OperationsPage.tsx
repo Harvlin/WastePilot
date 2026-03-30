@@ -180,7 +180,7 @@ const OperationsPage = () => {
                       <Input value={batchOutput} onChange={(e) => setBatchOutput(e.target.value)} className="rounded-xl bg-white/[0.04] border-white/10 text-white" placeholder="Output units" />
                       <Input value={batchWaste} onChange={(e) => setBatchWaste(e.target.value)} className="rounded-xl bg-white/[0.04] border-white/10 text-white" placeholder="Waste kg" />
                     </div>
-                    <Button className="rounded-full bg-white text-black hover:bg-white/90"><Plus className="w-4 h-4" />Start Batch</Button>
+                    <Button className="rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]"><Plus className="w-4 h-4" />Start Batch</Button>
                   </form>
 
                   <div className="liquid-glass rounded-3xl p-5 overflow-hidden">
@@ -238,7 +238,7 @@ const OperationsPage = () => {
                       </Select>
                       <Input value={inventoryQty} onChange={(e) => setInventoryQty(e.target.value)} className="rounded-xl bg-white/[0.04] border-white/10 text-white" placeholder="Quantity (kg)" />
                     </div>
-                    <Button className="rounded-full bg-white text-black hover:bg-white/90"><Plus className="w-4 h-4" />Add Log</Button>
+                    <Button className="rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]"><Plus className="w-4 h-4" />Add Log</Button>
                   </form>
 
                   <div className="liquid-glass rounded-3xl p-5 overflow-hidden">
@@ -297,7 +297,7 @@ const OperationsPage = () => {
                       </Select>
                       <Input value={wasteQty} onChange={(e) => setWasteQty(e.target.value)} className="rounded-xl bg-white/[0.04] border-white/10 text-white" placeholder="Quantity (kg)" />
                     </div>
-                    <Button className="rounded-full bg-white text-black hover:bg-white/90"><Plus className="w-4 h-4" />Log Waste</Button>
+                    <Button className="rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]"><Plus className="w-4 h-4" />Log Waste</Button>
                   </form>
 
                   <div className="liquid-glass rounded-3xl p-5 overflow-hidden">
@@ -340,3 +340,4 @@ const OperationsPage = () => {
 };
 
 export default OperationsPage;
+

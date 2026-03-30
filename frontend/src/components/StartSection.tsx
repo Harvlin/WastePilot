@@ -30,7 +30,7 @@ const StartSection = () => {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="liquid-glass rounded-full px-3.5 py-1 text-xs font-medium text-white font-body inline-block mb-4"
+          className="liquid-glass rounded-full px-3.5 py-1 text-xs font-medium text-[hsl(var(--palette-light-green))] font-body inline-block mb-4"
         >
           How It Works
         </motion.div>

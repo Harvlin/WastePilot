@@ -25,7 +25,7 @@ const Stats = () => {
       <div className="absolute bottom-0 left-0 right-0 z-[1] h-[200px]" style={{ background: "linear-gradient(to top, black, transparent)" }} />
 
       <motion.div style={{ scale }} className="relative z-10 max-w-5xl mx-auto">
-        <div className="liquid-glass rounded-3xl p-12 md:p-16">
+        <div className="liquid-glass rounded-3xl p-12 md:p-16 shadow-[0_0_0_1px_hsl(var(--palette-house-green)_/_0.5)]">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 text-center">
             {stats.map((s, i) => (
               <motion.div
@@ -35,8 +35,8 @@ const Stats = () => {
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: i * 0.1 }}
               >
-                <div className="text-4xl md:text-5xl lg:text-6xl font-heading italic text-white">{s.value}</div>
-                <div className="text-white/60 font-body font-light text-sm mt-2">{s.label}</div>
+                <div className="text-4xl md:text-5xl lg:text-6xl font-heading italic text-[hsl(var(--palette-tea-green))]">{s.value}</div>
+                <div className="text-[hsl(var(--palette-light-green))] opacity-80 font-body font-light text-sm mt-2">{s.label}</div>
               </motion.div>
             ))}
           </div>

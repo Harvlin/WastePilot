@@ -9,6 +9,12 @@
     --background: 0 0% 0%;
     --foreground: 0 0% 100%;
 
+    /* Accent palette provided by user */
+    --palette-primary-green: 140 100% 19%; /* #006241 */
+    --palette-light-green: 160 32% 87%; /* #d4e9e2 */
+    --palette-house-green: 164 31% 17%; /* #1e3932 */
+    --palette-tea-green: 85 84% 85%; /* #dff9ba */
+
     --card: 0 0% 5%;
     --card-foreground: 0 0% 100%;
 
@@ -16,36 +22,36 @@
     --popover-foreground: 0 0% 100%;
 
     --primary: 0 0% 100%;
-    --primary-foreground: 213 45% 67%;
+    --primary-foreground: var(--palette-light-green);
 
     --secondary: 0 0% 10%;
     --secondary-foreground: 0 0% 100%;
 
     --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 60%;
+    --muted-foreground: 160 12% 70%;
 
-    --accent: 213 45% 67%;
-    --accent-foreground: 0 0% 100%;
+    --accent: var(--palette-primary-green);
+    --accent-foreground: var(--palette-light-green);
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 0 0% 100%;
     --input: 0 0% 20%;
-    --ring: 0 0% 100%;
+    --ring: var(--palette-tea-green);
 
     --radius: 9999px;
 
     --font-heading: 'Instrument Serif', serif;
     --font-body: 'Barlow', sans-serif;
-    --hero-subtitle: 0 0% 66%;
+    --hero-subtitle: 160 22% 74%;
 
     --sidebar-background: 0 0% 5%;
     --sidebar-foreground: 0 0% 90%;
     --sidebar-primary: 0 0% 100%;
     --sidebar-primary-foreground: 0 0% 0%;
-    --sidebar-accent: 0 0% 15%;
-    --sidebar-accent-foreground: 0 0% 90%;
+    --sidebar-accent: var(--palette-house-green);
+    --sidebar-accent-foreground: var(--palette-light-green);
     --sidebar-border: 0 0% 20%;
     --sidebar-ring: 0 0% 100%;
   }
@@ -74,16 +80,19 @@
     @apply bg-black text-white font-body;
     margin: 0;
     overflow-x: hidden;
+    background-image:
+      radial-gradient(circle at 18% 0%, hsl(var(--palette-primary-green) / 0.12), transparent 38%),
+      radial-gradient(circle at 86% 100%, hsl(var(--palette-house-green) / 0.16), transparent 34%);
   }
 }
 
 @layer components {
   .liquid-glass {
-    background: rgba(255, 255, 255, 0.01);
+    background: hsl(var(--palette-house-green) / 0.12);
     background-blend-mode: luminosity;
     backdrop-filter: blur(4px);
     border: none;
-    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1);
+    box-shadow: inset 0 1px 1px hsl(var(--palette-light-green) / 0.16);
     position: relative;
     overflow: hidden;
   }
@@ -95,12 +104,12 @@
     border-radius: inherit;
     padding: 1.4px;
     background: linear-gradient(180deg,
-      rgba(255,255,255,0.45) 0%,
-      rgba(255,255,255,0.15) 20%,
-      rgba(255,255,255,0) 40%,
-      rgba(255,255,255,0) 60%,
-      rgba(255,255,255,0.15) 80%,
-      rgba(255,255,255,0.45) 100%);
+      hsl(var(--palette-light-green) / 0.44) 0%,
+      hsl(var(--palette-tea-green) / 0.2) 20%,
+      hsl(var(--palette-light-green) / 0) 40%,
+      hsl(var(--palette-light-green) / 0) 60%,
+      hsl(var(--palette-tea-green) / 0.2) 80%,
+      hsl(var(--palette-light-green) / 0.44) 100%);
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
@@ -108,11 +117,11 @@
   }
 
   .liquid-glass-strong {
-    background: rgba(255, 255, 255, 0.03);
+    background: hsl(var(--palette-house-green) / 0.2);
     background-blend-mode: luminosity;
     backdrop-filter: blur(50px);
     border: none;
-    box-shadow: 4px 4px 4px rgba(0,0,0,0.05), inset 0 1px 1px rgba(255,255,255,0.15);
+    box-shadow: 4px 4px 4px rgba(0,0,0,0.05), inset 0 1px 1px hsl(var(--palette-light-green) / 0.2);
     position: relative;
     overflow: hidden;
   }
@@ -124,12 +133,12 @@
     border-radius: inherit;
     padding: 1.4px;
     background: linear-gradient(180deg,
-      rgba(255,255,255,0.5) 0%,
-      rgba(255,255,255,0.2) 20%,
-      rgba(255,255,255,0) 40%,
-      rgba(255,255,255,0) 60%,
-      rgba(255,255,255,0.2) 80%,
-      rgba(255,255,255,0.5) 100%);
+      hsl(var(--palette-light-green) / 0.56) 0%,
+      hsl(var(--palette-tea-green) / 0.24) 20%,
+      hsl(var(--palette-light-green) / 0) 40%,
+      hsl(var(--palette-light-green) / 0) 60%,
+      hsl(var(--palette-tea-green) / 0.24) 80%,
+      hsl(var(--palette-light-green) / 0.56) 100%);
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;

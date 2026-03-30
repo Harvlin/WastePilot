@@ -86,7 +86,7 @@ const MaterialsPage = () => {
         title="Materials"
         description="Manage raw materials with circular grades, categories, and inventory context."
         actions={
-          <Button onClick={() => openEditor()} className="rounded-full bg-white text-black hover:bg-white/90">
+          <Button onClick={() => openEditor()} className="rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]">
             <Plus className="w-4 h-4" />
             Add Material
           </Button>
@@ -103,7 +103,7 @@ const MaterialsPage = () => {
               title="No materials yet"
               description="Create your first material record to enable inventory and template planning."
               action={
-                <Button onClick={() => openEditor()} className="rounded-full bg-white text-black hover:bg-white/90">
+                <Button onClick={() => openEditor()} className="rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]">
                   Add Material
                 </Button>
               }
@@ -224,7 +224,7 @@ const MaterialsPage = () => {
               required
             />
 
-            <Button className="rounded-full bg-white text-black hover:bg-white/90 w-full">
+            <Button className="rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))] w-full">
               Save Material
             </Button>
           </form>
@@ -235,3 +235,4 @@ const MaterialsPage = () => {
 };
 
 export default MaterialsPage;
+

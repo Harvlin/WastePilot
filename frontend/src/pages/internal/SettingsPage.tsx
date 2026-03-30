@@ -138,7 +138,7 @@ const SettingsPage = () => {
               />
             </div>
 
-            <Button className="rounded-full bg-white text-black hover:bg-white/90 w-full">
+            <Button className="rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))] w-full">
               <Save className="w-4 h-4" />
               Save Preferences
             </Button>
@@ -156,3 +156,4 @@ const SettingsPage = () => {
 };
 
 export default SettingsPage;
+

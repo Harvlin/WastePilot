@@ -104,7 +104,7 @@ const ScanPage = () => {
           </label>
 
           <div className="flex gap-3 pt-2">
-            <Button onClick={runOcr} disabled={isProcessing} className="rounded-full bg-white text-black hover:bg-white/90">
+            <Button onClick={runOcr} disabled={isProcessing} className="rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]">
               {isProcessing ? <LoaderCircle className="w-4 h-4 animate-spin" /> : <ImageUp className="w-4 h-4" />}
               {isProcessing ? "Processing" : "Run OCR"}
             </Button>
@@ -143,7 +143,7 @@ const ScanPage = () => {
             <Button
               onClick={handleConfirm}
               disabled={result.length === 0 || isProcessing}
-              className="rounded-full bg-white text-black hover:bg-white/90"
+              className="rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]"
             >
               <Save className="w-4 h-4" />
               Confirm & Save
@@ -213,3 +213,4 @@ const ScanPage = () => {
 };
 
 export default ScanPage;
+

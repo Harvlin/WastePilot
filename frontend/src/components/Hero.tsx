@@ -62,10 +62,10 @@ const Hero = () => {
           transition={{ duration: 0.5 }}
           className="liquid-glass rounded-full px-1.5 py-1 flex items-center gap-2 mb-8"
         >
-          <span className="bg-white text-black font-body font-medium text-xs px-2.5 py-0.5 rounded-full">
+          <span className="bg-[hsl(var(--palette-primary-green))] text-[hsl(var(--palette-light-green))] font-body font-medium text-xs px-2.5 py-0.5 rounded-full">
             New
           </span>
-          <span className="text-white/80 font-body text-sm pr-3">
+          <span className="text-[hsl(var(--palette-light-green))] font-body text-sm pr-3">
             Introducing AI-powered circular intelligence.
           </span>
         </motion.div>
@@ -120,7 +120,7 @@ const Hero = () => {
           transition={{ delay: 1.4, duration: 0.8 }}
           className="mt-auto pb-8 pt-16 flex flex-col items-center"
         >
-          <div className="liquid-glass rounded-full px-3.5 py-1 text-xs font-medium text-white font-body inline-block mb-6">
+          <div className="liquid-glass rounded-full px-3.5 py-1 text-xs font-medium text-[hsl(var(--palette-light-green))] font-body inline-block mb-6">
             Core Technology Stack
           </div>
           <div className="flex items-center gap-8 md:gap-12 flex-wrap justify-center">
@@ -130,7 +130,7 @@ const Hero = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 1.6 + i * 0.1 }}
-                className="text-2xl md:text-3xl font-heading italic text-white/70 hover:text-white transition-colors cursor-default"
+                className="text-2xl md:text-3xl font-heading italic text-white/70 hover:text-[hsl(var(--palette-light-green))] transition-colors cursor-default"
               >
                 {name}
               </motion.span>

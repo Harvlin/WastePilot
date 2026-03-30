@@ -61,7 +61,7 @@ const CtaFooter = () => {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="liquid-glass-strong rounded-full px-6 py-3 font-body font-medium text-sm text-white hover:bg-white/10 transition-colors"
+              className="liquid-glass-strong rounded-full px-6 py-3 font-body font-medium text-sm text-[hsl(var(--palette-light-green))] hover:bg-[hsl(var(--palette-house-green))]/35 transition-colors"
             >
               Access Free Workspace
             </motion.button>
@@ -70,13 +70,13 @@ const CtaFooter = () => {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleHowItWorks}
-            className="bg-white text-black font-body font-medium text-sm px-6 py-3 rounded-full hover:bg-white/90 transition-colors"
+            className="bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] font-body font-medium text-sm px-6 py-3 rounded-full hover:bg-[hsl(var(--palette-light-green))] transition-colors"
           >
             See How It Works
           </motion.button>
         </motion.div>
 
-        <div className="mt-32 pt-8 border-t border-white/10 w-full flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="mt-32 pt-8 border-t border-[hsl(var(--palette-house-green))]/50 w-full flex flex-col md:flex-row items-center justify-between gap-4">
           <span className="text-white/40 font-body text-xs">© 2026 Waste Pilot</span>
           <div className="flex items-center gap-6">
             {["Privacy", "Terms", "Contact"].map((link) => (

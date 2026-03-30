@@ -103,7 +103,7 @@ const InsightsPage = () => {
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Button
                       size="sm"
-                      className="rounded-full bg-white text-black hover:bg-white/90"
+                      className="rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]"
                       onClick={() => applyInsightStatus(item.id, "applied")}
                     >
                       Mark Applied
@@ -156,7 +156,7 @@ const InsightsPage = () => {
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Button
                       size="sm"
-                      className="rounded-full bg-white text-black hover:bg-white/90"
+                      className="rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]"
                       onClick={() => applyAnomalyStatus(item.id, "applied")}
                     >
                       Resolve
@@ -189,3 +189,4 @@ const InsightsPage = () => {
 };
 
 export default InsightsPage;
+

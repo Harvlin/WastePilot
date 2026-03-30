@@ -43,7 +43,7 @@ const Faq = () => {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="liquid-glass rounded-full px-3.5 py-1 text-xs font-medium text-white font-body inline-block mb-4"
+            className="liquid-glass rounded-full px-3.5 py-1 text-xs font-medium text-[hsl(var(--palette-light-green))] font-body inline-block mb-4"
           >
             FAQ
           </motion.div>
@@ -61,7 +61,7 @@ const Faq = () => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.15 }}
-            className="text-white/60 font-body font-light text-sm md:text-base max-w-2xl mx-auto mt-6"
+            className="text-[hsl(var(--palette-light-green))] opacity-80 font-body font-light text-sm md:text-base max-w-2xl mx-auto mt-6"
           >
             Everything you need to know about how WastePilot supports internal resource optimization.
           </motion.p>
@@ -72,15 +72,15 @@ const Faq = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
           transition={{ duration: 0.5 }}
-          className="liquid-glass rounded-3xl p-4 md:p-6"
+          className="liquid-glass rounded-3xl p-4 md:p-6 shadow-[0_0_0_1px_hsl(var(--palette-house-green)_/_0.5)]"
         >
           <Accordion type="single" collapsible className="w-full">
             {faqItems.map((item, i) => (
-              <AccordionItem key={item.question} value={`item-${i}`} className="border-white/10">
-                <AccordionTrigger className="text-left text-white font-body text-base md:text-lg py-5 hover:no-underline">
+              <AccordionItem key={item.question} value={`item-${i}`} className="border-[hsl(var(--palette-house-green))]/70">
+                <AccordionTrigger className="text-left text-[hsl(var(--palette-light-green))] font-body text-base md:text-lg py-5 hover:no-underline hover:text-[hsl(var(--palette-tea-green))]">
                   {item.question}
                 </AccordionTrigger>
-                <AccordionContent className="text-white/65 font-body font-light text-sm md:text-base leading-relaxed pr-8">
+                <AccordionContent className="text-[hsl(var(--palette-light-green))] opacity-80 font-body font-light text-sm md:text-base leading-relaxed pr-8">
                   {item.answer}
                 </AccordionContent>
               </AccordionItem>

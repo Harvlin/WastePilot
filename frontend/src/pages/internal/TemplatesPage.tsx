@@ -111,7 +111,7 @@ const TemplatesPage = () => {
         title="Production Templates"
         description="Build reusable material compositions so teams can launch production with one selection."
         actions={
-          <Button onClick={() => openEditor()} className="rounded-full bg-white text-black hover:bg-white/90">
+          <Button onClick={() => openEditor()} className="rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]">
             <Plus className="w-4 h-4" />
             New Template
           </Button>
@@ -128,7 +128,7 @@ const TemplatesPage = () => {
               title="No templates yet"
               description="Create a template to speed up production batch setup."
               action={
-                <Button onClick={() => openEditor()} className="rounded-full bg-white text-black hover:bg-white/90">
+                <Button onClick={() => openEditor()} className="rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]">
                   Create Template
                 </Button>
               }
@@ -260,7 +260,7 @@ const TemplatesPage = () => {
               ))}
             </div>
 
-            <Button className="w-full rounded-full bg-white text-black hover:bg-white/90">Save Template</Button>
+            <Button className="w-full rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]">Save Template</Button>
           </form>
         </DialogContent>
       </Dialog>
@@ -269,3 +269,4 @@ const TemplatesPage = () => {
 };
 
 export default TemplatesPage;
+

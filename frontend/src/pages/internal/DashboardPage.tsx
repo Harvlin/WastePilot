@@ -11,8 +11,8 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { Badge } from "@/components/ui/badge";
 
 const chartConfig = {
-  waste: { label: "Waste (kg)", color: "rgba(255,255,255,0.9)" },
-  reused: { label: "Reused (kg)", color: "rgba(255,255,255,0.45)" },
+  waste: { label: "Waste (kg)", color: "hsl(var(--palette-tea-green))" },
+  reused: { label: "Reused (kg)", color: "hsl(var(--palette-light-green) / 0.85)" },
 };
 
 const DashboardPage = () => {
@@ -66,17 +66,17 @@ const DashboardPage = () => {
           </section>
 
           <section className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-4">
-            <div className="liquid-glass rounded-3xl p-6">
+            <div className="liquid-glass rounded-3xl p-6 shadow-[0_0_0_1px_hsl(var(--palette-house-green)_/_0.5)]">
               <div className="mb-5">
-                <p className="text-white/45 text-xs uppercase tracking-[0.18em] font-body">Waste Trend</p>
+                <p className="text-[hsl(var(--palette-light-green))]/65 text-xs uppercase tracking-[0.18em] font-body">Waste Trend</p>
                 <h3 className="text-white text-2xl font-heading italic mt-2">Input, Waste, and Reuse</h3>
               </div>
 
               <ChartContainer config={chartConfig} className="h-[280px] w-full">
                 <LineChart data={data.wasteTrend}>
-                  <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
-                  <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fill: "rgba(255,255,255,0.55)" }} />
-                  <YAxis tickLine={false} axisLine={false} tick={{ fill: "rgba(255,255,255,0.45)" }} />
+                  <CartesianGrid stroke="hsl(var(--palette-light-green) / 0.16)" vertical={false} />
+                  <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--palette-light-green) / 0.72)" }} />
+                  <YAxis tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--palette-light-green) / 0.62)" }} />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Line type="monotone" dataKey="waste" stroke="var(--color-waste)" strokeWidth={3} dot={false} />
                   <Line type="monotone" dataKey="reused" stroke="var(--color-reused)" strokeWidth={2} dot={false} />
@@ -85,31 +85,34 @@ const DashboardPage = () => {
             </div>
 
             <div className="space-y-4">
-              <div className="liquid-glass rounded-3xl p-6">
+              <div className="liquid-glass rounded-3xl p-6 shadow-[0_0_0_1px_hsl(var(--palette-house-green)_/_0.5)]">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-white/45 text-xs uppercase tracking-[0.18em] font-body">Anomaly Highlight</p>
+                    <p className="text-[hsl(var(--palette-light-green))]/65 text-xs uppercase tracking-[0.18em] font-body">Anomaly Highlight</p>
                     <h3 className="text-white text-xl font-heading italic mt-2">{data.topAnomaly.process}</h3>
                   </div>
                   <Badge className="bg-rose-500/15 text-rose-300 border-rose-300/20">z-score {data.topAnomaly.zScore}</Badge>
                 </div>
-                <p className="text-white/65 font-body text-sm mt-4">{data.topAnomaly.note}</p>
-                <div className="mt-5 flex items-center gap-2 text-white/70 text-sm font-body">
+                <p className="text-[hsl(var(--palette-light-green))] opacity-82 font-body text-sm mt-4">{data.topAnomaly.note}</p>
+                <div className="mt-5 flex items-center gap-2 text-[hsl(var(--palette-light-green))] opacity-86 text-sm font-body">
                   <AlertTriangle className="w-4 h-4" />
                   {data.topAnomaly.wasteKg}kg spike detected on {data.topAnomaly.date}
                 </div>
               </div>
 
-              <div className="liquid-glass rounded-3xl p-6">
+              <div className="liquid-glass rounded-3xl p-6 shadow-[0_0_0_1px_hsl(var(--palette-house-green)_/_0.5)]">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-white/80" />
-                  <p className="text-white font-body font-medium">AI Insights Preview</p>
+                  <Sparkles className="w-4 h-4 text-[hsl(var(--palette-tea-green))]" />
+                  <p className="text-[hsl(var(--palette-light-green))] font-body font-medium">AI Insights Preview</p>
                 </div>
                 <div className="mt-4 space-y-3">
                   {data.insights.slice(0, 3).map((insight) => (
-                    <div key={insight.id} className="rounded-2xl bg-white/[0.04] border border-white/10 p-4">
+                    <div
+                      key={insight.id}
+                      className="rounded-2xl bg-[hsl(var(--palette-house-green))]/35 border border-[hsl(var(--palette-house-green))]/60 p-4"
+                    >
                       <p className="text-white text-sm font-body font-medium">{insight.title}</p>
-                      <p className="text-white/60 text-sm font-body mt-2">{insight.content}</p>
+                      <p className="text-[hsl(var(--palette-light-green))] opacity-82 text-sm font-body mt-2">{insight.content}</p>
                     </div>
                   ))}
                 </div>

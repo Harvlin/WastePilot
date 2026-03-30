@@ -9,15 +9,15 @@ import { toast } from "sonner";
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `group relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-body transition-colors ${
-    isActive ? "text-white" : "text-white/65 hover:text-white"
+    isActive ? "text-[hsl(var(--palette-tea-green))]" : "text-[hsl(var(--palette-light-green))]/70 hover:text-[hsl(var(--palette-light-green))]"
   }`;
 
 const SidebarContent = ({ closeMobile }: { closeMobile?: () => void }) => {
   return (
     <div className="h-full flex flex-col">
-      <div className="px-3 pt-4 pb-5 border-b border-white/10 flex items-center justify-between">
+      <div className="px-3 pt-4 pb-5 border-b border-[hsl(var(--palette-house-green))]/60 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
-          <div className="w-10 h-10 rounded-full liquid-glass-strong flex items-center justify-center font-heading italic text-white text-xl">
+          <div className="w-10 h-10 rounded-full liquid-glass-strong flex items-center justify-center font-heading italic text-[hsl(var(--palette-light-green))] text-xl">
             W
           </div>
           <div>
@@ -37,11 +37,17 @@ const SidebarContent = ({ closeMobile }: { closeMobile?: () => void }) => {
                   {isActive && (
                     <motion.span
                       layoutId="internal-nav-active"
-                      className="absolute inset-0 rounded-2xl bg-white/10"
+                      className="absolute inset-0 rounded-2xl bg-[hsl(var(--palette-primary-green))]/35"
                       transition={{ type: "spring", stiffness: 380, damping: 34 }}
                     />
                   )}
-                  <Icon className={`relative z-10 w-4 h-4 ${isActive ? "text-white" : "text-white/55 group-hover:text-white/80"}`} />
+                  <Icon
+                    className={`relative z-10 w-4 h-4 ${
+                      isActive
+                        ? "text-[hsl(var(--palette-tea-green))]"
+                        : "text-[hsl(var(--palette-light-green))]/55 group-hover:text-[hsl(var(--palette-light-green))]/85"
+                    }`}
+                  />
                   <span className="relative z-10">{item.label}</span>
                 </>
               )}
@@ -50,10 +56,10 @@ const SidebarContent = ({ closeMobile }: { closeMobile?: () => void }) => {
         })}
       </nav>
 
-      <div className="px-3 pb-4 pt-3 border-t border-white/10">
+      <div className="px-3 pb-4 pt-3 border-t border-[hsl(var(--palette-house-green))]/60">
         <div className="liquid-glass rounded-2xl p-3">
-          <p className="text-white text-xs font-body">Circular score this week</p>
-          <p className="text-2xl font-heading italic text-white mt-1">76</p>
+          <p className="text-[hsl(var(--palette-light-green))] opacity-80 text-xs font-body">Circular score this week</p>
+          <p className="text-2xl font-heading italic text-[hsl(var(--palette-tea-green))] mt-1">76</p>
         </div>
       </div>
     </div>
@@ -99,30 +105,30 @@ const AppShell = () => {
       className="relative min-h-screen w-full overflow-x-clip bg-black text-white"
     >
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute -top-40 -right-20 w-[420px] h-[420px] rounded-full bg-white/5 blur-3xl" />
-        <div className="absolute top-[30%] -left-24 w-[340px] h-[340px] rounded-full bg-white/[0.03] blur-3xl" />
+        <div className="absolute -top-40 -right-20 w-[420px] h-[420px] rounded-full bg-[hsl(var(--palette-primary-green))]/20 blur-3xl" />
+        <div className="absolute top-[30%] -left-24 w-[340px] h-[340px] rounded-full bg-[hsl(var(--palette-house-green))]/24 blur-3xl" />
       </div>
 
       <div className="relative z-10 flex min-h-screen">
         <div className="hidden lg:block w-[302px] p-4">
-          <aside className="sticky top-4 h-[calc(100vh-2rem)] liquid-glass-strong rounded-3xl border border-white/10 overflow-hidden">
+          <aside className="sticky top-4 h-[calc(100vh-2rem)] liquid-glass-strong rounded-3xl border border-[hsl(var(--palette-house-green))]/70 overflow-hidden">
             <SidebarContent />
           </aside>
         </div>
 
         <div className="flex-1 min-w-0">
           <header className="sticky top-4 z-30 px-4 md:px-8">
-            <div className="h-16 px-4 md:px-6 flex items-center justify-between gap-4 liquid-glass-strong rounded-2xl border border-white/10">
+            <div className="h-16 px-4 md:px-6 flex items-center justify-between gap-4 liquid-glass-strong rounded-2xl border border-[hsl(var(--palette-house-green))]/70">
               <div className="flex items-center gap-3">
                 <button
                   className="lg:hidden w-10 h-10 rounded-full liquid-glass flex items-center justify-center"
                   onClick={() => setMobileOpen((prev) => !prev)}
                   aria-label="Open navigation"
                 >
-                  <Menu className="w-5 h-5 text-white" />
+                  <Menu className="w-5 h-5 text-[hsl(var(--palette-light-green))]" />
                 </button>
                 <div>
-                  <p className="text-white/40 text-xs uppercase tracking-[0.18em] font-body">Workspace</p>
+                  <p className="text-[hsl(var(--palette-light-green))]/60 text-xs uppercase tracking-[0.18em] font-body">Workspace</p>
                   <p className="text-white font-body font-medium">{pageLabel}</p>
                 </div>
               </div>
@@ -131,13 +137,13 @@ const AppShell = () => {
                 <button
                   type="button"
                   onClick={handleSearchSubmit}
-                  className="text-white/55 hover:text-white/85 transition-colors"
+                  className="text-[hsl(var(--palette-light-green))]/65 hover:text-[hsl(var(--palette-tea-green))] transition-colors"
                   aria-label="Search"
                 >
                   <Search className="w-4 h-4" />
                 </button>
                 <input
-                  className="bg-transparent w-full text-sm font-body text-white placeholder:text-white/35 focus:outline-none"
+                  className="bg-transparent w-full text-sm font-body text-white placeholder:text-[hsl(var(--palette-light-green))]/45 focus:outline-none"
                   placeholder="Search features, services, sections..."
                   value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
@@ -153,7 +159,7 @@ const AppShell = () => {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-body text-white/85 liquid-glass hover:bg-white/10 transition-colors"
+                className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-body text-[hsl(var(--palette-light-green))]/90 liquid-glass hover:bg-[hsl(var(--palette-house-green))]/45 transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Log out
@@ -192,7 +198,7 @@ const AppShell = () => {
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: -320, opacity: 0 }}
               transition={{ duration: 0.24, ease: "easeOut" }}
-              className="fixed top-0 left-0 h-full w-[280px] z-50 border-r border-white/10 bg-black/95 backdrop-blur-2xl lg:hidden"
+              className="fixed top-0 left-0 h-full w-[280px] z-50 border-r border-[hsl(var(--palette-house-green))]/70 bg-black/95 backdrop-blur-2xl lg:hidden"
             >
               <SidebarContent closeMobile={() => setMobileOpen(false)} />
             </motion.aside>

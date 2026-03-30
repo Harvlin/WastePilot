@@ -7,14 +7,19 @@ import { AnalyticsPayload } from "@/features/internal/types";
 import { internalApi } from "@/lib/api/internal-api";
 
 const trendConfig = {
-  score: { label: "Circularity", color: "rgba(255,255,255,0.92)" },
+  score: { label: "Circularity", color: "hsl(var(--palette-tea-green))" },
 };
 
 const efficiencyConfig = {
-  efficiency: { label: "Efficiency", color: "rgba(255,255,255,0.82)" },
+  efficiency: { label: "Efficiency", color: "hsl(var(--palette-light-green))" },
 };
 
-const pieColors = ["rgba(255,255,255,0.9)", "rgba(255,255,255,0.7)", "rgba(255,255,255,0.5)", "rgba(255,255,255,0.35)"];
+const pieColors = [
+  "hsl(var(--palette-tea-green))",
+  "hsl(var(--palette-light-green))",
+  "hsl(var(--palette-primary-green) / 0.95)",
+  "hsl(var(--palette-house-green) / 0.95)",
+];
 
 const AnalyticsPage = () => {
   const [data, setData] = useState<AnalyticsPayload | null>(null);
@@ -50,25 +55,25 @@ const AnalyticsPage = () => {
 
       {!loading && !error && data && (
         <section className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <div className="liquid-glass rounded-3xl p-6">
+          <div className="liquid-glass rounded-3xl p-6 shadow-[0_0_0_1px_hsl(var(--palette-house-green)_/_0.5)]">
             <p className="text-white text-xl font-heading italic mb-4">Circularity Trend</p>
             <ChartContainer config={trendConfig} className="h-[280px] w-full">
               <LineChart data={data.circularityTrend}>
-                <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
-                <XAxis dataKey="week" tickLine={false} axisLine={false} tick={{ fill: "rgba(255,255,255,0.55)" }} />
-                <YAxis tickLine={false} axisLine={false} tick={{ fill: "rgba(255,255,255,0.45)" }} />
+                <CartesianGrid stroke="hsl(var(--palette-light-green) / 0.16)" vertical={false} />
+                <XAxis dataKey="week" tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--palette-light-green) / 0.72)" }} />
+                <YAxis tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--palette-light-green) / 0.62)" }} />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Line type="monotone" dataKey="score" stroke="var(--color-score)" strokeWidth={3} dot={false} />
               </LineChart>
             </ChartContainer>
           </div>
 
-          <div className="liquid-glass rounded-3xl p-6">
+          <div className="liquid-glass rounded-3xl p-6 shadow-[0_0_0_1px_hsl(var(--palette-house-green)_/_0.5)]">
             <p className="text-white text-xl font-heading italic mb-4">Waste Breakdown</p>
             <ChartContainer config={{}} className="h-[280px] w-full">
               <PieChart>
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Pie data={data.wasteBreakdown} dataKey="value" nameKey="category" innerRadius={64} outerRadius={92}>
+                <Pie data={data.wasteBreakdown} dataKey="value" nameKey="category" innerRadius={64} outerRadius={92} stroke="hsl(var(--palette-house-green) / 0.7)">
                   {data.wasteBreakdown.map((item, index) => (
                     <Cell key={item.category} fill={pieColors[index % pieColors.length]} />
                   ))}
@@ -77,7 +82,7 @@ const AnalyticsPage = () => {
             </ChartContainer>
             <div className="mt-3 grid grid-cols-2 gap-2">
               {data.wasteBreakdown.map((item, index) => (
-                <div key={item.category} className="text-sm font-body text-white/70 flex items-center gap-2">
+                <div key={item.category} className="text-sm font-body text-[hsl(var(--palette-light-green))] opacity-85 flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full" style={{ background: pieColors[index % pieColors.length] }} />
                   {item.category}: {item.value}%
                 </div>
@@ -85,13 +90,13 @@ const AnalyticsPage = () => {
             </div>
           </div>
 
-          <div className="liquid-glass rounded-3xl p-6 xl:col-span-2">
+          <div className="liquid-glass rounded-3xl p-6 xl:col-span-2 shadow-[0_0_0_1px_hsl(var(--palette-house-green)_/_0.5)]">
             <p className="text-white text-xl font-heading italic mb-4">Material Efficiency</p>
             <ChartContainer config={efficiencyConfig} className="h-[300px] w-full">
               <BarChart data={data.efficiencyByMaterial}>
-                <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
-                <XAxis dataKey="material" tickLine={false} axisLine={false} tick={{ fill: "rgba(255,255,255,0.55)" }} />
-                <YAxis tickLine={false} axisLine={false} tick={{ fill: "rgba(255,255,255,0.45)" }} />
+                <CartesianGrid stroke="hsl(var(--palette-light-green) / 0.16)" vertical={false} />
+                <XAxis dataKey="material" tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--palette-light-green) / 0.72)" }} />
+                <YAxis tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--palette-light-green) / 0.62)" }} />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Bar dataKey="efficiency" fill="var(--color-efficiency)" radius={[12, 12, 0, 0]} />
               </BarChart>

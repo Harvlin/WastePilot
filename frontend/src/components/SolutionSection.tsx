@@ -31,7 +31,7 @@ const SolutionSection = () => {
           initial={{ opacity: 0, y: 14 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-xs tracking-[3px] uppercase text-muted-foreground"
+          className="text-xs tracking-[3px] uppercase text-[hsl(var(--palette-light-green))]"
         >
           Solution
         </motion.p>
@@ -43,7 +43,7 @@ const SolutionSection = () => {
           transition={{ duration: 0.5 }}
           className="mt-5 text-4xl md:text-6xl text-white leading-[1.05]"
         >
-          The platform for <span className="font-heading italic">circular</span> operations
+          The platform for <span className="font-heading italic text-[hsl(var(--palette-tea-green))]">circular</span> operations
         </motion.h2>
 
         <motion.div

@@ -19,7 +19,7 @@ export const PageHeader = ({
     >
       <div>
         <h1 className="text-3xl md:text-4xl font-heading italic text-white tracking-tight leading-[0.9]">{title}</h1>
-        <p className="text-white/60 font-body mt-3 max-w-2xl">{description}</p>
+        <p className="text-[hsl(var(--palette-light-green))] opacity-80 font-body mt-3 max-w-2xl">{description}</p>
       </div>
       {actions}
     </motion.div>

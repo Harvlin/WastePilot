@@ -42,7 +42,7 @@ const FeaturesChess = () => {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="liquid-glass rounded-full px-3.5 py-1 text-xs font-medium text-white font-body inline-block mb-4"
+          className="liquid-glass rounded-full px-3.5 py-1 text-xs font-medium text-[hsl(var(--palette-light-green))] font-body inline-block mb-4"
         >
           Core Capabilities
         </motion.div>
@@ -78,7 +78,7 @@ const FeaturesChess = () => {
                 whileHover={{ scale: 1.05, x: 5 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => handleFeatureAction(row.title)}
-                className="liquid-glass-strong rounded-full px-5 py-2.5 font-body font-medium text-sm text-white flex items-center gap-2 hover:bg-white/10 transition-colors mt-2"
+                className="liquid-glass-strong rounded-full px-5 py-2.5 font-body font-medium text-sm text-[hsl(var(--palette-light-green))] flex items-center gap-2 hover:bg-[hsl(var(--palette-house-green))]/35 transition-colors mt-2"
               >
                 {row.button} <ArrowUpRight className="w-3.5 h-3.5" />
               </motion.button>
@@ -87,7 +87,7 @@ const FeaturesChess = () => {
             <motion.div
               whileHover={{ scale: 1.02 }}
               transition={{ type: "spring", stiffness: 300 }}
-              className="flex-1 liquid-glass rounded-2xl overflow-hidden aspect-video"
+              className="flex-1 liquid-glass rounded-2xl overflow-hidden aspect-video shadow-[0_0_0_1px_hsl(var(--palette-house-green)_/_0.5)]"
             >
               <img src={row.imageUrl} alt={row.title} className="w-full h-full object-cover" />
             </motion.div>

@@ -16,7 +16,7 @@ export const CircularGauge = ({ value }: { value: number }) => {
             cx={size / 2}
             cy={size / 2}
             r={radius}
-            stroke="rgba(255,255,255,0.12)"
+            stroke="hsl(var(--palette-house-green) / 0.52)"
             strokeWidth={strokeWidth}
             fill="none"
           />
@@ -24,7 +24,7 @@ export const CircularGauge = ({ value }: { value: number }) => {
             cx={size / 2}
             cy={size / 2}
             r={radius}
-            stroke="rgba(255,255,255,0.92)"
+            stroke="hsl(var(--palette-tea-green))"
             strokeWidth={strokeWidth}
             fill="none"
             strokeLinecap="round"
@@ -35,9 +35,9 @@ export const CircularGauge = ({ value }: { value: number }) => {
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <p className="text-xs uppercase tracking-[0.25em] text-white/50 font-body">Circular Score</p>
-          <p className="text-6xl font-heading italic text-white leading-none mt-2">{clamped}</p>
-          <p className="text-white/60 text-sm font-body mt-1">out of 100</p>
+          <p className="text-xs uppercase tracking-[0.25em] text-[hsl(var(--palette-light-green))] opacity-70 font-body">Circular Score</p>
+          <p className="text-6xl font-heading italic text-[hsl(var(--palette-tea-green))] leading-none mt-2">{clamped}</p>
+          <p className="text-[hsl(var(--palette-light-green))] opacity-75 text-sm font-body mt-1">out of 100</p>
         </div>
       </div>
     </div>

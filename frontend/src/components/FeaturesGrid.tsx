@@ -32,7 +32,7 @@ const FeaturesGrid = () => {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="liquid-glass rounded-full px-3.5 py-1 text-xs font-medium text-white font-body inline-block mb-4"
+          className="liquid-glass rounded-full px-3.5 py-1 text-xs font-medium text-[hsl(var(--palette-light-green))] font-body inline-block mb-4"
         >
           Why Waste Pilot
         </motion.div>
@@ -56,16 +56,16 @@ const FeaturesGrid = () => {
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: i * 0.1 }}
             whileHover={{ y: -8, transition: { duration: 0.3 } }}
-            className="liquid-glass rounded-2xl p-6 space-y-4 cursor-default"
+            className="liquid-glass rounded-2xl p-6 space-y-4 cursor-default shadow-[0_0_0_1px_hsl(var(--palette-house-green)_/_0.42)]"
           >
             <motion.div
               whileHover={{ rotate: 10, scale: 1.1 }}
-              className="liquid-glass-strong rounded-full w-10 h-10 flex items-center justify-center"
+              className="liquid-glass-strong rounded-full w-10 h-10 flex items-center justify-center bg-[hsl(var(--palette-primary-green))]/35"
             >
-              <f.icon className="w-4 h-4 text-white" />
+              <f.icon className="w-4 h-4 text-[hsl(var(--palette-tea-green))]" />
             </motion.div>
             <h3 className="text-lg font-heading italic text-white">{f.title}</h3>
-            <p className="text-white/60 font-body font-light text-sm">{f.description}</p>
+            <p className="text-[hsl(var(--palette-light-green))] opacity-80 font-body font-light text-sm">{f.description}</p>
           </motion.div>
         ))}
       </div>

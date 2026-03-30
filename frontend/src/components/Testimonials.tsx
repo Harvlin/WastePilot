@@ -29,7 +29,7 @@ const Testimonials = () => {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="liquid-glass rounded-full px-3.5 py-1 text-xs font-medium text-white font-body inline-block mb-4"
+          className="liquid-glass rounded-full px-3.5 py-1 text-xs font-medium text-[hsl(var(--palette-light-green))] font-body inline-block mb-4"
         >
           Success Stories
         </motion.div>
@@ -53,12 +53,12 @@ const Testimonials = () => {
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: i * 0.15 }}
             whileHover={{ y: -6, transition: { duration: 0.3 } }}
-            className="liquid-glass rounded-2xl p-8 flex flex-col justify-between"
+            className="liquid-glass rounded-2xl p-8 flex flex-col justify-between shadow-[0_0_0_1px_hsl(var(--palette-house-green)_/_0.46)]"
           >
-            <p className="text-white/80 font-body font-light text-sm italic mb-6">"{t.quote}"</p>
+            <p className="text-[hsl(var(--palette-light-green))] opacity-90 font-body font-light text-sm italic mb-6">"{t.quote}"</p>
             <div>
-              <div className="text-white font-body font-medium text-sm">{t.name}</div>
-              <div className="text-white/50 font-body font-light text-xs">{t.role}</div>
+              <div className="text-[hsl(var(--palette-tea-green))] font-body font-medium text-sm">{t.name}</div>
+              <div className="text-[hsl(var(--palette-light-green))] opacity-70 font-body font-light text-xs">{t.role}</div>
             </div>
           </motion.div>
         ))}

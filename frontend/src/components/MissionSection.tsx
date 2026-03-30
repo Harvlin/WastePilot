@@ -28,7 +28,7 @@ const RevealWord = ({
   return (
     <motion.span
       style={{ opacity }}
-      className={`inline-block ${isHighlighted ? "text-foreground" : baseColorClass}`}
+      className={`inline-block ${isHighlighted ? "text-[hsl(var(--palette-tea-green))]" : baseColorClass}`}
     >
       {word}&nbsp;
     </motion.span>
