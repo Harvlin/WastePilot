@@ -53,23 +53,8 @@ const Hero = () => {
       {/* Content with scroll parallax */}
       <motion.div
         style={{ y: contentY }}
-        className="relative z-10 flex flex-col items-center text-center pt-[150px] h-full px-6"
+        className="relative z-10 flex flex-col items-center text-center pt-[180px] md:pt-[200px] h-full px-6"
       >
-        {/* Badge */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="liquid-glass rounded-full px-1.5 py-1 flex items-center gap-2 mb-8"
-        >
-          <span className="bg-[hsl(var(--palette-primary-green))] text-[hsl(var(--palette-light-green))] font-body font-medium text-xs px-2.5 py-0.5 rounded-full">
-            New
-          </span>
-          <span className="text-[hsl(var(--palette-light-green))] font-body text-sm pr-3">
-            Introducing AI-powered circular intelligence.
-          </span>
-        </motion.div>
-
         {/* Heading */}
         <BlurText
           text="Smart Circular Economy for Your Business"
