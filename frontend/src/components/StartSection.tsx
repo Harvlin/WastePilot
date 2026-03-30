@@ -13,7 +13,11 @@ const StartSection = () => {
   const ctaPath = isMockAuthenticated() ? "/dashboard" : "/auth";
 
   return (
-    <section ref={ref} id="how-it-works" className="relative min-h-[700px] py-32 px-6 md:px-16 lg:px-24 overflow-hidden">
+    <section
+      ref={ref}
+      id="how-it-works"
+      className="relative min-h-[700px] py-28 md:py-32 px-6 md:px-16 lg:px-24 overflow-hidden"
+    >
       <HlsVideo
         src="https://stream.mux.com/9JXDljEVWYwWu01PUkAemafDugK89o01BR6zqJ3aS9u00A.m3u8"
         className="absolute inset-0 w-full h-full object-cover z-0"
