@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, Sparkles } from "lucide-react";
+import { AlertTriangle, ShieldCheck, Sparkles } from "lucide-react";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import { internalApi } from "@/lib/api/internal-api";
-import { DashboardPayload } from "@/features/internal/types";
+import { DashboardPayload, IntegrityOverview } from "@/features/internal/types";
 import { CircularGauge } from "@/features/internal/components/CircularGauge";
 import { PageHeader } from "@/features/internal/components/PageHeader";
 import { StatCard } from "@/features/internal/components/StatCard";
@@ -17,6 +17,7 @@ const chartConfig = {
 
 const DashboardPage = () => {
   const [data, setData] = useState<DashboardPayload | null>(null);
+  const [integrity, setIntegrity] = useState<IntegrityOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,8 +25,12 @@ const DashboardPage = () => {
     try {
       setLoading(true);
       setError(null);
-      const payload = await internalApi.fetchDashboardPayload();
+      const [payload, integrityPayload] = await Promise.all([
+        internalApi.fetchDashboardPayload(),
+        internalApi.fetchIntegrityOverview(),
+      ]);
       setData(payload);
+      setIntegrity(integrityPayload);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load dashboard data.");
     } finally {
@@ -117,6 +122,33 @@ const DashboardPage = () => {
                   ))}
                 </div>
               </div>
+
+              {integrity && (
+                <div className="liquid-glass rounded-3xl p-6 shadow-[0_0_0_1px_hsl(var(--palette-house-green)_/_0.5)]">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-[hsl(var(--palette-light-green))]" />
+                    <p className="text-[hsl(var(--palette-light-green))] font-body font-medium">Data Integrity Pulse</p>
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-3 text-sm font-body">
+                    <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-3">
+                      <p className="text-white/55">Avg Confidence</p>
+                      <p className="text-white mt-1">{integrity.averageConfidenceScore}%</p>
+                    </div>
+                    <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-3">
+                      <p className="text-white/55">Open Red Flags</p>
+                      <p className="text-white mt-1">{integrity.openRedFlags}</p>
+                    </div>
+                    <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-3">
+                      <p className="text-white/55">Post-Score Edits</p>
+                      <p className="text-white mt-1">{integrity.postScoreEdits}</p>
+                    </div>
+                    <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-3">
+                      <p className="text-white/55">Overdue Closures</p>
+                      <p className="text-white mt-1">{integrity.overdueBatchClosures}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </section>
         </>

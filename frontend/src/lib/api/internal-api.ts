@@ -1,7 +1,11 @@
 import {
+  ActivityLogEntry,
   AnalyticsPayload,
+  AuditTrailEntry,
+  BatchCloseSummary,
   CircularInsight,
   DashboardPayload,
+  IntegrityOverview,
   InventoryLog,
   Material,
   OcrMaterialLine,
@@ -29,6 +33,11 @@ export interface InsightsPayload {
 export type CreateBatchInput = Omit<ProductionBatch, "id" | "startedAt" | "status">;
 export type CreateInventoryInput = Omit<InventoryLog, "id" | "timestamp">;
 export type CreateWasteInput = Omit<WasteLog, "id" | "timestamp">;
+export interface CloseBatchInput {
+  batchId: string;
+  outputUnits: number;
+  closeReason?: string;
+}
 
 const DEFAULT_SPRING_TIMEOUT_MS = 10_000;
 
@@ -38,6 +47,8 @@ export const SPRING_API_ENDPOINTS = {
   operationBatches: "/api/v1/operations/batches",
   operationInventoryLogs: "/api/v1/operations/inventory-logs",
   operationWasteLogs: "/api/v1/operations/waste-logs",
+  operationBatchCloseSummary: "/api/v1/operations/batch-close/summary",
+  operationBatchClose: "/api/v1/operations/batch-close",
   materials: "/api/v1/materials",
   templates: "/api/v1/templates",
   insights: "/api/v1/ai/insights",
@@ -45,6 +56,9 @@ export const SPRING_API_ENDPOINTS = {
   analytics: "/api/v1/analytics",
   ocr: "/api/v1/ai/ocr",
   settings: "/api/v1/settings",
+  activityLogs: "/api/v1/integrity/activity-logs",
+  auditTrail: "/api/v1/integrity/audit-trail",
+  integrityOverview: "/api/v1/integrity/overview",
 } as const;
 
 function parseBooleanEnv(value: string | undefined, defaultValue: boolean): boolean {
@@ -83,6 +97,11 @@ export interface InternalApi {
   createBatch(input: CreateBatchInput): Promise<ProductionBatch>;
   createInventoryLog(input: CreateInventoryInput): Promise<InventoryLog>;
   createWasteLog(input: CreateWasteInput): Promise<WasteLog>;
+  fetchBatchCloseSummary(batchId: string): Promise<BatchCloseSummary>;
+  closeBatch(input: CloseBatchInput): Promise<BatchCloseSummary>;
+  fetchActivityLogs(batchId?: string): Promise<ActivityLogEntry[]>;
+  fetchAuditTrail(batchId?: string): Promise<AuditTrailEntry[]>;
+  fetchIntegrityOverview(): Promise<IntegrityOverview>;
   fetchMaterials(): Promise<Material[]>;
   upsertMaterial(input: Material): Promise<Material[]>;
   fetchTemplates(): Promise<ProductionTemplate[]>;
@@ -102,6 +121,11 @@ class MockInternalApi implements InternalApi {
   createBatch = mock.createBatch;
   createInventoryLog = mock.createInventoryLog;
   createWasteLog = mock.createWasteLog;
+  fetchBatchCloseSummary = mock.fetchBatchCloseSummary;
+  closeBatch = mock.closeBatch;
+  fetchActivityLogs = mock.fetchActivityLogs;
+  fetchAuditTrail = mock.fetchAuditTrail;
+  fetchIntegrityOverview = mock.fetchIntegrityOverview;
   fetchMaterials = mock.fetchMaterials;
   upsertMaterial = mock.upsertMaterial;
   fetchTemplates = mock.fetchTemplates;
@@ -187,7 +211,16 @@ class SpringBootInternalApi implements InternalApi {
         throw new Error(text || `Expected JSON response from ${path}.`);
       }
 
-      return (await response.json()) as T;
+      const text = await response.text();
+      if (!text.trim()) {
+        return undefined as T;
+      }
+
+      try {
+        return JSON.parse(text) as T;
+      } catch {
+        throw new Error(`Invalid JSON response from ${path}.`);
+      }
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
         throw new Error(`Request timed out after ${this.options.timeoutMs}ms.`);
@@ -248,6 +281,56 @@ class SpringBootInternalApi implements InternalApi {
           body: JSON.stringify(input),
         }),
       this.options.fallbackApi ? () => this.options.fallbackApi!.createWasteLog(input) : undefined,
+    );
+  }
+
+  async fetchBatchCloseSummary(batchId: string) {
+    return this.withFallback(
+      "fetchBatchCloseSummary",
+      () => this.request<BatchCloseSummary>(`${SPRING_API_ENDPOINTS.operationBatchCloseSummary}/${batchId}`),
+      this.options.fallbackApi ? () => this.options.fallbackApi!.fetchBatchCloseSummary(batchId) : undefined,
+    );
+  }
+
+  async closeBatch(input: CloseBatchInput) {
+    return this.withFallback(
+      "closeBatch",
+      () =>
+        this.request<BatchCloseSummary>(SPRING_API_ENDPOINTS.operationBatchClose, {
+          method: "POST",
+          body: JSON.stringify(input),
+        }),
+      this.options.fallbackApi ? () => this.options.fallbackApi!.closeBatch(input) : undefined,
+    );
+  }
+
+  async fetchActivityLogs(batchId?: string) {
+    return this.withFallback(
+      "fetchActivityLogs",
+      () => {
+        const query = batchId ? `?batchId=${encodeURIComponent(batchId)}` : "";
+        return this.request<ActivityLogEntry[]>(`${SPRING_API_ENDPOINTS.activityLogs}${query}`);
+      },
+      this.options.fallbackApi ? () => this.options.fallbackApi!.fetchActivityLogs(batchId) : undefined,
+    );
+  }
+
+  async fetchAuditTrail(batchId?: string) {
+    return this.withFallback(
+      "fetchAuditTrail",
+      () => {
+        const query = batchId ? `?batchId=${encodeURIComponent(batchId)}` : "";
+        return this.request<AuditTrailEntry[]>(`${SPRING_API_ENDPOINTS.auditTrail}${query}`);
+      },
+      this.options.fallbackApi ? () => this.options.fallbackApi!.fetchAuditTrail(batchId) : undefined,
+    );
+  }
+
+  async fetchIntegrityOverview() {
+    return this.withFallback(
+      "fetchIntegrityOverview",
+      () => this.request<IntegrityOverview>(SPRING_API_ENDPOINTS.integrityOverview),
+      this.options.fallbackApi ? () => this.options.fallbackApi!.fetchIntegrityOverview() : undefined,
     );
   }
 

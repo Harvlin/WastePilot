@@ -14,6 +14,14 @@ const efficiencyConfig = {
   efficiency: { label: "Efficiency", color: "hsl(var(--palette-light-green))" },
 };
 
+const landfillShareConfig = {
+  share: { label: "Landfill Share", color: "hsl(var(--palette-primary-green))" },
+};
+
+const landfillIntensityConfig = {
+  kgPerUnit: { label: "Landfill Intensity", color: "hsl(var(--palette-tea-green))" },
+};
+
 const pieColors = [
   "hsl(var(--palette-tea-green))",
   "hsl(var(--palette-light-green))",
@@ -101,6 +109,38 @@ const AnalyticsPage = () => {
                 <Bar dataKey="efficiency" fill="var(--color-efficiency)" radius={[12, 12, 0, 0]} />
               </BarChart>
             </ChartContainer>
+          </div>
+
+          <div className="liquid-glass rounded-3xl p-6 shadow-[0_0_0_1px_hsl(var(--palette-house-green)_/_0.5)]">
+            <p className="text-white text-xl font-heading italic mb-4">Landfill Share Trend</p>
+            <ChartContainer config={landfillShareConfig} className="h-[260px] w-full">
+              <LineChart data={data.landfillShareTrend}>
+                <CartesianGrid stroke="hsl(var(--palette-light-green) / 0.16)" vertical={false} />
+                <XAxis dataKey="week" tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--palette-light-green) / 0.72)" }} />
+                <YAxis tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--palette-light-green) / 0.62)" }} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Line type="monotone" dataKey="share" stroke="var(--color-share)" strokeWidth={3} dot={false} />
+              </LineChart>
+            </ChartContainer>
+            <p className="text-white/65 text-sm font-body mt-3">
+              Lower is better. Score caps are triggered automatically when landfill share rises above defined thresholds.
+            </p>
+          </div>
+
+          <div className="liquid-glass rounded-3xl p-6 shadow-[0_0_0_1px_hsl(var(--palette-house-green)_/_0.5)]">
+            <p className="text-white text-xl font-heading italic mb-4">Landfill Intensity (kg per unit)</p>
+            <ChartContainer config={landfillIntensityConfig} className="h-[260px] w-full">
+              <LineChart data={data.landfillIntensityTrend}>
+                <CartesianGrid stroke="hsl(var(--palette-light-green) / 0.16)" vertical={false} />
+                <XAxis dataKey="week" tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--palette-light-green) / 0.72)" }} />
+                <YAxis tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--palette-light-green) / 0.62)" }} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Line type="monotone" dataKey="kgPerUnit" stroke="var(--color-kgPerUnit)" strokeWidth={3} dot={false} />
+              </LineChart>
+            </ChartContainer>
+            <p className="text-white/65 text-sm font-body mt-3">
+              Tracks absolute landfill impact per finished unit, not only percentage allocation.
+            </p>
           </div>
         </section>
       )}

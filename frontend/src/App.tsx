@@ -1,23 +1,31 @@
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import Index from "./pages/Index.tsx";
-import Auth from "./pages/Auth.tsx";
-import NotFound from "./pages/NotFound.tsx";
-import ProtectedRoute from "@/components/ProtectedRoute";
-import AppShell from "@/features/internal/components/AppShell";
-import DashboardPage from "@/pages/internal/DashboardPage";
-import OperationsPage from "@/pages/internal/OperationsPage";
-import ScanPage from "@/pages/internal/ScanPage";
-import MaterialsPage from "@/pages/internal/MaterialsPage";
-import TemplatesPage from "@/pages/internal/TemplatesPage";
-import InsightsPage from "@/pages/internal/InsightsPage";
-import AnalyticsPage from "@/pages/internal/AnalyticsPage";
-import SettingsPage from "@/pages/internal/SettingsPage";
+
+const Index = lazy(() => import("./pages/Index.tsx"));
+const Auth = lazy(() => import("./pages/Auth.tsx"));
+const NotFound = lazy(() => import("./pages/NotFound.tsx"));
+const ProtectedRoute = lazy(() => import("@/components/ProtectedRoute"));
+const AppShell = lazy(() => import("@/features/internal/components/AppShell"));
+const DashboardPage = lazy(() => import("@/pages/internal/DashboardPage"));
+const OperationsPage = lazy(() => import("@/pages/internal/OperationsPage"));
+const ScanPage = lazy(() => import("@/pages/internal/ScanPage"));
+const MaterialsPage = lazy(() => import("@/pages/internal/MaterialsPage"));
+const TemplatesPage = lazy(() => import("@/pages/internal/TemplatesPage"));
+const InsightsPage = lazy(() => import("@/pages/internal/InsightsPage"));
+const AnalyticsPage = lazy(() => import("@/pages/internal/AnalyticsPage"));
+const SettingsPage = lazy(() => import("@/pages/internal/SettingsPage"));
 
 const queryClient = new QueryClient();
+
+const AppRouteFallback = () => (
+  <div className="min-h-screen bg-black flex items-center justify-center">
+    <p className="text-sm font-body text-[hsl(var(--palette-light-green))]/80">Loading workspace...</p>
+  </div>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -25,24 +33,26 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route element={<ProtectedRoute />}>
-            <Route element={<AppShell />}>
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/operations" element={<OperationsPage />} />
-              <Route path="/scan" element={<ScanPage />} />
-              <Route path="/materials" element={<MaterialsPage />} />
-              <Route path="/templates" element={<TemplatesPage />} />
-              <Route path="/insights" element={<InsightsPage />} />
-              <Route path="/analytics" element={<AnalyticsPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
+        <Suspense fallback={<AppRouteFallback />}>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route element={<ProtectedRoute />}>
+              <Route element={<AppShell />}>
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/operations" element={<OperationsPage />} />
+                <Route path="/scan" element={<ScanPage />} />
+                <Route path="/materials" element={<MaterialsPage />} />
+                <Route path="/templates" element={<TemplatesPage />} />
+                <Route path="/insights" element={<InsightsPage />} />
+                <Route path="/analytics" element={<AnalyticsPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+              </Route>
             </Route>
-          </Route>
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

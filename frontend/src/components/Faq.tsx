@@ -13,19 +13,24 @@ const faqItems = [
       "You upload or photograph an invoice, then AI Vision extracts structured fields such as material name, quantity, and price. Before saving, your team can review and confirm the extracted values.",
   },
   {
-    question: "Can we still operate if AI services are unavailable?",
+    question: "How does end-of-batch work now?",
     answer:
-      "Yes. WastePilot is designed with a manual-entry fallback. Your production and inventory logging continue to work even if AI OCR or insight services are temporarily down.",
+      "WastePilot uses a Batch Close Assistant. The system auto-builds a close summary from your operational logs, then operators review and confirm instead of re-entering everything from scratch. A reason is only required when variance is above threshold.",
   },
   {
     question: "How is circularity score calculated?",
     answer:
-      "The dashboard uses: (Material Reused + Material Recycled) / Total Material Input x 100. This gives a clear percentage that tracks how effectively materials stay in your internal loop.",
+      "The score combines recovery, waste efficiency, and landfill avoidance. Landfill has stronger weight, a landfill cap is applied when share is high, and the result is adjusted by confidence and integrity penalties so weak data cannot inflate score.",
   },
   {
-    question: "What types of recommendations does the AI provide?",
+    question: "How do we keep data trustworthy without IoT sensors?",
     answer:
-      "Recommendations are short, actionable suggestions, for example repurposing leftover material into a specific secondary product or adjusting process settings when waste anomalies are detected.",
+      "WastePilot includes Activity Logs, Audit Trail, confidence scoring, and red-flag detection. The system records who changed what and when, and post-score edits are explicitly marked for reviewer attention.",
+  },
+  {
+    question: "Can we still operate if AI services are unavailable?",
+    answer:
+      "Yes. WastePilot is designed with manual fallback paths. Production, inventory, and waste logging continue to work even if OCR or insight services are temporarily unavailable.",
   },
   {
     question: "Does WastePilot support multiple warehouses in this version?",
@@ -63,7 +68,7 @@ const Faq = () => {
             transition={{ delay: 0.15 }}
             className="text-[hsl(var(--palette-light-green))] opacity-80 font-body font-light text-sm md:text-base max-w-2xl mx-auto mt-6"
           >
-            Everything you need to know about how WastePilot supports internal resource optimization.
+            Everything you need to know about trusted scoring, low-friction operations, and circular performance.
           </motion.p>
         </div>
 

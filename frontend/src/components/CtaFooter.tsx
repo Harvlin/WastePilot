@@ -38,7 +38,7 @@ const CtaFooter = () => {
           transition={{ duration: 0.7 }}
           className="text-5xl md:text-6xl lg:text-7xl font-heading italic text-white tracking-tight leading-[0.9] max-w-3xl"
         >
-          Close the loop. Start today.
+          Close each batch with confidence.
         </motion.h2>
         <motion.p
           initial={{ opacity: 0, y: 20 }}
@@ -47,15 +47,15 @@ const CtaFooter = () => {
           transition={{ delay: 0.2 }}
           className="text-white/60 font-body font-light text-sm md:text-base max-w-lg mt-6"
         >
-          WastePilot is free to use. Start improving circular operations with
-          AI-powered insights, anomaly alerts, and smarter material decisions.
+          Move from manual closing to review-and-confirm flows with batch summaries,
+          audit-ready logs, and clearer landfill-aware scoring.
         </motion.p>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.4 }}
-          className="flex items-center gap-4 mt-8"
+          className="flex flex-wrap items-center justify-center gap-4 mt-8"
         >
           <Link to={ctaPath}>
             <motion.button
@@ -63,7 +63,7 @@ const CtaFooter = () => {
               whileTap={{ scale: 0.95 }}
               className="liquid-glass-strong rounded-full px-6 py-3 font-body font-medium text-sm text-[hsl(var(--palette-light-green))] hover:bg-[hsl(var(--palette-house-green))]/35 transition-colors"
             >
-              Access Free Workspace
+              Open Workspace
             </motion.button>
           </Link>
           <motion.button
@@ -72,8 +72,30 @@ const CtaFooter = () => {
             onClick={handleHowItWorks}
             className="bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] font-body font-medium text-sm px-6 py-3 rounded-full hover:bg-[hsl(var(--palette-light-green))] transition-colors"
           >
-            See How It Works
+            View 3-Step Flow
           </motion.button>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.5 }}
+          className="mt-5 flex flex-wrap items-center justify-center gap-2"
+        >
+          {[
+            "Batch Close Assistant",
+            "Activity Logs + Audit Trail",
+            "Confidence and Red Flags",
+            "Landfill-Aware Score",
+          ].map((item) => (
+            <span
+              key={item}
+              className="liquid-glass rounded-full px-3 py-1 text-xs font-body text-[hsl(var(--palette-light-green))]/90"
+            >
+              {item}
+            </span>
+          ))}
         </motion.div>
 
         <div className="mt-32 pt-8 border-t border-[hsl(var(--palette-house-green))]/50 w-full flex flex-col md:flex-row items-center justify-between gap-4">
