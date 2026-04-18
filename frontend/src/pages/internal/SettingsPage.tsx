@@ -3,12 +3,17 @@ import { Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { PageHeader } from "@/features/internal/components/PageHeader";
 import { DataError, DataLoading } from "@/features/internal/components/StateViews";
 import { UserSettings } from "@/features/internal/types";
 import { internalApi } from "@/lib/api/internal-api";
+import { APP_TIMEZONES, clampNumber, isAllowedTimezone, isValidEmail } from "@/lib/validation";
 import { toast } from "sonner";
+
+const MIN_DAILY_TOKEN_BUDGET = 0;
+const MAX_DAILY_TOKEN_BUDGET = 100_000;
 
 const SettingsPage = () => {
   const [settings, setSettings] = useState<UserSettings | null>(null);
@@ -37,6 +42,26 @@ const SettingsPage = () => {
     event.preventDefault();
     if (!settings) return;
 
+    if (!settings.companyName.trim()) {
+      toast.error("Company name is required.");
+      return;
+    }
+
+    if (!isValidEmail(settings.email)) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
+
+    if (!isAllowedTimezone(settings.timezone)) {
+      toast.error("Please select a valid timezone.");
+      return;
+    }
+
+    if (settings.dailyTokenBudget < MIN_DAILY_TOKEN_BUDGET || settings.dailyTokenBudget > MAX_DAILY_TOKEN_BUDGET) {
+      toast.error(`Daily token budget must be between ${MIN_DAILY_TOKEN_BUDGET} and ${MAX_DAILY_TOKEN_BUDGET}.`);
+      return;
+    }
+
     try {
       const updated = await internalApi.saveSettings(settings);
       setSettings(updated);
@@ -62,6 +87,9 @@ const SettingsPage = () => {
         <form onSubmit={submit} className="grid grid-cols-1 xl:grid-cols-[1fr_0.85fr] gap-4">
           <div className="liquid-glass rounded-3xl p-6 space-y-4">
             <h3 className="text-white text-xl font-heading italic">Profile</h3>
+            <p className="text-white/60 text-sm font-body">
+              Basic workspace identity for reports and notifications.
+            </p>
 
             <div className="grid gap-2">
               <Label className="text-white/75">Company Name</Label>
@@ -69,15 +97,18 @@ const SettingsPage = () => {
                 className="rounded-xl bg-white/[0.04] border-white/10 text-white"
                 value={settings.companyName}
                 onChange={(e) => setSettings((prev) => (prev ? { ...prev, companyName: e.target.value } : prev))}
+                placeholder="e.g. WastePilot Manufacturing"
               />
             </div>
 
             <div className="grid gap-2">
               <Label className="text-white/75">Email</Label>
               <Input
+                type="email"
                 className="rounded-xl bg-white/[0.04] border-white/10 text-white"
                 value={settings.email}
                 onChange={(e) => setSettings((prev) => (prev ? { ...prev, email: e.target.value } : prev))}
+                placeholder="ops@wastepilot.com"
               />
             </div>
 
@@ -88,15 +119,26 @@ const SettingsPage = () => {
                   className="rounded-xl bg-white/[0.04] border-white/10 text-white"
                   value={settings.role}
                   onChange={(e) => setSettings((prev) => (prev ? { ...prev, role: e.target.value } : prev))}
+                  placeholder="e.g. Operations Manager"
                 />
               </div>
               <div className="grid gap-2">
                 <Label className="text-white/75">Timezone</Label>
-                <Input
-                  className="rounded-xl bg-white/[0.04] border-white/10 text-white"
+                <Select
                   value={settings.timezone}
-                  onChange={(e) => setSettings((prev) => (prev ? { ...prev, timezone: e.target.value } : prev))}
-                />
+                  onValueChange={(value) => setSettings((prev) => (prev ? { ...prev, timezone: value } : prev))}
+                >
+                  <SelectTrigger className="rounded-xl bg-white/[0.04] border-white/10 text-white">
+                    <SelectValue placeholder="Select timezone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {APP_TIMEZONES.map((timezone) => (
+                      <SelectItem key={timezone} value={timezone}>
+                        {timezone}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
@@ -130,12 +172,30 @@ const SettingsPage = () => {
               <Label className="text-white/75">Daily Gemini token budget</Label>
               <Input
                 type="number"
+                min={MIN_DAILY_TOKEN_BUDGET}
+                max={MAX_DAILY_TOKEN_BUDGET}
+                step={100}
                 className="rounded-xl bg-white/[0.04] border-white/10 text-white"
                 value={settings.dailyTokenBudget}
-                onChange={(e) =>
-                  setSettings((prev) => (prev ? { ...prev, dailyTokenBudget: Number(e.target.value) } : prev))
-                }
+                onChange={(e) => {
+                  const numericValue = Number(e.target.value);
+                  if (Number.isNaN(numericValue)) {
+                    return;
+                  }
+
+                  setSettings((prev) => (
+                    prev
+                      ? {
+                          ...prev,
+                          dailyTokenBudget: clampNumber(numericValue, MIN_DAILY_TOKEN_BUDGET, MAX_DAILY_TOKEN_BUDGET),
+                        }
+                      : prev
+                  ));
+                }}
               />
+              <p className="text-white/50 text-xs font-body">
+                Daily AI token cap. Example: 10000.
+              </p>
             </div>
 
             <Button className="rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))] w-full">

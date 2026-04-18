@@ -4,6 +4,7 @@ import { ArrowUpRight, Mail, Lock, User, Eye, EyeOff, ArrowLeft } from "lucide-r
 import { Link, useNavigate } from "react-router-dom";
 import HlsVideo from "@/components/HlsVideo";
 import { isMockAuthenticated, signInMockUser } from "@/lib/mock-auth";
+import { isValidEmail } from "@/lib/validation";
 import { toast } from "sonner";
 
 const Auth = () => {
@@ -24,6 +25,12 @@ const Auth = () => {
     e.preventDefault();
 
     if (!email.trim()) {
+      toast.error("Email is required.");
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      toast.error("Please enter a valid email address.");
       return;
     }
 
@@ -116,6 +123,9 @@ const Auth = () => {
               className="space-y-4"
               onSubmit={handleSubmit}
             >
+              <p className="text-white/45 text-xs font-body">
+                Use your work email. Password is mocked in frontend demo mode.
+              </p>
               {!isLogin && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
@@ -126,7 +136,7 @@ const Auth = () => {
                   <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
                   <input
                     type="text"
-                    placeholder="Full name"
+                    placeholder="Full name (e.g. Raka Pratama)"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     className="w-full bg-white/5 border border-white/10 rounded-full px-10 py-3 font-body text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 transition-colors"
@@ -138,7 +148,7 @@ const Auth = () => {
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
                 <input
                   type="email"
-                  placeholder="Email address"
+                  placeholder="Work email (e.g. raka@company.com)"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-white/5 border border-white/10 rounded-full px-10 py-3 font-body text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 transition-colors"
@@ -149,7 +159,7 @@ const Auth = () => {
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
                 <input
                   type={showPassword ? "text" : "password"}
-                  placeholder="Password"
+                  placeholder="Password (min 8 chars for real API mode)"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full bg-white/5 border border-white/10 rounded-full px-10 py-3 font-body text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 transition-colors"

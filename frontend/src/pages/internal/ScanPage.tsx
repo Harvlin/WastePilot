@@ -63,13 +63,47 @@ const ScanPage = () => {
     setSaved(false);
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (result.length === 0) {
       toast.error("No OCR rows to confirm.");
       return;
     }
-    setSaved(true);
-    toast.success("OCR rows confirmed and ready to sync.");
+
+    const invalidRows = result
+      .map((line, index) => ({
+        index,
+        invalid: !line.materialName.trim() || line.quantity <= 0 || line.price < 0 || !line.unit.trim(),
+      }))
+      .filter((entry) => entry.invalid);
+
+    if (invalidRows.length > 0) {
+      toast.error(`Please fix ${invalidRows.length} invalid OCR row(s) before saving.`);
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      await Promise.all(
+        result.map((line) =>
+          internalApi.createInventoryLog({
+            materialName: line.materialName.trim(),
+            type: "IN",
+            quantity: line.quantity,
+            unit: line.unit.trim(),
+            source: "OCR",
+          }),
+        ),
+      );
+
+      setSaved(true);
+      toast.success(`${result.length} OCR row(s) saved to inventory logs.`);
+      setResult([]);
+      setFile(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save OCR rows.");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -82,6 +116,9 @@ const ScanPage = () => {
       <section className="grid grid-cols-1 xl:grid-cols-[0.8fr_1.2fr] gap-4">
         <div className="liquid-glass rounded-3xl p-5 space-y-4">
           <p className="text-white text-xl font-heading italic">Invoice Input</p>
+          <p className="text-white/60 text-sm font-body">
+            Upload one clear invoice image. We extract material, quantity, unit, and price.
+          </p>
           <label className="block">
             <span className="text-white/60 text-sm font-body">Upload image</span>
             <Input
@@ -170,29 +207,41 @@ const ScanPage = () => {
 
           {!isProcessing && !error && result.length > 0 && (
             <div className="space-y-3">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-xs text-white/60 font-body">
+                Column order: <span className="text-white/80">Material Name</span>, <span className="text-white/80">Quantity</span>, <span className="text-white/80">Unit</span>, <span className="text-white/80">Price</span>.
+                Example: Cotton Roll | 20 | kg | 120000.
+              </div>
               {result.map((line) => (
                 <div key={line.id} className="grid grid-cols-1 md:grid-cols-4 gap-3 rounded-2xl border border-white/10 p-3 bg-white/[0.03]">
                   <Input
                     value={line.materialName}
                     onChange={(e) => updateLine(line.id, "materialName", e.target.value)}
                     className="rounded-xl bg-white/[0.04] border-white/10 text-white"
+                    placeholder="Material Name"
                   />
                   <Input
                     value={line.quantity}
                     onChange={(e) => updateLine(line.id, "quantity", e.target.value)}
                     className="rounded-xl bg-white/[0.04] border-white/10 text-white"
                     type="number"
+                    min={0.01}
+                    step="0.01"
+                    placeholder="Quantity"
                   />
                   <Input
                     value={line.unit}
                     onChange={(e) => updateLine(line.id, "unit", e.target.value)}
                     className="rounded-xl bg-white/[0.04] border-white/10 text-white"
+                    placeholder="Unit (kg, m, pcs)"
                   />
                   <Input
                     value={line.price}
                     onChange={(e) => updateLine(line.id, "price", e.target.value)}
                     className="rounded-xl bg-white/[0.04] border-white/10 text-white"
                     type="number"
+                    min={0}
+                    step="0.01"
+                    placeholder="Price"
                   />
                 </div>
               ))}

@@ -46,7 +46,7 @@ export const searchDestinations: SearchDestination[] = [
     label: "Analytics",
     to: "/analytics",
     kind: "workspace",
-    keywords: ["analytics", "trend", "chart", "breakdown", "efficiency", "analysis"],
+    keywords: ["analytics", "trend", "chart", "breakdown", "efficiency", "analysis", "reports", "report", "weekly", "monthly", "period summary"],
   },
   {
     label: "Settings",

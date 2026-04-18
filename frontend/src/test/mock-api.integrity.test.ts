@@ -6,6 +6,61 @@ async function loadMockApi() {
 }
 
 describe("mock-api integrity and scoring flows", () => {
+  it("converts reuse waste into inventory IN with traceability", async () => {
+    const api = await loadMockApi();
+
+    const waste = await api.createWasteLog({
+      batchId: "B-102",
+      materialName: "Offcut Cotton",
+      quantityKg: 6,
+      destination: "reuse",
+      reason: "Reusable panel offcuts",
+      aiSuggestedAction: "Convert to accessory inventory",
+      isRepurposed: true,
+    });
+
+    const recovered = await api.recoverWasteToInventory({ wasteLogId: waste.id });
+
+    expect(recovered.wasteLog.recoveryStatus).toBe("converted");
+    expect(recovered.inventoryLog.type).toBe("IN");
+    expect(recovered.inventoryLog.source).toBe("Recovered");
+    expect(recovered.inventoryLog.recoveryWasteLogId).toBe(waste.id);
+  });
+
+  it("blocks duplicate recovery conversion and dispose conversion", async () => {
+    const api = await loadMockApi();
+
+    const reusable = await api.createWasteLog({
+      batchId: "B-102",
+      materialName: "Sleeve offcut",
+      quantityKg: 3,
+      destination: "repair",
+      reason: "Minor repair inventory",
+      aiSuggestedAction: "Move to repair stock",
+      isRepurposed: false,
+    });
+
+    await api.recoverWasteToInventory({ wasteLogId: reusable.id });
+
+    await expect(api.recoverWasteToInventory({ wasteLogId: reusable.id })).rejects.toThrow(
+      /already been converted/i,
+    );
+
+    const disposed = await api.createWasteLog({
+      batchId: "B-102",
+      materialName: "Mixed fiber dust",
+      quantityKg: 2,
+      destination: "dispose",
+      reason: "Cannot be reused",
+      aiSuggestedAction: "Safe disposal",
+      isRepurposed: false,
+    });
+
+    await expect(api.recoverWasteToInventory({ wasteLogId: disposed.id })).rejects.toThrow(
+      /cannot be converted/i,
+    );
+  });
+
   it("requires close reason when variance is above threshold", async () => {
     const api = await loadMockApi();
 
@@ -114,5 +169,22 @@ describe("mock-api integrity and scoring flows", () => {
 
     expect(allLogs.length).toBeGreaterThan(0);
     expect(scopedLogs.every((log) => log.batchId === "B-102")).toBe(true);
+  });
+
+  it("builds weekly and monthly reports payloads from mock activity data", async () => {
+    const api = await loadMockApi();
+
+    const [weekly, monthly] = await Promise.all([
+      api.fetchReportsPayload("weekly"),
+      api.fetchReportsPayload("monthly"),
+    ]);
+
+    expect(weekly.period).toBe("weekly");
+    expect(monthly.period).toBe("monthly");
+    expect(weekly.trend.length).toBe(7);
+    expect(monthly.trend.length).toBe(6);
+    expect(weekly.summary.totalActivities).toBeGreaterThanOrEqual(0);
+    expect(monthly.summary.circularScoreAvg).toBeGreaterThanOrEqual(0);
+    expect(weekly.topActions.length).toBeGreaterThanOrEqual(0);
   });
 });

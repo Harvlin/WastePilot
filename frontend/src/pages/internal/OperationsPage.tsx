@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
   ActivityLogEntry,
   AuditTrailEntry,
@@ -48,10 +49,13 @@ const OperationsPage = () => {
   const [inventoryMaterial, setInventoryMaterial] = useState("Cotton Roll 280gsm");
   const [inventoryType, setInventoryType] = useState<"IN" | "OUT">("IN");
   const [inventoryQty, setInventoryQty] = useState("20");
+  const [selectedInventoryBatchId, setSelectedInventoryBatchId] = useState<string>("");
 
   const [wasteMaterial, setWasteMaterial] = useState("Cotton Trim");
   const [wasteDestination, setWasteDestination] = useState<WasteDestination>("reuse");
   const [wasteQty, setWasteQty] = useState("7");
+  const [selectedWasteBatchId, setSelectedWasteBatchId] = useState<string>("");
+  const [autoRecoverToInventory, setAutoRecoverToInventory] = useState(true);
 
   const [activeCloseBatchId, setActiveCloseBatchId] = useState<string>("");
   const [closeSummary, setCloseSummary] = useState<BatchCloseSummary | null>(null);
@@ -80,9 +84,13 @@ const OperationsPage = () => {
       if (runningBatch) {
         setActiveCloseBatchId((prev) => prev || runningBatch.id);
         setCloseOutputUnits(String(runningBatch.outputUnits));
+        setSelectedInventoryBatchId((prev) => prev || runningBatch.id);
+        setSelectedWasteBatchId((prev) => prev || runningBatch.id);
       } else {
         setActiveCloseBatchId("");
         setCloseSummary(null);
+        setSelectedInventoryBatchId("");
+        setSelectedWasteBatchId("");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load operations");
@@ -153,6 +161,30 @@ const OperationsPage = () => {
     [data],
   );
 
+  useEffect(() => {
+    if (runningBatches.length === 0) {
+      setSelectedInventoryBatchId("");
+      setSelectedWasteBatchId("");
+      return;
+    }
+
+    const hasSelectedInventoryBatch = runningBatches.some((batch) => batch.id === selectedInventoryBatchId);
+    const hasSelectedWasteBatch = runningBatches.some((batch) => batch.id === selectedWasteBatchId);
+
+    if (!hasSelectedInventoryBatch) {
+      setSelectedInventoryBatchId(runningBatches[0].id);
+    }
+    if (!hasSelectedWasteBatch) {
+      setSelectedWasteBatchId(runningBatches[0].id);
+    }
+  }, [runningBatches, selectedInventoryBatchId, selectedWasteBatchId]);
+
+  useEffect(() => {
+    if (wasteDestination === "dispose") {
+      setAutoRecoverToInventory(false);
+    }
+  }, [wasteDestination]);
+
   const overdueBatches = useMemo(
     () => runningBatches.filter((item) => hoursSince(item.startedAt) > 24),
     [runningBatches],
@@ -192,7 +224,13 @@ const OperationsPage = () => {
         return;
       }
 
+      if (inventoryType === "OUT" && !selectedInventoryBatchId) {
+        toast.error("Please select a running batch for inventory OUT logs.");
+        return;
+      }
+
       const created = await internalApi.createInventoryLog({
+        batchId: inventoryType === "OUT" ? selectedInventoryBatchId : undefined,
         materialName: inventoryMaterial,
         type: inventoryType,
         quantity: Number(inventoryQty),
@@ -218,8 +256,13 @@ const OperationsPage = () => {
         return;
       }
 
+      if (!selectedWasteBatchId) {
+        toast.error("Please select a running batch for this waste log.");
+        return;
+      }
+
       const created = await internalApi.createWasteLog({
-        batchId: data.batches[0]?.id ?? "B-NEW",
+        batchId: selectedWasteBatchId,
         materialName: wasteMaterial,
         quantityKg: Number(wasteQty),
         destination: wasteDestination,
@@ -228,11 +271,55 @@ const OperationsPage = () => {
         isRepurposed: wasteDestination === "reuse",
       });
 
-      setData({ ...data, wasteLogs: [created, ...data.wasteLogs] });
+      let nextWasteLogs = [created, ...data.wasteLogs];
+      let nextInventoryLogs = data.inventoryLogs;
+
+      if (autoRecoverToInventory && (wasteDestination === "reuse" || wasteDestination === "repair")) {
+        try {
+          const recovery = await internalApi.recoverWasteToInventory({ wasteLogId: created.id });
+          nextWasteLogs = nextWasteLogs.map((item) =>
+            item.id === recovery.wasteLog.id ? recovery.wasteLog : item,
+          );
+          nextInventoryLogs = [recovery.inventoryLog, ...nextInventoryLogs];
+          toast.success("Waste logged and converted to inventory IN.");
+        } catch (recoveryError) {
+          toast.error(
+            recoveryError instanceof Error
+              ? `Waste logged, but conversion failed: ${recoveryError.message}`
+              : "Waste logged, but conversion to inventory failed.",
+          );
+        }
+      } else {
+        toast.success(
+          wasteDestination === "dispose"
+            ? "Waste log saved."
+            : "Waste log saved with pending inventory conversion.",
+        );
+      }
+
+      setData({ ...data, wasteLogs: nextWasteLogs, inventoryLogs: nextInventoryLogs });
       await refreshIntegrity();
-      toast.success("Waste log saved.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save waste log.");
+    }
+  };
+
+  const handleRecoverWasteToInventory = async (wasteLogId: string) => {
+    if (!data) return;
+
+    try {
+      const recovery = await internalApi.recoverWasteToInventory({ wasteLogId });
+
+      const nextWasteLogs = data.wasteLogs.map((item) =>
+        item.id === recovery.wasteLog.id ? recovery.wasteLog : item,
+      );
+      const nextInventoryLogs = [recovery.inventoryLog, ...data.inventoryLogs];
+
+      setData({ ...data, wasteLogs: nextWasteLogs, inventoryLogs: nextInventoryLogs });
+      await refreshIntegrity();
+      toast.success("Recovered material converted to inventory IN.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to convert waste to inventory.");
     }
   };
 
@@ -333,10 +420,24 @@ const OperationsPage = () => {
                 <div className="grid grid-cols-1 xl:grid-cols-[0.95fr_1.05fr] gap-4">
                   <form onSubmit={handleCreateBatch} className="liquid-glass rounded-3xl p-5 space-y-4">
                     <h3 className="text-white text-xl font-heading italic">Create Batch</h3>
-                    <Input value={batchTemplate} onChange={(e) => setBatchTemplate(e.target.value)} className="rounded-xl bg-white/[0.04] border-white/10 text-white" placeholder="Template name" />
+                    <p className="text-white/60 text-sm font-body">
+                      Quick guide: <span className="text-white">280</span> is target output units, <span className="text-white">14</span> is expected waste in kg.
+                    </p>
+                    <div className="space-y-1">
+                      <p className="text-white/75 text-xs font-body uppercase tracking-wide">Template Name</p>
+                      <Input value={batchTemplate} onChange={(e) => setBatchTemplate(e.target.value)} className="rounded-xl bg-white/[0.04] border-white/10 text-white" placeholder="e.g. Plain Tee v2" />
+                    </div>
                     <div className="grid grid-cols-2 gap-3">
-                      <Input value={batchOutput} onChange={(e) => setBatchOutput(e.target.value)} className="rounded-xl bg-white/[0.04] border-white/10 text-white" placeholder="Output units" />
-                      <Input value={batchWaste} onChange={(e) => setBatchWaste(e.target.value)} className="rounded-xl bg-white/[0.04] border-white/10 text-white" placeholder="Waste kg" />
+                      <div className="space-y-1">
+                        <p className="text-white/75 text-xs font-body uppercase tracking-wide">Output Units (pcs)</p>
+                        <Input value={batchOutput} onChange={(e) => setBatchOutput(e.target.value)} className="rounded-xl bg-white/[0.04] border-white/10 text-white" placeholder="e.g. 280" type="number" min={1} />
+                        <p className="text-white/50 text-xs font-body">Target finished units for this batch.</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-white/75 text-xs font-body uppercase tracking-wide">Estimated Waste (kg)</p>
+                        <Input value={batchWaste} onChange={(e) => setBatchWaste(e.target.value)} className="rounded-xl bg-white/[0.04] border-white/10 text-white" placeholder="e.g. 14" type="number" min={0} />
+                        <p className="text-white/50 text-xs font-body">Expected leftover material in kg.</p>
+                      </div>
                     </div>
                     <Button className="rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]"><Plus className="w-4 h-4" />Start Batch</Button>
                   </form>
@@ -383,18 +484,56 @@ const OperationsPage = () => {
                 <div className="grid grid-cols-1 xl:grid-cols-[0.95fr_1.05fr] gap-4">
                   <form onSubmit={handleInventoryAdd} className="liquid-glass rounded-3xl p-5 space-y-4">
                     <h3 className="text-white text-xl font-heading italic">Inventory Input</h3>
-                    <Input value={inventoryMaterial} onChange={(e) => setInventoryMaterial(e.target.value)} className="rounded-xl bg-white/[0.04] border-white/10 text-white" placeholder="Material" />
-                    <div className="grid grid-cols-2 gap-3">
-                      <Select value={inventoryType} onValueChange={(value: "IN" | "OUT") => setInventoryType(value)}>
+                    <p className="text-white/60 text-sm font-body">
+                      Use <span className="text-white">IN</span> for stock-in and <span className="text-white">OUT</span> for stock usage.
+                    </p>
+
+                    <div className="space-y-1">
+                      <p className="text-white/75 text-xs font-body uppercase tracking-wide">Running Batch (Required for OUT)</p>
+                      <Select
+                        value={selectedInventoryBatchId}
+                        onValueChange={setSelectedInventoryBatchId}
+                      >
                         <SelectTrigger className="rounded-xl bg-white/[0.04] border-white/10 text-white">
-                          <SelectValue placeholder="Type" />
+                          <SelectValue placeholder="Select running batch (for OUT)" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="IN">IN</SelectItem>
-                          <SelectItem value="OUT">OUT</SelectItem>
+                          {runningBatches.length === 0 ? (
+                            <SelectItem value="__none" disabled>
+                              No running batches
+                            </SelectItem>
+                          ) : (
+                            runningBatches.map((batch) => (
+                              <SelectItem key={batch.id} value={batch.id}>
+                                {batch.id} - {batch.templateName}
+                              </SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
-                      <Input value={inventoryQty} onChange={(e) => setInventoryQty(e.target.value)} className="rounded-xl bg-white/[0.04] border-white/10 text-white" placeholder="Quantity (kg)" />
+                    </div>
+
+                    <div className="space-y-1">
+                      <p className="text-white/75 text-xs font-body uppercase tracking-wide">Material Name</p>
+                      <Input value={inventoryMaterial} onChange={(e) => setInventoryMaterial(e.target.value)} className="rounded-xl bg-white/[0.04] border-white/10 text-white" placeholder="e.g. Cotton Roll 280gsm" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <p className="text-white/75 text-xs font-body uppercase tracking-wide">Movement Type</p>
+                        <Select value={inventoryType} onValueChange={(value: "IN" | "OUT") => setInventoryType(value)}>
+                          <SelectTrigger className="rounded-xl bg-white/[0.04] border-white/10 text-white">
+                            <SelectValue placeholder="Type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="IN">IN (adds stock)</SelectItem>
+                            <SelectItem value="OUT">OUT (uses stock)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-white/75 text-xs font-body uppercase tracking-wide">Quantity (kg)</p>
+                        <Input value={inventoryQty} onChange={(e) => setInventoryQty(e.target.value)} className="rounded-xl bg-white/[0.04] border-white/10 text-white" placeholder="e.g. 20" type="number" min={0.1} step="0.1" />
+                      </div>
                     </div>
                     <Button className="rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]"><Plus className="w-4 h-4" />Add Log</Button>
                   </form>
@@ -407,6 +546,7 @@ const OperationsPage = () => {
                       <Table>
                         <TableHeader>
                           <TableRow className="border-white/10 hover:bg-transparent">
+                            <TableHead className="text-white/60">Batch</TableHead>
                             <TableHead className="text-white/60">Material</TableHead>
                             <TableHead className="text-white/60">Type</TableHead>
                             <TableHead className="text-white/60">Quantity</TableHead>
@@ -417,6 +557,7 @@ const OperationsPage = () => {
                         <TableBody>
                           {data.inventoryLogs.map((item) => (
                             <TableRow key={item.id} className="border-white/10 hover:bg-white/[0.03]">
+                              <TableCell>{item.batchId ?? "Global"}</TableCell>
                               <TableCell>{item.materialName}</TableCell>
                               <TableCell>
                                 <span className={`px-2.5 py-1 rounded-full text-xs ${item.type === "IN" ? "bg-emerald-500/15 text-emerald-300" : "bg-amber-500/15 text-amber-300"}`}>
@@ -441,21 +582,82 @@ const OperationsPage = () => {
                 <div className="grid grid-cols-1 xl:grid-cols-[0.95fr_1.05fr] gap-4">
                   <form onSubmit={handleWasteAdd} className="liquid-glass rounded-3xl p-5 space-y-4">
                     <h3 className="text-white text-xl font-heading italic">Waste Classification</h3>
-                    <Input value={wasteMaterial} onChange={(e) => setWasteMaterial(e.target.value)} className="rounded-xl bg-white/[0.04] border-white/10 text-white" placeholder="Material" />
-                    <div className="grid grid-cols-2 gap-3">
-                      <Select value={wasteDestination} onValueChange={(value: WasteDestination) => setWasteDestination(value)}>
+                    <p className="text-white/60 text-sm font-body">
+                      Log waste by batch to keep traceability accurate.
+                    </p>
+
+                    {runningBatches.length === 0 && (
+                      <div className="rounded-2xl border border-amber-300/20 bg-amber-500/10 p-3 text-amber-200 text-sm font-body">
+                        No running batches available. Start a batch before logging waste.
+                      </div>
+                    )}
+
+                    <div className="space-y-1">
+                      <p className="text-white/75 text-xs font-body uppercase tracking-wide">Running Batch</p>
+                      <Select value={selectedWasteBatchId} onValueChange={setSelectedWasteBatchId}>
                         <SelectTrigger className="rounded-xl bg-white/[0.04] border-white/10 text-white">
-                          <SelectValue placeholder="Destination" />
+                          <SelectValue placeholder="Select running batch" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="reuse">Reuse</SelectItem>
-                          <SelectItem value="repair">Repair</SelectItem>
-                          <SelectItem value="dispose">Dispose</SelectItem>
+                          {runningBatches.length === 0 ? (
+                            <SelectItem value="__none" disabled>
+                              No running batches
+                            </SelectItem>
+                          ) : (
+                            runningBatches.map((batch) => (
+                              <SelectItem key={batch.id} value={batch.id}>
+                                {batch.id} - {batch.templateName}
+                              </SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
-                      <Input value={wasteQty} onChange={(e) => setWasteQty(e.target.value)} className="rounded-xl bg-white/[0.04] border-white/10 text-white" placeholder="Quantity (kg)" />
                     </div>
-                    <Button className="rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]"><Plus className="w-4 h-4" />Log Waste</Button>
+
+                    <div className="space-y-1">
+                      <p className="text-white/75 text-xs font-body uppercase tracking-wide">Waste Material</p>
+                      <Input value={wasteMaterial} onChange={(e) => setWasteMaterial(e.target.value)} className="rounded-xl bg-white/[0.04] border-white/10 text-white" placeholder="e.g. Cotton Trim" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <p className="text-white/75 text-xs font-body uppercase tracking-wide">Destination</p>
+                        <Select value={wasteDestination} onValueChange={(value: WasteDestination) => setWasteDestination(value)}>
+                          <SelectTrigger className="rounded-xl bg-white/[0.04] border-white/10 text-white">
+                            <SelectValue placeholder="Destination" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="reuse">Reuse (can return to stock)</SelectItem>
+                            <SelectItem value="repair">Repair (fix then use)</SelectItem>
+                            <SelectItem value="dispose">Dispose (cannot be reused)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-white/75 text-xs font-body uppercase tracking-wide">Quantity (kg)</p>
+                        <Input value={wasteQty} onChange={(e) => setWasteQty(e.target.value)} className="rounded-xl bg-white/[0.04] border-white/10 text-white" placeholder="e.g. 7" type="number" min={0.1} step="0.1" />
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2 flex items-center justify-between gap-3">
+                      <div className="space-y-0.5">
+                        <p className="text-sm text-white font-medium">Auto-convert to Inventory IN</p>
+                        <p className="text-xs text-white/60">
+                          For reuse or repair, create recovered stock immediately after logging waste.
+                        </p>
+                      </div>
+                      <Switch
+                        checked={autoRecoverToInventory}
+                        disabled={wasteDestination === "dispose"}
+                        onCheckedChange={setAutoRecoverToInventory}
+                      />
+                    </div>
+
+                    <Button
+                      disabled={runningBatches.length === 0}
+                      className="rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]"
+                    >
+                      <Plus className="w-4 h-4" />Log Waste
+                    </Button>
                   </form>
 
                   <div className="liquid-glass rounded-3xl p-5 overflow-hidden">
@@ -470,6 +672,7 @@ const OperationsPage = () => {
                             <TableHead className="text-white/60">Material</TableHead>
                             <TableHead className="text-white/60">Qty</TableHead>
                             <TableHead className="text-white/60">Destination</TableHead>
+                            <TableHead className="text-white/60">Recovery</TableHead>
                             <TableHead className="text-white/60">Action</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -480,7 +683,34 @@ const OperationsPage = () => {
                               <TableCell>{item.materialName}</TableCell>
                               <TableCell>{item.quantityKg} kg</TableCell>
                               <TableCell className="capitalize">{item.destination}</TableCell>
-                              <TableCell className="text-white/70 text-sm">{item.aiSuggestedAction}</TableCell>
+                              <TableCell>
+                                {item.destination === "dispose" ? (
+                                  <span className="px-2.5 py-1 rounded-full text-xs bg-white/10 text-white/70">
+                                    not applicable
+                                  </span>
+                                ) : item.recoveryStatus === "converted" ? (
+                                  <span className="px-2.5 py-1 rounded-full text-xs bg-emerald-500/15 text-emerald-300">
+                                    converted
+                                  </span>
+                                ) : (
+                                  <span className="px-2.5 py-1 rounded-full text-xs bg-amber-500/15 text-amber-300">
+                                    pending
+                                  </span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-white/70 text-sm space-y-2">
+                                <p>{item.aiSuggestedAction}</p>
+                                {item.destination !== "dispose" && item.recoveryStatus !== "converted" && (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    className="rounded-full bg-emerald-500/20 text-emerald-100 hover:bg-emerald-500/30"
+                                    onClick={() => handleRecoverWasteToInventory(item.id)}
+                                  >
+                                    Convert to Inventory IN
+                                  </Button>
+                                )}
+                              </TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -500,47 +730,63 @@ const OperationsPage = () => {
                       Close batch from auto-calculated summary. Manual entry is only required for major variance.
                     </p>
 
-                    <Select
-                      value={activeCloseBatchId}
-                      onValueChange={(value) => {
-                        setActiveCloseBatchId(value);
-                        setCloseReason("");
-                      }}
-                    >
-                      <SelectTrigger className="rounded-xl bg-white/[0.04] border-white/10 text-white">
-                        <SelectValue placeholder="Select running batch" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {runningBatches.length === 0 ? (
-                          <SelectItem value="__none" disabled>
-                            No running batches
-                          </SelectItem>
-                        ) : (
-                          runningBatches.map((batch) => (
-                            <SelectItem key={batch.id} value={batch.id}>
-                              {batch.id} - {batch.templateName}
+                    <div className="space-y-1">
+                      <p className="text-white/75 text-xs font-body uppercase tracking-wide">Batch to Close</p>
+                      <Select
+                        value={activeCloseBatchId}
+                        onValueChange={(value) => {
+                          setActiveCloseBatchId(value);
+                          setCloseReason("");
+                        }}
+                      >
+                        <SelectTrigger className="rounded-xl bg-white/[0.04] border-white/10 text-white">
+                          <SelectValue placeholder="Select running batch" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {runningBatches.length === 0 ? (
+                            <SelectItem value="__none" disabled>
+                              No running batches
                             </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
+                          ) : (
+                            runningBatches.map((batch) => (
+                              <SelectItem key={batch.id} value={batch.id}>
+                                {batch.id} - {batch.templateName}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                    <Input
-                      value={closeOutputUnits}
-                      onChange={(e) => setCloseOutputUnits(e.target.value)}
-                      className="rounded-xl bg-white/[0.04] border-white/10 text-white"
-                      placeholder="Final output units"
-                      type="number"
-                    />
+                    <div className="space-y-1">
+                      <p className="text-white/75 text-xs font-body uppercase tracking-wide">Final Output Units (pcs)</p>
+                      <Input
+                        value={closeOutputUnits}
+                        onChange={(e) => setCloseOutputUnits(e.target.value)}
+                        className="rounded-xl bg-white/[0.04] border-white/10 text-white"
+                          placeholder="e.g. 276"
+                        type="number"
+                        min={1}
+                      />
+                      <p className="text-white/50 text-xs font-body">Final finished units before close.</p>
+                    </div>
 
                     {closeSummary && Math.abs(closeSummary.variancePercent) > CLOSE_VARIANCE_THRESHOLD && (
-                      <Input
-                        value={closeReason}
-                        onChange={(e) => setCloseReason(e.target.value)}
-                        className="rounded-xl bg-white/[0.04] border-white/10 text-white"
-                        placeholder="Reason for high variance"
-                      />
+                      <div className="rounded-2xl border border-amber-300/20 bg-amber-500/10 p-3 text-amber-200 text-sm font-body">
+                        Variance exceeds {CLOSE_VARIANCE_THRESHOLD}%. Close reason is required.
+                      </div>
                     )}
+
+                    <Input
+                      value={closeReason}
+                      onChange={(e) => setCloseReason(e.target.value)}
+                      className="rounded-xl bg-white/[0.04] border-white/10 text-white"
+                      placeholder={
+                        closeSummary && Math.abs(closeSummary.variancePercent) > CLOSE_VARIANCE_THRESHOLD
+                          ? "Reason for high variance (required)"
+                          : "Optional close note"
+                      }
+                    />
 
                     <Button
                       disabled={!activeCloseBatchId || closingBatch || runningBatches.length === 0}

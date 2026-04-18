@@ -14,6 +14,8 @@ import {
   OperationsPayload,
   ProductionBatch,
   ProductionTemplate,
+  ReportPeriod,
+  ReportsPayload,
   UserSettings,
   WasteLog,
 } from "@/features/internal/types";
@@ -119,6 +121,7 @@ let inventoryStore: InventoryLog[] = [
   },
   {
     id: "INV-2",
+    batchId: "B-102",
     materialName: "Dye Pigment Blue",
     type: "OUT",
     quantity: 16,
@@ -138,6 +141,7 @@ let wasteStore: WasteLog[] = [
     reason: "Pattern edge cuts",
     aiSuggestedAction: "Use for drawstring pouches in accessory line.",
     isRepurposed: true,
+    recoveryStatus: "pending",
     timestamp: "2026-03-29T11:20:00Z",
   },
   {
@@ -149,6 +153,7 @@ let wasteStore: WasteLog[] = [
     reason: "Unrecoverable blend",
     aiSuggestedAction: "Isolate by blend in next run to improve recyclability.",
     isRepurposed: false,
+    recoveryStatus: "not-applicable",
     timestamp: "2026-03-28T12:10:00Z",
   },
 ];
@@ -353,7 +358,7 @@ function buildBatchCloseSummary(batchId: string, outputUnitsOverride?: number): 
     : 0;
   const overdue = batch.status === "running" && hoursSince(batch.startedAt) > OVERDUE_HOURS;
 
-  const hasInventorySignal = inventoryStore.some((item) => item.type === "OUT");
+  const hasInventorySignal = inventoryStore.some((item) => item.type === "OUT" && item.batchId === batchId);
   const hasWasteSignal = wasteForBatch.length > 0;
   const hasOutputSignal = outputUnits > 0;
 
@@ -511,6 +516,246 @@ function computeCircularScoreFromCurrentData() {
   };
 }
 
+function toTimestamp(iso?: string) {
+  if (!iso) {
+    return NaN;
+  }
+  return new Date(iso).getTime();
+}
+
+function getLatestDataDate() {
+  const timestamps = [
+    ...activityLogsStore.map((item) => toTimestamp(item.timestamp)),
+    ...inventoryStore.map((item) => toTimestamp(item.timestamp)),
+    ...wasteStore.map((item) => toTimestamp(item.timestamp)),
+    ...batchesStore.map((item) => toTimestamp(item.startedAt)),
+    ...batchesStore.map((item) => toTimestamp(item.closedAt)),
+  ].filter((item) => Number.isFinite(item));
+
+  if (!timestamps.length) {
+    return new Date();
+  }
+
+  return new Date(Math.max(...timestamps));
+}
+
+function startOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function addDays(date: Date, value: number) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + value);
+}
+
+function startOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function addMonths(date: Date, value: number) {
+  return new Date(date.getFullYear(), date.getMonth() + value, 1);
+}
+
+function computeTrendCircularScore(inputKg: number, wasteKg: number, recoveredKg: number, landfillKg: number) {
+  if (inputKg <= 0 && wasteKg <= 0) {
+    return 0;
+  }
+
+  const wasteBase = Math.max(0.0001, wasteKg);
+  const safeInput = Math.max(1, inputKg);
+  const recoveryRate = clamp(recoveredKg / wasteBase, 0, 1);
+  const wasteEfficiency = clamp(1 - wasteKg / safeInput, 0, 1);
+  const landfillShare = clamp(landfillKg / wasteBase, 0, 1);
+  const landfillAvoidance = 1 - landfillShare;
+  const base = 100 * (0.3 * recoveryRate + 0.25 * wasteEfficiency + 0.45 * landfillAvoidance);
+
+  return round(clamp(Math.min(base, resolveLandfillCap(landfillShare)), 0, 100), 1);
+}
+
+function normalizeActionLabel(action: string) {
+  return action.replaceAll("_", " ");
+}
+
+function buildReportHighlights(payload: ReportsPayload) {
+  const summary = payload.summary;
+  const recoveredRate = summary.totalWasteKg > 0
+    ? round((summary.recoveredWasteKg / summary.totalWasteKg) * 100, 1)
+    : 0;
+  const landfillRate = summary.totalWasteKg > 0
+    ? round((summary.landfillWasteKg / summary.totalWasteKg) * 100, 1)
+    : 0;
+  const topAction = payload.topActions[0];
+
+  const highlights = [
+    `Recovery reached ${recoveredRate}% with landfill share at ${landfillRate}% (${payload.windowLabel.toLowerCase()}).`,
+    topAction ? `Most frequent action: ${topAction.action} (${topAction.count} logs).` : "No dominant action detected in this period.",
+    summary.onTimeCloseRate >= 85
+      ? `Batch close discipline is healthy at ${summary.onTimeCloseRate}% on-time.`
+      : `Batch close discipline needs attention: ${summary.onTimeCloseRate}% on-time.`,
+  ];
+
+  return highlights;
+}
+
+export async function fetchReportsPayload(period: ReportPeriod): Promise<ReportsPayload> {
+  await delay(260);
+
+  const anchorDate = getLatestDataDate();
+  const dayAnchor = startOfDay(anchorDate);
+
+  const buckets = period === "weekly"
+    ? Array.from({ length: 7 }).map((_, index) => {
+        const start = addDays(dayAnchor, index - 6);
+        const end = addDays(start, 1);
+        return {
+          start,
+          end,
+          label: start.toLocaleDateString("en-US", { weekday: "short" }),
+        };
+      })
+    : Array.from({ length: 6 }).map((_, index) => {
+        const start = addMonths(startOfMonth(anchorDate), index - 5);
+        const end = addMonths(start, 1);
+        return {
+          start,
+          end,
+          label: start.toLocaleDateString("en-US", { month: "short" }),
+        };
+      });
+
+  const summaryWindowStart = period === "weekly"
+    ? buckets[0].start
+    : startOfMonth(anchorDate);
+  const summaryWindowEnd = period === "weekly"
+    ? buckets[buckets.length - 1].end
+    : addDays(dayAnchor, 1);
+
+  const inSummaryWindow = (iso?: string) => {
+    const ts = toTimestamp(iso);
+    return Number.isFinite(ts) && ts >= summaryWindowStart.getTime() && ts < summaryWindowEnd.getTime();
+  };
+
+  const summaryActivities = activityLogsStore.filter((item) => inSummaryWindow(item.timestamp));
+  const summaryInventory = inventoryStore.filter((item) => inSummaryWindow(item.timestamp));
+  const summaryWaste = wasteStore.filter((item) => inSummaryWindow(item.timestamp));
+  const summaryBatches = batchesStore.filter((item) => inSummaryWindow(item.startedAt));
+  const completedBatches = batchesStore.filter((item) => inSummaryWindow(item.closedAt));
+
+  const onTimeClosed = completedBatches.filter((item) => {
+    if (!item.closedAt) {
+      return false;
+    }
+    return toTimestamp(item.closedAt) - toTimestamp(item.startedAt) <= OVERDUE_HOURS * 60 * 60 * 1000;
+  });
+
+  const trend = buckets.map((bucket) => {
+    const inBucket = (iso?: string) => {
+      const ts = toTimestamp(iso);
+      return Number.isFinite(ts) && ts >= bucket.start.getTime() && ts < bucket.end.getTime();
+    };
+
+    const inventoryIn = inventoryStore
+      .filter((item) => inBucket(item.timestamp) && item.type === "IN")
+      .reduce((sum, item) => sum + item.quantity, 0);
+    const bucketWaste = wasteStore.filter((item) => inBucket(item.timestamp));
+    const wasteKg = bucketWaste.reduce((sum, item) => sum + item.quantityKg, 0);
+    const recoveredKg = bucketWaste
+      .filter((item) => item.destination === "reuse" || item.destination === "repair")
+      .reduce((sum, item) => sum + item.quantityKg, 0);
+    const landfillKg = bucketWaste
+      .filter((item) => item.destination === "dispose")
+      .reduce((sum, item) => sum + item.quantityKg, 0);
+    const transactions = inventoryStore.filter((item) => inBucket(item.timestamp)).length
+      + bucketWaste.length
+      + activityLogsStore.filter((item) => inBucket(item.timestamp)).length;
+
+    return {
+      label: bucket.label,
+      circularScore: computeTrendCircularScore(inventoryIn, wasteKg, recoveredKg, landfillKg),
+      wasteKg: round(wasteKg, 2),
+      recoveredKg: round(recoveredKg, 2),
+      landfillKg: round(landfillKg, 2),
+      transactions,
+    };
+  });
+
+  const topActions = Object.entries(
+    summaryActivities.reduce<Record<string, number>>((accumulator, item) => {
+      const key = normalizeActionLabel(item.action);
+      accumulator[key] = (accumulator[key] ?? 0) + 1;
+      return accumulator;
+    }, {}),
+  )
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([action, count]) => ({ action, count }));
+
+  const topContributors = Object.entries(
+    summaryActivities.reduce<Record<string, { activities: number; lastSeen: string }>>((accumulator, item) => {
+      const existing = accumulator[item.actor];
+      if (!existing) {
+        accumulator[item.actor] = { activities: 1, lastSeen: item.timestamp };
+        return accumulator;
+      }
+
+      accumulator[item.actor] = {
+        activities: existing.activities + 1,
+        lastSeen: new Date(item.timestamp) > new Date(existing.lastSeen) ? item.timestamp : existing.lastSeen,
+      };
+
+      return accumulator;
+    }, {}),
+  )
+    .sort((a, b) => b[1].activities - a[1].activities)
+    .slice(0, 5)
+    .map(([actor, value]) => ({ actor, activities: value.activities, lastSeen: value.lastSeen }));
+
+  const circularScores = trend
+    .map((item) => item.circularScore)
+    .filter((item) => item > 0);
+
+  const payload: ReportsPayload = {
+    period,
+    generatedAt: nowIso(),
+    windowLabel: period === "weekly"
+      ? `Last 7 days ending ${anchorDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+      : `Month to date (${anchorDate.toLocaleDateString("en-US", { month: "long", year: "numeric" })})`,
+    summary: {
+      totalActivities: summaryActivities.length,
+      totalBatches: summaryBatches.length,
+      completedBatches: completedBatches.length,
+      onTimeCloseRate: completedBatches.length
+        ? round((onTimeClosed.length / completedBatches.length) * 100, 1)
+        : 100,
+      totalInventoryIn: round(summaryInventory.filter((item) => item.type === "IN").reduce((sum, item) => sum + item.quantity, 0), 2),
+      totalInventoryOut: round(summaryInventory.filter((item) => item.type === "OUT").reduce((sum, item) => sum + item.quantity, 0), 2),
+      totalWasteKg: round(summaryWaste.reduce((sum, item) => sum + item.quantityKg, 0), 2),
+      recoveredWasteKg: round(
+        summaryWaste
+          .filter((item) => item.destination === "reuse" || item.destination === "repair")
+          .reduce((sum, item) => sum + item.quantityKg, 0),
+        2,
+      ),
+      landfillWasteKg: round(
+        summaryWaste
+          .filter((item) => item.destination === "dispose")
+          .reduce((sum, item) => sum + item.quantityKg, 0),
+        2,
+      ),
+      circularScoreAvg: circularScores.length
+        ? round(circularScores.reduce((sum, item) => sum + item, 0) / circularScores.length, 1)
+        : computeCircularScoreFromCurrentData().value,
+    },
+    trend,
+    topActions,
+    topContributors,
+    highlights: [],
+  };
+
+  payload.highlights = buildReportHighlights(payload);
+
+  return payload;
+}
+
 export async function fetchDashboardPayload(): Promise<DashboardPayload> {
   await delay();
 
@@ -585,6 +830,11 @@ export async function createBatch(input: Omit<ProductionBatch, "id" | "startedAt
 
 export async function createInventoryLog(input: Omit<InventoryLog, "id" | "timestamp">) {
   await delay(300);
+
+  if (input.type === "OUT" && !input.batchId) {
+    throw new Error("Batch is required for inventory OUT logs.");
+  }
+
   const newItem: InventoryLog = {
     id: `INV-${inventoryStore.length + 1}`,
     timestamp: new Date().toISOString(),
@@ -592,21 +842,26 @@ export async function createInventoryLog(input: Omit<InventoryLog, "id" | "times
   };
   inventoryStore = [newItem, ...inventoryStore];
   addActivityLog({
+    batchId: newItem.batchId,
     actor: "operator.session",
     action: "inventory_logged",
     entity: "inventory",
     entityId: newItem.id,
     source: newItem.source === "OCR" ? "ocr" : "manual",
-    details: `${newItem.type} ${newItem.quantity}${newItem.unit} ${newItem.materialName}.`,
+    details: `${newItem.type} ${newItem.quantity}${newItem.unit} ${newItem.materialName}${newItem.batchId ? ` for ${newItem.batchId}` : ""}.`,
   });
   return newItem;
 }
 
 export async function createWasteLog(input: Omit<WasteLog, "id" | "timestamp">) {
   await delay(300);
+
+  const recoveryStatus = input.destination === "dispose" ? "not-applicable" : "pending";
+
   const newItem: WasteLog = {
     id: `W-${wasteStore.length + 1}`,
     timestamp: new Date().toISOString(),
+    recoveryStatus,
     ...input,
   };
   wasteStore = [newItem, ...wasteStore];
@@ -647,6 +902,78 @@ export async function createWasteLog(input: Omit<WasteLog, "id" | "timestamp">) 
   }
 
   return newItem;
+}
+
+export async function recoverWasteToInventory(input: { wasteLogId: string }) {
+  await delay(280);
+
+  const wasteLogIndex = wasteStore.findIndex((item) => item.id === input.wasteLogId);
+  if (wasteLogIndex < 0) {
+    throw new Error("Waste log not found.");
+  }
+
+  const wasteLog = wasteStore[wasteLogIndex];
+  if (wasteLog.destination === "dispose") {
+    throw new Error("Dispose logs cannot be converted to recovered inventory.");
+  }
+
+  if (wasteLog.recoveryStatus === "converted") {
+    throw new Error("This waste log has already been converted to inventory.");
+  }
+
+  const quantity = Math.max(0, wasteLog.quantityKg);
+  if (quantity <= 0) {
+    throw new Error("Recovered quantity must be greater than zero.");
+  }
+
+  const inventoryLog: InventoryLog = {
+    id: `INV-${inventoryStore.length + 1}`,
+    batchId: wasteLog.batchId,
+    materialName: wasteLog.materialName,
+    type: "IN",
+    quantity,
+    unit: "kg",
+    source: "Recovered",
+    recoveryWasteLogId: wasteLog.id,
+    timestamp: nowIso(),
+  };
+
+  inventoryStore = [inventoryLog, ...inventoryStore];
+
+  const updatedWasteLog: WasteLog = {
+    ...wasteLog,
+    recoveryStatus: "converted",
+    recoveryInventoryLogId: inventoryLog.id,
+    recoveredAt: nowIso(),
+    isRepurposed: true,
+  };
+
+  wasteStore[wasteLogIndex] = updatedWasteLog;
+
+  addActivityLog({
+    batchId: updatedWasteLog.batchId,
+    actor: "operator.session",
+    action: "waste_recovered_to_inventory",
+    entity: "inventory",
+    entityId: inventoryLog.id,
+    source: "system",
+    details: `${updatedWasteLog.materialName} ${quantity}kg converted from ${updatedWasteLog.id}.`,
+  });
+
+  addAuditTrail({
+    batchId: updatedWasteLog.batchId,
+    field: "recoveryStatus",
+    oldValue: wasteLog.recoveryStatus ?? "pending",
+    newValue: "converted",
+    editedBy: "operator.session",
+    reason: "Recovered waste converted to inventory IN.",
+    postScoreEditFlag: false,
+  });
+
+  return {
+    wasteLog: updatedWasteLog,
+    inventoryLog,
+  };
 }
 
 export async function fetchBatchCloseSummary(batchId: string): Promise<BatchCloseSummary> {

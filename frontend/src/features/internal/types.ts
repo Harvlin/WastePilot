@@ -1,6 +1,7 @@
 export type CircularGrade = "A" | "B" | "C";
 export type InsightStatus = "new" | "applied" | "ignored";
 export type WasteDestination = "reuse" | "repair" | "dispose";
+export type WasteRecoveryStatus = "not-applicable" | "pending" | "converted";
 
 export interface CircularMetric {
   id: string;
@@ -55,11 +56,13 @@ export interface ProductionBatch {
 
 export interface InventoryLog {
   id: string;
+  batchId?: string;
   materialName: string;
   type: "IN" | "OUT";
   quantity: number;
   unit: string;
-  source: "OCR" | "Manual";
+  source: "OCR" | "Manual" | "Recovered";
+  recoveryWasteLogId?: string;
   timestamp: string;
 }
 
@@ -72,6 +75,9 @@ export interface WasteLog {
   reason: string;
   aiSuggestedAction: string;
   isRepurposed: boolean;
+  recoveryStatus?: WasteRecoveryStatus;
+  recoveryInventoryLogId?: string;
+  recoveredAt?: string;
   timestamp: string;
 }
 
@@ -196,6 +202,50 @@ export interface AnalyticsPayload {
   efficiencyByMaterial: Array<{ material: string; efficiency: number }>;
   landfillShareTrend: Array<{ week: string; share: number }>;
   landfillIntensityTrend: Array<{ week: string; kgPerUnit: number }>;
+}
+
+export type ReportPeriod = "weekly" | "monthly";
+
+export interface ReportTrendPoint {
+  label: string;
+  circularScore: number;
+  wasteKg: number;
+  recoveredKg: number;
+  landfillKg: number;
+  transactions: number;
+}
+
+export interface ReportTopAction {
+  action: string;
+  count: number;
+}
+
+export interface ReportContributor {
+  actor: string;
+  activities: number;
+  lastSeen: string;
+}
+
+export interface ReportsPayload {
+  period: ReportPeriod;
+  generatedAt: string;
+  windowLabel: string;
+  summary: {
+    totalActivities: number;
+    totalBatches: number;
+    completedBatches: number;
+    onTimeCloseRate: number;
+    totalInventoryIn: number;
+    totalInventoryOut: number;
+    totalWasteKg: number;
+    recoveredWasteKg: number;
+    landfillWasteKg: number;
+    circularScoreAvg: number;
+  };
+  trend: ReportTrendPoint[];
+  topActions: ReportTopAction[];
+  topContributors: ReportContributor[];
+  highlights: string[];
 }
 
 export interface UserSettings {

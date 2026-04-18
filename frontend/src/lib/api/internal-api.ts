@@ -12,6 +12,8 @@ import {
   OperationsPayload,
   ProductionBatch,
   ProductionTemplate,
+  ReportPeriod,
+  ReportsPayload,
   UserSettings,
   WasteLog,
 } from "@/features/internal/types";
@@ -39,6 +41,15 @@ export interface CloseBatchInput {
   closeReason?: string;
 }
 
+export interface RecoverWasteInput {
+  wasteLogId: string;
+}
+
+export interface WasteRecoveryResult {
+  wasteLog: WasteLog;
+  inventoryLog: InventoryLog;
+}
+
 const DEFAULT_SPRING_TIMEOUT_MS = 10_000;
 
 export const SPRING_API_ENDPOINTS = {
@@ -47,6 +58,7 @@ export const SPRING_API_ENDPOINTS = {
   operationBatches: "/api/v1/operations/batches",
   operationInventoryLogs: "/api/v1/operations/inventory-logs",
   operationWasteLogs: "/api/v1/operations/waste-logs",
+  operationWasteRecover: "/api/v1/operations/waste-logs/recover",
   operationBatchCloseSummary: "/api/v1/operations/batch-close/summary",
   operationBatchClose: "/api/v1/operations/batch-close",
   materials: "/api/v1/materials",
@@ -54,6 +66,7 @@ export const SPRING_API_ENDPOINTS = {
   insights: "/api/v1/ai/insights",
   anomalies: "/api/v1/ai/anomaly",
   analytics: "/api/v1/analytics",
+  reports: "/api/v1/reports",
   ocr: "/api/v1/ai/ocr",
   settings: "/api/v1/settings",
   activityLogs: "/api/v1/integrity/activity-logs",
@@ -97,6 +110,7 @@ export interface InternalApi {
   createBatch(input: CreateBatchInput): Promise<ProductionBatch>;
   createInventoryLog(input: CreateInventoryInput): Promise<InventoryLog>;
   createWasteLog(input: CreateWasteInput): Promise<WasteLog>;
+  recoverWasteToInventory(input: RecoverWasteInput): Promise<WasteRecoveryResult>;
   fetchBatchCloseSummary(batchId: string): Promise<BatchCloseSummary>;
   closeBatch(input: CloseBatchInput): Promise<BatchCloseSummary>;
   fetchActivityLogs(batchId?: string): Promise<ActivityLogEntry[]>;
@@ -110,6 +124,7 @@ export interface InternalApi {
   updateInsightStatus(id: string, status: CircularInsight["status"]): Promise<InsightsPayload>;
   updateAnomalyStatus(id: string, status: CircularInsight["status"]): Promise<InsightsPayload["anomalies"]>;
   fetchAnalytics(): Promise<AnalyticsPayload>;
+  fetchReportsPayload(period: ReportPeriod): Promise<ReportsPayload>;
   processOcrImage(file?: File): Promise<OcrMaterialLine[]>;
   fetchSettings(): Promise<UserSettings>;
   saveSettings(input: UserSettings): Promise<UserSettings>;
@@ -121,6 +136,7 @@ class MockInternalApi implements InternalApi {
   createBatch = mock.createBatch;
   createInventoryLog = mock.createInventoryLog;
   createWasteLog = mock.createWasteLog;
+  recoverWasteToInventory = mock.recoverWasteToInventory;
   fetchBatchCloseSummary = mock.fetchBatchCloseSummary;
   closeBatch = mock.closeBatch;
   fetchActivityLogs = mock.fetchActivityLogs;
@@ -134,6 +150,7 @@ class MockInternalApi implements InternalApi {
   updateInsightStatus = mock.updateInsightStatus;
   updateAnomalyStatus = mock.updateAnomalyStatus;
   fetchAnalytics = mock.fetchAnalytics;
+  fetchReportsPayload = mock.fetchReportsPayload;
   processOcrImage = mock.processOcrImage;
   fetchSettings = mock.fetchSettings;
   saveSettings = mock.saveSettings;
@@ -284,6 +301,18 @@ class SpringBootInternalApi implements InternalApi {
     );
   }
 
+  async recoverWasteToInventory(input: RecoverWasteInput) {
+    return this.withFallback(
+      "recoverWasteToInventory",
+      () =>
+        this.request<WasteRecoveryResult>(SPRING_API_ENDPOINTS.operationWasteRecover, {
+          method: "POST",
+          body: JSON.stringify(input),
+        }),
+      this.options.fallbackApi ? () => this.options.fallbackApi!.recoverWasteToInventory(input) : undefined,
+    );
+  }
+
   async fetchBatchCloseSummary(batchId: string) {
     return this.withFallback(
       "fetchBatchCloseSummary",
@@ -431,6 +460,14 @@ class SpringBootInternalApi implements InternalApi {
       "fetchAnalytics",
       () => this.request<AnalyticsPayload>(SPRING_API_ENDPOINTS.analytics),
       this.options.fallbackApi ? () => this.options.fallbackApi!.fetchAnalytics() : undefined,
+    );
+  }
+
+  async fetchReportsPayload(period: ReportPeriod) {
+    return this.withFallback(
+      "fetchReportsPayload",
+      () => this.request<ReportsPayload>(`${SPRING_API_ENDPOINTS.reports}?period=${encodeURIComponent(period)}`),
+      this.options.fallbackApi ? () => this.options.fallbackApi!.fetchReportsPayload(period) : undefined,
     );
   }
 

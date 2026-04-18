@@ -178,31 +178,45 @@ const TemplatesPage = () => {
           </DialogHeader>
 
           <form onSubmit={submit} className="space-y-3">
+            <p className="text-white/60 text-sm font-body">
+              Keep this short. Quantities below are per batch.
+            </p>
             <div className="grid grid-cols-2 gap-3">
-              <Input
-                value={draft.name}
-                onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))}
-                placeholder="Template name"
-                className="rounded-xl bg-white/[0.10] border-white/20 text-white placeholder:text-white/45 focus-visible:ring-1 focus-visible:ring-white/35 focus-visible:ring-offset-0 focus-visible:border-white/35"
-                required
-              />
-              <Input
-                value={draft.sku}
-                onChange={(e) => setDraft((prev) => ({ ...prev, sku: e.target.value }))}
-                placeholder="SKU"
-                className="rounded-xl bg-white/[0.10] border-white/20 text-white placeholder:text-white/45 focus-visible:ring-1 focus-visible:ring-white/35 focus-visible:ring-offset-0 focus-visible:border-white/35"
-                required
-              />
+              <div className="space-y-1">
+                <p className="text-white/75 text-xs font-body uppercase tracking-wide">Template Name</p>
+                <Input
+                  value={draft.name}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g. Plain Tee v2"
+                  className="rounded-xl bg-white/[0.10] border-white/20 text-white placeholder:text-white/45 focus-visible:ring-1 focus-visible:ring-white/35 focus-visible:ring-offset-0 focus-visible:border-white/35"
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <p className="text-white/75 text-xs font-body uppercase tracking-wide">SKU</p>
+                <Input
+                  value={draft.sku}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, sku: e.target.value }))}
+                  placeholder="e.g. TEE-PLAIN-02"
+                  className="rounded-xl bg-white/[0.10] border-white/20 text-white placeholder:text-white/45 focus-visible:ring-1 focus-visible:ring-white/35 focus-visible:ring-offset-0 focus-visible:border-white/35"
+                  required
+                />
+              </div>
             </div>
 
-            <Input
-              value={draft.expectedWasteKg}
-              onChange={(e) => setDraft((prev) => ({ ...prev, expectedWasteKg: Number(e.target.value) }))}
-              placeholder="Expected waste (kg)"
-              type="number"
-              className="rounded-xl bg-white/[0.10] border-white/20 text-white placeholder:text-white/45 focus-visible:ring-1 focus-visible:ring-white/35 focus-visible:ring-offset-0 focus-visible:border-white/35"
-              required
-            />
+            <div className="space-y-1">
+              <p className="text-white/75 text-xs font-body uppercase tracking-wide">Expected Waste (kg)</p>
+              <Input
+                value={draft.expectedWasteKg}
+                onChange={(e) => setDraft((prev) => ({ ...prev, expectedWasteKg: Number(e.target.value) }))}
+                placeholder="e.g. 14"
+                type="number"
+                min={0}
+                className="rounded-xl bg-white/[0.10] border-white/20 text-white placeholder:text-white/45 focus-visible:ring-1 focus-visible:ring-white/35 focus-visible:ring-offset-0 focus-visible:border-white/35"
+                required
+              />
+              <p className="text-white/50 text-xs font-body">Expected total waste for this template (kg).</p>
+            </div>
 
             <div className="rounded-2xl border border-white/15 p-3 space-y-3 bg-white/[0.02]">
               <div className="flex items-center justify-between">
@@ -212,6 +226,7 @@ const TemplatesPage = () => {
                   Add Line
                 </Button>
               </div>
+              <p className="text-white/50 text-xs font-body">Pick a material, then set quantity per batch (e.g. 24 kg).</p>
 
               {draft.lines.map((line, index) => (
                 <div key={`${line.materialId}-${index}`} className="grid grid-cols-[1fr_120px_90px_44px] gap-2">
