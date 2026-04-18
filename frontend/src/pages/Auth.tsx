@@ -81,9 +81,11 @@ const Auth = () => {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="flex justify-center mb-8"
           >
-            <div className="w-14 h-14 rounded-full liquid-glass-strong flex items-center justify-center">
-              <span className="font-heading italic text-white text-2xl">W</span>
-            </div>
+            <img
+              src="/logoDevSpeak.png"
+              alt="WastePilot"
+              className="h-14 w-auto object-contain"
+            />
           </motion.div>
 
           {/* Title */}

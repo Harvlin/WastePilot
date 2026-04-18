@@ -78,13 +78,17 @@ const Navbar = () => {
         className="fixed top-4 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12"
       >
         {/* Logo */}
-        <Link to="/">
+        <Link to="/" className="w-[160px] h-12 flex items-center">
           <motion.div
             whileHover={{ scale: 1.1, rotate: -5 }}
             whileTap={{ scale: 0.95 }}
-            className="w-12 h-12 rounded-full liquid-glass-strong flex items-center justify-center font-heading italic text-white text-xl cursor-pointer"
+            className="w-full h-full flex items-center cursor-pointer"
           >
-            W
+            <img
+              src="/logoDevSpeak.png"
+              alt="WastePilot"
+              className="h-full w-auto object-contain"
+            />
           </motion.div>
         </Link>
 
@@ -147,7 +151,7 @@ const Navbar = () => {
         </motion.button>
 
         {/* Spacer for balance (desktop) */}
-        <div className="w-12 h-12 hidden md:block" />
+        <div className="w-[160px] h-12 hidden md:block" />
       </motion.nav>
 
       {/* Mobile menu */}

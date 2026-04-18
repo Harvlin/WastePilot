@@ -17,13 +17,11 @@ const SidebarContent = ({ closeMobile }: { closeMobile?: () => void }) => {
     <div className="h-full flex flex-col">
       <div className="px-3 pt-4 pb-5 border-b border-[hsl(var(--palette-house-green))]/60 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
-          <div className="w-10 h-10 rounded-full liquid-glass-strong flex items-center justify-center font-heading italic text-[hsl(var(--palette-light-green))] text-xl">
-            W
-          </div>
-          <div>
-            <p className="text-white font-body font-semibold">WastePilot</p>
-            <p className="text-white/45 font-body text-xs">Internal Circular Ops</p>
-          </div>
+          <img
+            src="/logoDevSpeak.png"
+            alt="WastePilot"
+            className="h-10 w-auto object-contain"
+          />
         </Link>
       </div>
 
