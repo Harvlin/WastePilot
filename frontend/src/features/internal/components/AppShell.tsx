@@ -1,4 +1,4 @@
-import { ArrowLeft, Menu, Search } from "lucide-react";
+import { ArrowLeft, Menu, Search, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
@@ -23,6 +23,17 @@ const SidebarContent = ({ closeMobile }: { closeMobile?: () => void }) => {
             className="h-10 w-auto object-contain"
           />
         </Link>
+
+        {closeMobile && (
+          <button
+            type="button"
+            onClick={closeMobile}
+            aria-label="Close navigation"
+            className="w-9 h-9 rounded-full liquid-glass flex items-center justify-center text-[hsl(var(--palette-light-green))] lg:hidden"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       <nav className="flex-1 px-2 py-4 space-y-1.5 overflow-y-auto">
@@ -115,9 +126,10 @@ const AppShell = () => {
         </div>
 
         <div className="flex-1 min-w-0">
-          <header className="sticky top-4 z-30 px-4 md:px-8">
-            <div className="h-16 px-4 md:px-6 flex items-center justify-between gap-4 liquid-glass-strong rounded-2xl border border-[hsl(var(--palette-house-green))]/70">
-              <div className="flex items-center gap-3">
+          <header className="sticky top-3 md:top-4 z-30 px-3 md:px-8">
+            <div className="px-3 md:px-6 py-3 liquid-glass-strong rounded-2xl border border-[hsl(var(--palette-house-green))]/70">
+              <div className="flex items-center justify-between gap-3 md:gap-4">
+                <div className="flex items-center gap-3 min-w-0">
                 <button
                   className="lg:hidden w-10 h-10 rounded-full liquid-glass flex items-center justify-center"
                   onClick={() => setMobileOpen((prev) => !prev)}
@@ -125,13 +137,13 @@ const AppShell = () => {
                 >
                   <Menu className="w-5 h-5 text-[hsl(var(--palette-light-green))]" />
                 </button>
-                <div>
+                <div className="min-w-0">
                   <p className="text-[hsl(var(--palette-light-green))]/60 text-xs uppercase tracking-[0.18em] font-body">Workspace</p>
-                  <p className="text-white font-body font-medium">{pageLabel}</p>
+                  <p className="text-white font-body font-medium truncate">{pageLabel}</p>
                 </div>
               </div>
 
-              <div className="hidden md:flex items-center gap-2 liquid-glass rounded-full px-3 py-2 w-[340px]">
+              <div className="hidden md:flex items-center gap-2 liquid-glass rounded-full px-3 py-2 w-[340px] lg:w-[380px]">
                 <button
                   type="button"
                   onClick={handleSearchSubmit}
@@ -157,11 +169,35 @@ const AppShell = () => {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-body text-[hsl(var(--palette-light-green))]/90 liquid-glass hover:bg-[hsl(var(--palette-house-green))]/45 transition-colors"
+                className="inline-flex items-center gap-2 rounded-full px-3 sm:px-4 py-2 text-sm font-body text-[hsl(var(--palette-light-green))]/90 liquid-glass hover:bg-[hsl(var(--palette-house-green))]/45 transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
-                Log out
+                <span className="hidden sm:inline">Log out</span>
               </button>
+            </div>
+
+              <div className="md:hidden mt-3 flex items-center gap-2 liquid-glass rounded-full px-3 py-2">
+                <button
+                  type="button"
+                  onClick={handleSearchSubmit}
+                  className="text-[hsl(var(--palette-light-green))]/65 hover:text-[hsl(var(--palette-tea-green))] transition-colors"
+                  aria-label="Search"
+                >
+                  <Search className="w-4 h-4" />
+                </button>
+                <input
+                  className="bg-transparent w-full text-sm font-body text-white placeholder:text-[hsl(var(--palette-light-green))]/45 focus:outline-none"
+                  placeholder="Jump to page..."
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      handleSearchSubmit();
+                    }
+                  }}
+                />
+              </div>
             </div>
           </header>
 
@@ -196,7 +232,7 @@ const AppShell = () => {
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: -320, opacity: 0 }}
               transition={{ duration: 0.24, ease: "easeOut" }}
-              className="fixed top-0 left-0 h-full w-[280px] z-50 border-r border-[hsl(var(--palette-house-green))]/70 bg-black/95 backdrop-blur-2xl lg:hidden"
+              className="fixed top-0 left-0 h-full w-[88vw] max-w-[320px] z-50 border-r border-[hsl(var(--palette-house-green))]/70 bg-black/95 backdrop-blur-2xl lg:hidden"
             >
               <SidebarContent closeMobile={() => setMobileOpen(false)} />
             </motion.aside>

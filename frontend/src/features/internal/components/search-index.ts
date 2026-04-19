@@ -49,6 +49,12 @@ export const searchDestinations: SearchDestination[] = [
     keywords: ["analytics", "trend", "chart", "breakdown", "efficiency", "analysis", "reports", "report", "weekly", "monthly", "period summary"],
   },
   {
+    label: "How To Use",
+    to: "/how-to-use",
+    kind: "workspace",
+    keywords: ["guide", "how to use", "onboarding", "tutorial", "help", "flow", "start here"],
+  },
+  {
     label: "Settings",
     to: "/settings",
     kind: "workspace",

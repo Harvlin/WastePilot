@@ -111,7 +111,7 @@ const TemplatesPage = () => {
         title="Production Templates"
         description="Build reusable material compositions so teams can launch production with one selection."
         actions={
-          <Button onClick={() => openEditor()} className="rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]">
+          <Button onClick={() => openEditor()} className="w-full md:w-auto rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]">
             <Plus className="w-4 h-4" />
             New Template
           </Button>
@@ -181,7 +181,7 @@ const TemplatesPage = () => {
             <p className="text-white/60 text-sm font-body">
               Keep this short. Quantities below are per batch.
             </p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <p className="text-white/75 text-xs font-body uppercase tracking-wide">Template Name</p>
                 <Input
@@ -219,7 +219,7 @@ const TemplatesPage = () => {
             </div>
 
             <div className="rounded-2xl border border-white/15 p-3 space-y-3 bg-white/[0.02]">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <p className="text-white font-body text-sm">Material Composition</p>
                 <Button type="button" variant="outline" onClick={addLine} className="rounded-full border-white/20 bg-white/5 text-white hover:bg-white/10">
                   <Plus className="w-4 h-4" />
@@ -229,7 +229,7 @@ const TemplatesPage = () => {
               <p className="text-white/50 text-xs font-body">Pick a material, then set quantity per batch (e.g. 24 kg).</p>
 
               {draft.lines.map((line, index) => (
-                <div key={`${line.materialId}-${index}`} className="grid grid-cols-[1fr_120px_90px_44px] gap-2">
+                <div key={`${line.materialId}-${index}`} className="grid grid-cols-1 sm:grid-cols-[1fr_120px_90px_44px] gap-2">
                   <Select
                     value={line.materialId}
                     onValueChange={(materialId) => {
@@ -267,7 +267,7 @@ const TemplatesPage = () => {
                     type="button"
                     variant="ghost"
                     onClick={() => removeLine(index)}
-                    className="rounded-xl text-white/75 hover:bg-white/10"
+                    className="rounded-xl text-white/75 hover:bg-white/10 sm:w-auto"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>

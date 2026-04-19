@@ -112,7 +112,7 @@ const SettingsPage = () => {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="grid gap-2">
                 <Label className="text-white/75">Role</Label>
                 <Input
@@ -146,7 +146,7 @@ const SettingsPage = () => {
           <div className="liquid-glass rounded-3xl p-6 space-y-5">
             <h3 className="text-white text-xl font-heading italic">Preferences</h3>
 
-            <div className="flex items-center justify-between rounded-2xl border border-white/10 px-4 py-3 bg-white/[0.02]">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-white/10 px-4 py-3 bg-white/[0.02] gap-3">
               <div>
                 <p className="text-white text-sm font-body">Anomaly notifications</p>
                 <p className="text-white/50 text-xs font-body mt-1">Alerts when Z-score spikes are detected</p>
@@ -157,7 +157,7 @@ const SettingsPage = () => {
               />
             </div>
 
-            <div className="flex items-center justify-between rounded-2xl border border-white/10 px-4 py-3 bg-white/[0.02]">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-white/10 px-4 py-3 bg-white/[0.02] gap-3">
               <div>
                 <p className="text-white text-sm font-body">Recommendation notifications</p>
                 <p className="text-white/50 text-xs font-body mt-1">Updates when new AI circular actions are ready</p>

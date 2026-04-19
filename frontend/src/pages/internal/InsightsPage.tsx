@@ -71,11 +71,11 @@ const InsightsPage = () => {
 
       {!loading && !error && (
         <Tabs defaultValue="recommendations" className="space-y-4">
-          <TabsList className="liquid-glass rounded-full h-auto p-1">
-            <TabsTrigger value="recommendations" className="rounded-full data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70">
+          <TabsList className="liquid-glass rounded-full h-auto p-1 w-full justify-start overflow-x-auto whitespace-nowrap">
+            <TabsTrigger value="recommendations" className="shrink-0 rounded-full data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70">
               AI Recommendations
             </TabsTrigger>
-            <TabsTrigger value="anomalies" className="rounded-full data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70">
+            <TabsTrigger value="anomalies" className="shrink-0 rounded-full data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70">
               Anomalies
             </TabsTrigger>
           </TabsList>

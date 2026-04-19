@@ -188,16 +188,16 @@ const MaterialsPage = () => {
         title="Materials"
         description="Manage raw materials with circular grades, categories, and inventory context."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full md:w-auto">
             <Button
               variant="outline"
               onClick={() => void openAllHistory()}
-              className="rounded-full border-white/20 bg-white/5 text-white hover:bg-white/10"
+              className="w-full sm:w-auto rounded-full border-white/20 bg-white/5 text-white hover:bg-white/10"
             >
               <History className="w-4 h-4" />
               Stock History
             </Button>
-            <Button onClick={() => openEditor()} className="rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]">
+            <Button onClick={() => openEditor()} className="w-full sm:w-auto rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]">
               <Plus className="w-4 h-4" />
               Add Material
             </Button>
@@ -221,7 +221,7 @@ const MaterialsPage = () => {
               }
             />
           ) : (
-            <Table>
+            <Table className="min-w-[760px]">
               <TableHeader>
                 <TableRow className="border-white/10 hover:bg-transparent">
                   <TableHead className="text-white/55">Name</TableHead>
@@ -275,7 +275,7 @@ const MaterialsPage = () => {
       )}
 
       <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
-        <DialogContent className="liquid-glass-strong border-white/25 bg-black/95 text-white rounded-3xl shadow-[0_30px_80px_rgba(0,0,0,0.75)] overflow-visible [&::before]:hidden">
+        <DialogContent className="liquid-glass-strong border-white/25 bg-black/95 text-white rounded-3xl shadow-[0_30px_80px_rgba(0,0,0,0.75)] max-h-[85vh] overflow-y-auto [&::before]:hidden">
           <DialogHeader className="pt-1">
             <DialogTitle className="font-heading italic text-2xl text-white leading-[1.2]">
               {draft.id ? "Edit Material" : "Add Material"}
@@ -296,7 +296,7 @@ const MaterialsPage = () => {
                 required
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <p className="text-white/75 text-xs font-body uppercase tracking-wide">Category</p>
                 <Select
@@ -333,7 +333,7 @@ const MaterialsPage = () => {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <p className="text-white/75 text-xs font-body uppercase tracking-wide">Current Stock</p>
                 <Input
@@ -376,7 +376,7 @@ const MaterialsPage = () => {
       </Dialog>
 
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
-        <DialogContent className="liquid-glass-strong border-white/25 bg-black/95 text-white rounded-3xl max-w-3xl shadow-[0_30px_80px_rgba(0,0,0,0.75)] overflow-visible [&::before]:hidden">
+        <DialogContent className="liquid-glass-strong border-white/25 bg-black/95 text-white rounded-3xl max-w-3xl shadow-[0_30px_80px_rgba(0,0,0,0.75)] max-h-[85vh] overflow-y-auto [&::before]:hidden">
           <DialogHeader className="pt-1">
             <DialogTitle className="font-heading italic text-2xl text-white leading-[1.2]">
               Stock History
@@ -429,7 +429,7 @@ const MaterialsPage = () => {
               </div>
 
               <div className="max-h-[420px] overflow-auto rounded-2xl border border-white/10">
-                <Table>
+                <Table className="min-w-[980px]">
                   <TableHeader>
                     <TableRow className="border-white/10 hover:bg-transparent">
                       <TableHead className="text-white/60">Time</TableHead>

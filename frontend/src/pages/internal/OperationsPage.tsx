@@ -396,20 +396,20 @@ const OperationsPage = () => {
 
       {!loading && !error && data && (
         <Tabs defaultValue="batches" className="space-y-4">
-          <TabsList className="liquid-glass rounded-full h-auto p-1">
-            <TabsTrigger value="batches" className="rounded-full data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70">
+          <TabsList className="liquid-glass rounded-full h-auto p-1 w-full justify-start overflow-x-auto whitespace-nowrap">
+            <TabsTrigger value="batches" className="shrink-0 rounded-full data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70">
               Batches
             </TabsTrigger>
-            <TabsTrigger value="inventory" className="rounded-full data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70">
+            <TabsTrigger value="inventory" className="shrink-0 rounded-full data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70">
               Inventory
             </TabsTrigger>
-            <TabsTrigger value="waste" className="rounded-full data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70">
+            <TabsTrigger value="waste" className="shrink-0 rounded-full data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70">
               Waste
             </TabsTrigger>
-            <TabsTrigger value="batch-close" className="rounded-full data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70">
+            <TabsTrigger value="batch-close" className="shrink-0 rounded-full data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70">
               Batch Close
             </TabsTrigger>
-            <TabsTrigger value="integrity" className="rounded-full data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70">
+            <TabsTrigger value="integrity" className="shrink-0 rounded-full data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70">
               Integrity
             </TabsTrigger>
           </TabsList>
@@ -427,7 +427,7 @@ const OperationsPage = () => {
                       <p className="text-white/75 text-xs font-body uppercase tracking-wide">Template Name</p>
                       <Input value={batchTemplate} onChange={(e) => setBatchTemplate(e.target.value)} className="rounded-xl bg-white/[0.04] border-white/10 text-white" placeholder="e.g. Plain Tee v2" />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <p className="text-white/75 text-xs font-body uppercase tracking-wide">Output Units (pcs)</p>
                         <Input value={batchOutput} onChange={(e) => setBatchOutput(e.target.value)} className="rounded-xl bg-white/[0.04] border-white/10 text-white" placeholder="e.g. 280" type="number" min={1} />
@@ -439,7 +439,7 @@ const OperationsPage = () => {
                         <p className="text-white/50 text-xs font-body">Expected leftover material in kg.</p>
                       </div>
                     </div>
-                    <Button className="rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]"><Plus className="w-4 h-4" />Start Batch</Button>
+                    <Button className="w-full sm:w-auto rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]"><Plus className="w-4 h-4" />Start Batch</Button>
                   </form>
 
                   <div className="liquid-glass rounded-3xl p-5 overflow-hidden">
@@ -447,7 +447,7 @@ const OperationsPage = () => {
                     {data.batches.length === 0 ? (
                       <DataEmpty title="No batches yet" description="Create your first production batch to begin tracking." />
                     ) : (
-                      <Table>
+                      <Table className="min-w-[620px]">
                         <TableHeader>
                           <TableRow className="border-white/10 hover:bg-transparent">
                             <TableHead className="text-white/60">Batch</TableHead>
@@ -517,7 +517,7 @@ const OperationsPage = () => {
                       <p className="text-white/75 text-xs font-body uppercase tracking-wide">Material Name</p>
                       <Input value={inventoryMaterial} onChange={(e) => setInventoryMaterial(e.target.value)} className="rounded-xl bg-white/[0.04] border-white/10 text-white" placeholder="e.g. Cotton Roll 280gsm" />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <p className="text-white/75 text-xs font-body uppercase tracking-wide">Movement Type</p>
                         <Select value={inventoryType} onValueChange={(value: "IN" | "OUT") => setInventoryType(value)}>
@@ -535,7 +535,7 @@ const OperationsPage = () => {
                         <Input value={inventoryQty} onChange={(e) => setInventoryQty(e.target.value)} className="rounded-xl bg-white/[0.04] border-white/10 text-white" placeholder="e.g. 20" type="number" min={0.1} step="0.1" />
                       </div>
                     </div>
-                    <Button className="rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]"><Plus className="w-4 h-4" />Add Log</Button>
+                    <Button className="w-full sm:w-auto rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]"><Plus className="w-4 h-4" />Add Log</Button>
                   </form>
 
                   <div className="liquid-glass rounded-3xl p-5 overflow-hidden">
@@ -543,7 +543,7 @@ const OperationsPage = () => {
                     {data.inventoryLogs.length === 0 ? (
                       <DataEmpty title="No inventory logs" description="Add IN/OUT movement to keep stock accurate." />
                     ) : (
-                      <Table>
+                      <Table className="min-w-[740px]">
                         <TableHeader>
                           <TableRow className="border-white/10 hover:bg-transparent">
                             <TableHead className="text-white/60">Batch</TableHead>
@@ -618,7 +618,7 @@ const OperationsPage = () => {
                       <p className="text-white/75 text-xs font-body uppercase tracking-wide">Waste Material</p>
                       <Input value={wasteMaterial} onChange={(e) => setWasteMaterial(e.target.value)} className="rounded-xl bg-white/[0.04] border-white/10 text-white" placeholder="e.g. Cotton Trim" />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <p className="text-white/75 text-xs font-body uppercase tracking-wide">Destination</p>
                         <Select value={wasteDestination} onValueChange={(value: WasteDestination) => setWasteDestination(value)}>
@@ -638,7 +638,7 @@ const OperationsPage = () => {
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2 flex items-center justify-between gap-3">
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div className="space-y-0.5">
                         <p className="text-sm text-white font-medium">Auto-convert to Inventory IN</p>
                         <p className="text-xs text-white/60">
@@ -665,7 +665,7 @@ const OperationsPage = () => {
                     {data.wasteLogs.length === 0 ? (
                       <DataEmpty title="No waste logs" description="Track leftovers to improve repurpose decisions." />
                     ) : (
-                      <Table>
+                      <Table className="min-w-[860px]">
                         <TableHeader>
                           <TableRow className="border-white/10 hover:bg-transparent">
                             <TableHead className="text-white/60">Batch</TableHead>
@@ -811,7 +811,7 @@ const OperationsPage = () => {
 
                     {!loadingCloseSummary && closeSummary && (
                       <>
-                        <div className="grid grid-cols-2 gap-3 text-sm font-body">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm font-body">
                           <div className="rounded-2xl bg-white/[0.04] border border-white/10 p-3">
                             <p className="text-white/55">Planned Input</p>
                             <p className="text-white mt-1">{closeSummary.plannedInputKg} kg</p>
@@ -899,7 +899,7 @@ const OperationsPage = () => {
                     {auditTrail.length === 0 ? (
                       <DataEmpty title="No audit trail entries" description="Field-level edits will be tracked for integrity review." />
                     ) : (
-                      <Table>
+                      <Table className="min-w-[760px]">
                         <TableHeader>
                           <TableRow className="border-white/10 hover:bg-transparent">
                             <TableHead className="text-white/60">Field</TableHead>

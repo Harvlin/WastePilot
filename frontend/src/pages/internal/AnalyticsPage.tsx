@@ -121,7 +121,7 @@ const AnalyticsPage = () => {
                   </Pie>
                 </PieChart>
               </ChartContainer>
-              <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {data.wasteBreakdown.map((item, index) => (
                   <div key={item.category} className="text-sm font-body text-[hsl(var(--palette-light-green))] opacity-85 flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full" style={{ background: pieColors[index % pieColors.length] }} />
@@ -188,13 +188,13 @@ const AnalyticsPage = () => {
               <Tabs
                 value={reportPeriod}
                 onValueChange={(value) => setReportPeriod(value as ReportPeriod)}
-                className="w-fit"
+                className="w-full md:w-fit"
               >
-                <TabsList className="liquid-glass rounded-full h-auto p-1">
-                  <TabsTrigger value="weekly" className="rounded-full data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70">
+                <TabsList className="liquid-glass rounded-full h-auto p-1 w-full md:w-auto justify-start overflow-x-auto whitespace-nowrap">
+                  <TabsTrigger value="weekly" className="shrink-0 rounded-full data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70">
                     Weekly
                   </TabsTrigger>
-                  <TabsTrigger value="monthly" className="rounded-full data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70">
+                  <TabsTrigger value="monthly" className="shrink-0 rounded-full data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70">
                     Monthly
                   </TabsTrigger>
                 </TabsList>

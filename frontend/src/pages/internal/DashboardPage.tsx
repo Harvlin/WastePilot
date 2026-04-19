@@ -129,7 +129,7 @@ const DashboardPage = () => {
                     <ShieldCheck className="w-4 h-4 text-[hsl(var(--palette-light-green))]" />
                     <p className="text-[hsl(var(--palette-light-green))] font-body font-medium">Data Integrity Pulse</p>
                   </div>
-                  <div className="mt-4 grid grid-cols-2 gap-3 text-sm font-body">
+                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm font-body">
                     <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-3">
                       <p className="text-white/55">Avg Confidence</p>
                       <p className="text-white mt-1">{integrity.averageConfidenceScore}%</p>
