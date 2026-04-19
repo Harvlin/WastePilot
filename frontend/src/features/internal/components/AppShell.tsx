@@ -1,6 +1,6 @@
 import { ArrowLeft, Menu, Search, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { internalNav } from "@/features/internal/components/navigation";
 import { resolveSearchDestination } from "@/features/internal/components/search-index";
@@ -81,15 +81,97 @@ const SidebarContent = ({ closeMobile }: { closeMobile?: () => void }) => {
 const AppShell = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
+  const [isOnline, setIsOnline] = useState(() => (typeof navigator === "undefined" ? true : navigator.onLine));
+  const closeGuardUntilRef = useRef(0);
   const location = useLocation();
   const navigate = useNavigate();
   const pageLabel = internalNav.find((item) => item.to === location.pathname)?.label ?? "Workspace";
 
-  useEffect(() => {
-    if (mobileOpen) {
-      setMobileOpen(false);
+  const closeMobileNav = (guardMs = 280) => {
+    setMobileOpen(false);
+    closeGuardUntilRef.current = Date.now() + guardMs;
+  };
+
+  const openMobileNav = () => {
+    if (Date.now() < closeGuardUntilRef.current) {
+      return;
     }
+    setMobileOpen(true);
+  };
+
+  const toggleMobileNav = () => {
+    if (mobileOpen) {
+      closeMobileNav();
+      return;
+    }
+    openMobileNav();
+  };
+
+  useEffect(() => {
+    setMobileOpen((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      closeGuardUntilRef.current = Date.now() + 120;
+      return false;
+    });
   }, [location.pathname, location.search, location.hash]);
+
+  useEffect(() => {
+    if (!mobileOpen) {
+      document.body.style.removeProperty("overflow");
+      return;
+    }
+
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.removeProperty("overflow");
+    };
+  }, [mobileOpen]);
+
+  useEffect(() => {
+    if (!mobileOpen) {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeMobileNav();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [mobileOpen]);
+
+  useEffect(() => {
+    const onResize = () => {
+      if (window.innerWidth >= 1024) {
+        closeMobileNav(0);
+      }
+    };
+
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+    };
+  }, []);
+
+  useEffect(() => {
+    const onOnline = () => setIsOnline(true);
+    const onOffline = () => setIsOnline(false);
+
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+  }, []);
 
   const handleSearchSubmit = () => {
     const query = searchText.trim();
@@ -143,7 +225,7 @@ const AppShell = () => {
                   className="lg:hidden w-10 h-10 rounded-full liquid-glass flex items-center justify-center"
                   onClick={(event) => {
                     event.stopPropagation();
-                    setMobileOpen((prev) => !prev);
+                    toggleMobileNav();
                   }}
                   aria-label="Open navigation"
                 >
@@ -213,6 +295,14 @@ const AppShell = () => {
             </div>
           </header>
 
+          {!isOnline && (
+            <div className="px-3 md:px-8 mt-3">
+              <div className="rounded-2xl border border-amber-300/25 bg-amber-500/10 px-4 py-3 text-amber-100 text-sm font-body">
+                You are offline. Data updates may fail until the connection is restored.
+              </div>
+            </div>
+          )}
+
           <main className="p-4 md:p-8 pt-6 md:pt-8">
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
@@ -238,7 +328,7 @@ const AppShell = () => {
               exit={{ opacity: 0 }}
               onClick={(event) => {
                 event.stopPropagation();
-                setMobileOpen(false);
+                closeMobileNav();
               }}
               aria-label="Close navigation overlay"
               className="fixed inset-0 bg-black/60 z-40 lg:hidden"
@@ -249,9 +339,12 @@ const AppShell = () => {
               exit={{ x: -320, opacity: 0 }}
               transition={{ duration: 0.24, ease: "easeOut" }}
               onClick={(event) => event.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Mobile navigation"
               className="fixed top-0 left-0 h-full w-[88vw] max-w-[320px] z-50 border-r border-[hsl(var(--palette-house-green))]/70 bg-black/95 backdrop-blur-2xl lg:hidden"
             >
-              <SidebarContent closeMobile={() => setMobileOpen(false)} />
+              <SidebarContent closeMobile={() => closeMobileNav()} />
             </motion.aside>
           </>
         )}

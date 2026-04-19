@@ -1,22 +1,15 @@
 # WastePilot Abstract
 
-WastePilot is a circular operations platform for manufacturing teams that want to reduce material waste and improve reuse outcomes.
+WastePilot is a circular operations web platform designed for manufacturing teams that need practical control over material input, waste output, recovery actions, and operational trust.
 
-The current product is a React and TypeScript web application with two experiences:
-- A public landing experience that explains the value proposition and core capabilities.
-- A protected internal workspace where teams track operations, scan invoices with OCR-assisted extraction, manage materials and production templates, review AI-style recommendations, analyze circularity trends, and configure workspace settings.
+The current implementation is a React + TypeScript frontend that combines a public landing experience with a protected internal workspace. The workspace includes modules for Dashboard, Operations, OCR Scan, Materials, Templates, Insights, Analytics, Guide, and Settings.
 
-At its core, WastePilot combines three operating ideas:
-- Visibility: central dashboards for circular score, waste trends, and efficiency.
-- Actionability: guided recommendations and anomaly surfaces that can be marked and resolved.
-- Operational control: day-to-day workflows for batch logging, inventory movement, waste disposition, and material management.
+The product is intentionally action-oriented rather than CRUD-oriented. Dashboard uses a Mission Control queue to surface highest-impact tasks. Operations supports batch lifecycle execution with integrity checks, including variance-aware batch close and traceable recovery from waste to inventory. Insights provides recommendation and anomaly workflows with prioritization and status actions. Analytics offers trend and period-reporting views for weekly and monthly review.
 
-The latest product direction intentionally moves beyond a plain CRUD workspace:
-- Mission Control on Dashboard prioritizes high-impact actions (integrity flags, anomaly response, recommendation adoption).
-- Flow Assistant in Operations guides users through sequence-based execution (start batch -> log inventory -> classify waste -> close batch -> verify integrity).
-- Action Queue in Insights surfaces estimated impact so teams execute outcomes, not just update record statuses.
-- A dedicated How To Use page supports first-time onboarding with quick-start flow and field-level guidance.
+Architecture-wise, WastePilot uses a typed API adapter that supports two runtime providers: mock and spring. This allows rapid frontend iteration while preserving contract parity for backend integration. Mock mode remains the default for MVP velocity. Spring mode is ready through explicit endpoint contracts and environment-based configuration.
 
-The current implementation is frontend-first and uses a mock API layer with typed contracts, allowing rapid product iteration while preserving a clean migration path to a Spring Boot backend. Authentication is intentionally mocked for development, and all business entities are already modeled in TypeScript (materials, templates, batches, logs, insights, analytics, settings).
+For time handling, the current UX decision is intentionally simple: frontend displays local device time, while backend is expected to store canonical UTC timestamps. This avoids premature timezone complexity while preserving backend correctness and future extensibility.
 
-WastePilot is best understood as an MVP foundation for a production circular intelligence platform: the UI now emphasizes decision-centric operations, while production hardening (real auth, persistence, end-to-end testing, and live AI services) remains the next phase.
+The frontend now provides strong first-line validation, resilient loading/error states, and mobile-ready navigation behavior. However, production completeness still depends on backend implementation for real authentication/authorization, persistence, transactional integrity, idempotency, OCR/AI services, and observability.
+
+In summary, WastePilot has reached a backend-ready frontend state: user workflows are concrete, contracts are explicit, and boundaries are clear. The next phase is disciplined Spring Boot + MySQL delivery to convert this MVP from simulated operations into a production circular intelligence system.

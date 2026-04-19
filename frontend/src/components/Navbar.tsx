@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ArrowUpRight, Menu, X } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { isMockAuthenticated } from "@/lib/mock-auth";
 
 const navLinks = [
@@ -18,6 +18,7 @@ const Navbar = () => {
   const [hoveredLink, setHoveredLink] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<string>("home");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const location = useLocation();
 
   const scrollToSection = (sectionId: string) => {
     const section = document.getElementById(sectionId);
@@ -65,6 +66,39 @@ const Navbar = () => {
 
     return () => window.removeEventListener("storage", syncAuth);
   }, []);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname, location.search, location.hash]);
+
+  useEffect(() => {
+    if (!mobileOpen) {
+      document.body.style.removeProperty("overflow");
+      return;
+    }
+
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.removeProperty("overflow");
+    };
+  }, [mobileOpen]);
+
+  useEffect(() => {
+    if (!mobileOpen) {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMobileOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [mobileOpen]);
 
   const ctaPath = isAuthenticated ? "/dashboard" : "/auth";
   const ctaLabel = isAuthenticated ? "Open Workspace" : "Get Started";
@@ -145,7 +179,11 @@ const Navbar = () => {
         <motion.button
           whileTap={{ scale: 0.9 }}
           className="md:hidden w-12 h-12 rounded-full liquid-glass flex items-center justify-center"
-          onClick={() => setMobileOpen(!mobileOpen)}
+          onClick={(event) => {
+            event.stopPropagation();
+            setMobileOpen((prev) => !prev);
+          }}
+          aria-label={mobileOpen ? "Close menu" : "Open menu"}
         >
           {mobileOpen ? <X className="w-5 h-5 text-white" /> : <Menu className="w-5 h-5 text-white" />}
         </motion.button>
@@ -157,44 +195,59 @@ const Navbar = () => {
       {/* Mobile menu */}
       <AnimatePresence>
         {mobileOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -20, filter: "blur(10px)" }}
-            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            exit={{ opacity: 0, y: -20, filter: "blur(10px)" }}
-            transition={{ duration: 0.3 }}
-            className="fixed top-20 left-4 right-4 z-50 liquid-glass-strong rounded-2xl p-6 md:hidden"
-          >
-            <div className="flex flex-col gap-2">
-              {navLinks.map((link, i) => (
-                <motion.button
-                  key={link.id}
-                  type="button"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  className={`text-left text-white/90 font-body font-medium text-lg py-3 px-4 rounded-xl transition-colors ${
-                    activeSection === link.id ? "bg-white/10" : "hover:bg-white/5"
-                  }`}
-                  onClick={() => {
-                    scrollToSection(link.id);
-                    setMobileOpen(false);
-                  }}
-                >
-                  {link.label}
-                </motion.button>
-              ))}
-              <Link to={ctaPath} onClick={() => setMobileOpen(false)}>
-                <motion.button
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: navLinks.length * 0.05 }}
-                  className="w-full bg-white text-black font-body font-medium text-sm py-3 rounded-full flex items-center justify-center gap-2 mt-2"
-                >
-                  {ctaLabel} <ArrowUpRight className="w-3.5 h-3.5" />
-                </motion.button>
-              </Link>
-            </div>
-          </motion.div>
+          <>
+            <motion.button
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMobileOpen(false)}
+              className="fixed inset-0 z-40 bg-black/55 md:hidden"
+              aria-label="Close mobile menu overlay"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, y: -20, filter: "blur(10px)" }}
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              exit={{ opacity: 0, y: -20, filter: "blur(10px)" }}
+              transition={{ duration: 0.3 }}
+              onClick={(event) => event.stopPropagation()}
+              className="fixed top-20 left-4 right-4 z-50 liquid-glass-strong rounded-2xl p-6 md:hidden"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Mobile landing navigation"
+            >
+              <div className="flex flex-col gap-2">
+                {navLinks.map((link, i) => (
+                  <motion.button
+                    key={link.id}
+                    type="button"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    className={`text-left text-white/90 font-body font-medium text-lg py-3 px-4 rounded-xl transition-colors ${
+                      activeSection === link.id ? "bg-white/10" : "hover:bg-white/5"
+                    }`}
+                    onClick={() => {
+                      scrollToSection(link.id);
+                      setMobileOpen(false);
+                    }}
+                  >
+                    {link.label}
+                  </motion.button>
+                ))}
+                <Link to={ctaPath} onClick={() => setMobileOpen(false)}>
+                  <motion.button
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: navLinks.length * 0.05 }}
+                    className="w-full bg-white text-black font-body font-medium text-sm py-3 rounded-full flex items-center justify-center gap-2 mt-2"
+                  >
+                    {ctaLabel} <ArrowUpRight className="w-3.5 h-3.5" />
+                  </motion.button>
+                </Link>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </>

@@ -3,6 +3,7 @@ import { Camera, ImageUp, LoaderCircle, Save } from "lucide-react";
 import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { OcrMaterialLine } from "@/features/internal/types";
 import { PageHeader } from "@/features/internal/components/PageHeader";
 import { DataEmpty, DataError } from "@/features/internal/components/StateViews";
@@ -15,6 +16,8 @@ const ScanPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<OcrMaterialLine[]>([]);
   const [saved, setSaved] = useState(false);
+  const [runningBatchIds, setRunningBatchIds] = useState<string[]>([]);
+  const [selectedBatchId, setSelectedBatchId] = useState("");
 
   const previewUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
 
@@ -25,6 +28,20 @@ const ScanPage = () => {
       }
     };
   }, [previewUrl]);
+
+  useEffect(() => {
+    const loadRunningBatches = async () => {
+      try {
+        const payload = await internalApi.fetchOperationsPayload();
+        const ids = payload.batches.filter((batch) => batch.status === "running").map((batch) => batch.id);
+        setRunningBatchIds(ids);
+      } catch {
+        setRunningBatchIds([]);
+      }
+    };
+
+    void loadRunningBatches();
+  }, []);
 
   const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const nextFile = event.target.files?.[0] ?? null;
@@ -69,10 +86,15 @@ const ScanPage = () => {
       return;
     }
 
+    if (!selectedBatchId) {
+      toast.error("Please select a running batch before saving OCR rows.");
+      return;
+    }
+
     const invalidRows = result
       .map((line, index) => ({
         index,
-        invalid: !line.materialName.trim() || line.quantity <= 0 || line.price < 0 || !line.unit.trim(),
+        invalid: !line.materialName.trim() || line.quantity < 0.01 || line.price <= 0 || !line.unit.trim(),
       }))
       .filter((entry) => entry.invalid);
 
@@ -83,9 +105,22 @@ const ScanPage = () => {
 
     try {
       setIsProcessing(true);
+
+      const latestOperations = await internalApi.fetchOperationsPayload();
+      const latestRunningBatchIds = latestOperations.batches
+        .filter((batch) => batch.status === "running")
+        .map((batch) => batch.id);
+      setRunningBatchIds(latestRunningBatchIds);
+
+      if (!latestRunningBatchIds.includes(selectedBatchId)) {
+        toast.error("Selected batch is no longer running. Please choose another batch.");
+        return;
+      }
+
       await Promise.all(
         result.map((line) =>
           internalApi.createInventoryLog({
+            batchId: selectedBatchId,
             materialName: line.materialName.trim(),
             type: "IN",
             quantity: line.quantity,
@@ -177,14 +212,34 @@ const ScanPage = () => {
               <p className="text-white text-xl font-heading italic">OCR Result</p>
               <p className="text-white/55 text-sm font-body mt-1">Review before saving to inventory logs.</p>
             </div>
-            <Button
-              onClick={handleConfirm}
-              disabled={result.length === 0 || isProcessing}
-              className="w-full sm:w-auto rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]"
-            >
-              <Save className="w-4 h-4" />
-              Confirm & Save
-            </Button>
+            <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2 sm:items-center">
+              <Select value={selectedBatchId} onValueChange={setSelectedBatchId}>
+                <SelectTrigger className="w-full sm:w-[240px] rounded-xl bg-white/[0.04] border-white/10 text-white">
+                  <SelectValue placeholder="Select running batch" />
+                </SelectTrigger>
+                <SelectContent>
+                  {runningBatchIds.length === 0 ? (
+                    <SelectItem value="__none" disabled>
+                      No running batches
+                    </SelectItem>
+                  ) : (
+                    runningBatchIds.map((batchId) => (
+                      <SelectItem key={batchId} value={batchId}>
+                        {batchId}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              <Button
+                onClick={handleConfirm}
+                disabled={result.length === 0 || isProcessing || !selectedBatchId}
+                className="w-full sm:w-auto rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]"
+              >
+                <Save className="w-4 h-4" />
+                Confirm & Save
+              </Button>
+            </div>
           </div>
 
           {isProcessing && (

@@ -19,10 +19,9 @@ import {
   UserSettings,
   WasteLog,
 } from "@/features/internal/types";
+import { CLOSE_VARIANCE_THRESHOLD } from "@/features/internal/constants";
 
 const delay = (ms = 600) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const CLOSE_VARIANCE_THRESHOLD = 5;
 const OVERDUE_HOURS = 24;
 
 function clamp(value: number, min: number, max: number) {
@@ -42,7 +41,36 @@ function hoursSince(iso: string) {
   return (Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60);
 }
 
-let insightsStore: CircularInsight[] = [
+const INSIGHTS_STORAGE_KEY = "wastepilot_mock_insights";
+const ANOMALIES_STORAGE_KEY = "wastepilot_mock_anomalies";
+
+function readPersisted<T>(key: string): T | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const raw = window.localStorage.getItem(key);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    window.localStorage.removeItem(key);
+    return null;
+  }
+}
+
+function persistMockState<T>(key: string, payload: T) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(key, JSON.stringify(payload));
+}
+
+const defaultInsightsStore: CircularInsight[] = [
   {
     id: "ins-1",
     title: "Repurpose cotton offcuts",
@@ -69,7 +97,7 @@ let insightsStore: CircularInsight[] = [
   },
 ];
 
-let anomaliesStore: Anomaly[] = [
+const defaultAnomaliesStore: Anomaly[] = [
   {
     id: "ano-1",
     date: "2026-03-28",
@@ -89,6 +117,10 @@ let anomaliesStore: Anomaly[] = [
     note: "Moisture imbalance likely from pre-heat drift; calibration patch applied.",
   },
 ];
+
+let insightsStore: CircularInsight[] = readPersisted<CircularInsight[]>(INSIGHTS_STORAGE_KEY) ?? defaultInsightsStore;
+
+let anomaliesStore: Anomaly[] = readPersisted<Anomaly[]>(ANOMALIES_STORAGE_KEY) ?? defaultAnomaliesStore;
 
 let batchesStore: ProductionBatch[] = [
   {
@@ -815,6 +847,24 @@ export async function createBatch(input: Omit<ProductionBatch, "id" | "startedAt
     ...input,
   };
 
+  const template = templateByName(newBatch.templateName);
+  if (template) {
+    materialsStore = materialsStore.map((material) => {
+      const plannedLine = template.lines.find(
+        (line) => line.materialId === material.id || line.materialName.trim().toLowerCase() === material.name.trim().toLowerCase(),
+      );
+
+      if (!plannedLine) {
+        return material;
+      }
+
+      return {
+        ...material,
+        stock: round(Math.max(0, material.stock - plannedLine.quantity), 2),
+      };
+    });
+  }
+
   batchesStore = [newBatch, ...batchesStore];
   addActivityLog({
     batchId: newBatch.id,
@@ -1114,12 +1164,14 @@ export async function fetchInsights() {
 export async function updateInsightStatus(id: string, status: CircularInsight["status"]) {
   await delay(250);
   insightsStore = insightsStore.map((item) => (item.id === id ? { ...item, status } : item));
+  persistMockState(INSIGHTS_STORAGE_KEY, insightsStore);
   return { recommendations: insightsStore, anomalies: anomaliesStore };
 }
 
 export async function updateAnomalyStatus(id: string, status: CircularInsight["status"]) {
   await delay(250);
   anomaliesStore = anomaliesStore.map((item) => (item.id === id ? { ...item, status } : item));
+  persistMockState(ANOMALIES_STORAGE_KEY, anomaliesStore);
   return anomaliesStore;
 }
 

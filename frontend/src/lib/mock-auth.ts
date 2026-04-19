@@ -1,4 +1,5 @@
 const AUTH_KEY = "wastepilot_mock_auth";
+const SESSION_MAX_AGE_MS = 8 * 60 * 60 * 1000;
 
 export interface MockAuthUser {
   email: string;
@@ -17,8 +18,17 @@ export function getMockAuthUser(): MockAuthUser | null {
   }
 
   try {
-    return JSON.parse(raw) as MockAuthUser;
+    const parsed = JSON.parse(raw) as MockAuthUser;
+    const authenticatedAt = new Date(parsed.authenticatedAt).getTime();
+
+    if (!Number.isFinite(authenticatedAt) || Date.now() - authenticatedAt > SESSION_MAX_AGE_MS) {
+      window.localStorage.removeItem(AUTH_KEY);
+      return null;
+    }
+
+    return parsed;
   } catch {
+    window.localStorage.removeItem(AUTH_KEY);
     return null;
   }
 }

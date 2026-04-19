@@ -1,0 +1,1 @@
+export const CLOSE_VARIANCE_THRESHOLD = 5;

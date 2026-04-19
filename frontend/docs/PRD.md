@@ -1,301 +1,483 @@
 # Product Requirements Document (PRD)
 
-## 1. Product Overview
+## 1. Document Control
 
-### 1.1 Product Name
-WastePilot
+- Product: WastePilot
+- Document version: v2.0 (implementation-aligned)
+- Date: 2026-04-19
+- Status: Active working PRD for frontend MVP plus backend implementation handoff
+- Owners: Product, Frontend Engineering, Backend Engineering
 
-### 1.2 Product Summary
-WastePilot is a circular operations workspace for manufacturing teams. It helps operators and managers reduce waste, improve reuse rates, and make faster decisions through a unified interface for operations tracking, OCR-assisted intake, analytics, and AI-guided recommendations.
+## 2. Product Overview
 
-### 1.3 Product Stage
-MVP / pre-production frontend with mocked data services and backend-ready API contracts.
+### 2.1 Product Summary
 
-## 2. Problem Statement
+WastePilot is a circular operations workspace for manufacturing teams.
 
-Manufacturing teams, especially small-to-mid sized operations, often manage waste and material flows through spreadsheets and fragmented tools. This creates delayed visibility, weak traceability, and poor optimization loops.
+It provides:
+- Structured operational execution (batch start, inventory movement, waste classification, batch close)
+- OCR-assisted intake from invoice images
+- Action-oriented dashboard and insights workflow
+- Analytics and period reporting views
+- Data integrity overlays (activity logs, audit trail, confidence and red flags)
 
-Even when teams adopt digital tools, many internal systems still behave like generic CRUD software, forcing users to manually decide next actions without impact context.
+Current stage:
+- Frontend MVP is production-like in interaction quality
+- Data is mock-backed by default, with typed contract support for Spring Boot integration
 
-WastePilot addresses this by providing:
-- A single workspace for circular operations.
-- Structured waste and batch logging.
-- Fast material intake through invoice image OCR.
-- Continuous KPI visibility and anomaly awareness.
-- Mission-driven guidance that prioritizes what to do next.
+### 2.2 Product Stage
 
-## 3. Goals and Non-Goals
+- Stage: MVP (frontend-complete for demo and backend integration)
+- Data mode: mock default, spring mode supported via API adapter
+- Authentication mode: mock session only (not production security)
 
-### 3.1 Goals
-- Centralize circular operations data in one product workflow.
-- Reduce manual data entry effort for material intake.
-- Provide actionable insight surfaces for operators and managers.
-- Make weekly circular performance measurable and visible.
-- Maintain a backend-agnostic frontend architecture that can switch from mock to Spring API.
-- Shift core UX from entity CRUD to guided, impact-oriented execution.
+## 3. Problem Statement
 
-### 3.2 Non-Goals (Current Scope)
-- Full enterprise auth and identity management.
-- Multi-tenant role-based authorization policy enforcement.
-- Real ML model training or model orchestration.
-- Multi-site orchestration and cross-site balancing.
-- Financial accounting or ERP replacement.
+Manufacturing teams often run circularity initiatives with fragmented tools, delayed reporting, and poor traceability across batch, inventory, and waste records.
 
-## 4. Target Users and Personas
+Key pain points:
+- Waste and recovery decisions are delayed because data is spread out
+- Operators must manually infer priorities from raw logs
+- Circular performance reports are hard to trust without integrity context
+- OCR intake is available in tools but often disconnected from operational traceability
 
-### 4.1 Operations Manager
-- Owns throughput and waste reduction.
-- Needs real-time awareness of batch and waste outcomes.
-- Uses Dashboard, Operations, and Analytics daily.
+WastePilot addresses this by centralizing operational data, adding guided action surfaces, and preparing a clean contract between frontend and backend.
 
-### 4.2 Production Lead
-- Owns line health and process reliability.
-- Needs anomaly visibility and quick corrective actions.
-- Uses Operations and Insights during shift cycles.
+## 4. Product Goals And Non-Goals
 
-### 4.3 Sustainability or Circular Program Owner
-- Owns reporting and long-term circular improvements.
-- Needs trend analysis, score tracking, and recommendation adoption.
-- Uses Dashboard, Insights, and Analytics weekly.
+### 4.1 Goals
 
-## 5. User Journeys
+- Centralize circular operations workflows in a single interface.
+- Ensure all core flows are backend-ready through typed API contracts.
+- Improve data quality with frontend validation for operator input.
+- Surface decision priority through Mission Control and Action Queue.
+- Make trend and period reporting available in near real-time UI workflows.
+- Keep frontend architecture provider-agnostic (mock or spring).
 
-### 5.1 Material Intake Journey
-1. User opens Scan.
-2. User uploads or captures an invoice image.
-3. System processes OCR and returns editable material lines.
-4. User edits extracted rows and confirms save intent.
+### 4.2 Non-Goals (Current Scope)
 
-Success criteria:
-- OCR rows are generated and editable.
-- User can confirm and continue without runtime errors.
+- Enterprise identity provider integration (OIDC/SAML) in frontend MVP.
+- Multi-tenant authorization and policy enforcement.
+- Real-time stream processing or event sourcing architecture.
+- ERP replacement or financial accounting workflows.
+- Automated ML model training lifecycle.
 
-### 5.2 Batch Operations Journey
-1. User opens Operations.
-2. User follows Flow Assistant recommendations.
-3. User creates a production batch.
-4. User logs inventory movements and waste records.
-5. User closes batch and reviews integrity output.
+## 5. Users And Personas
 
-Success criteria:
-- New logs appear immediately in lists.
-- Waste totals and status summaries remain consistent.
+### 5.1 Operations Manager
 
-### 5.3 Insight Action Journey
-1. User opens Insights.
-2. User reviews Action Queue with impact estimates.
-3. User resolves top anomaly and/or applies recommendations.
-4. Updated status persists in current session state.
+Needs:
+- Batch health and closure discipline
+- Waste and recovery visibility
+- Trustable score context and red-flag awareness
 
-Success criteria:
-- Status actions are low friction.
-- Updated cards reflect chosen state immediately.
+Primary modules:
+- Dashboard, Operations, Analytics
 
-### 5.4 Circular Performance Review Journey
-1. User opens Dashboard and Analytics.
-2. User checks Mission Control priorities on Dashboard.
-3. User reviews circular score, trend charts, and period reports.
-4. User executes linked actions from mission cards.
+### 5.2 Production Lead
 
-Success criteria:
-- Charts load successfully.
-- KPI context supports weekly planning decisions.
+Needs:
+- Fast input workflows during shift
+- Anomaly-driven intervention priorities
+- Immediate correction loops
 
-## 6. Functional Requirements
+Primary modules:
+- Operations, Insights, Scan
 
-### 6.1 Routing and Access
-- Public routes: landing, auth, not found.
-- Protected routes: dashboard, scan, materials, templates, operations, insights, analytics, how-to-use, settings.
-- Protected areas redirect unauthenticated users to auth page.
+### 5.3 Sustainability Program Owner
 
-### 6.2 Authentication (Current)
-- Mock sign-in via local storage.
-- Mock sign-out clears local auth key.
-- Social sign-in actions are simulation-only.
+Needs:
+- Circular performance trends and highlights
+- Recommendation adoption visibility
+- Reporting windows (weekly/monthly)
 
-### 6.3 Dashboard
-- Display circular score gauge.
-- Display metric cards for input, waste, reuse.
-- Display waste trend chart.
-- Display anomaly highlight and insight preview.
-- Display Mission Control queue with prioritized action cards and direct CTAs.
+Primary modules:
+- Dashboard, Insights, Analytics
 
-### 6.4 Operations
-- Create production batch records.
-- Add inventory IN and OUT logs.
-- Add waste logs with destination and suggested action.
-- Show aggregate summaries (running, completed, total waste).
-- Provide Flow Assistant sequence with next-best-step navigation across tabs.
+## 6. Current Product Scope
 
-### 6.5 Scan (OCR)
-- Accept image upload and camera capture input.
-- Execute OCR process API call.
-- Show editable OCR rows (name, quantity, unit, price).
-- Confirm OCR rows for downstream logging readiness.
+### 6.1 Public Experience
 
-### 6.6 Materials
-- List materials with category, grade, stock, supplier.
-- Add and edit materials via modal form.
-- Support circular grading values A, B, C.
+- Marketing landing with sections: home, how-it-works, features, stats, faq
+- CTA routes users to auth or workspace based on auth state
+- Mobile navigation with overlay and body scroll locking
 
-### 6.7 Templates
-- List production templates and line compositions.
-- Add and edit template metadata and material lines.
-- Add and remove line items in editor.
+### 6.2 Protected Workspace Experience
 
-### 6.8 Insights
-- Show recommendation cards and anomaly cards in separate tabs.
-- Update item statuses with action buttons.
-- Reflect status changes without full page reload.
-- Provide Action Queue that combines high-priority recommendations and anomalies with estimated impact.
-- Support bulk apply for new recommendations and quick resolve for top anomaly.
+Workspace routes:
+- /dashboard
+- /scan
+- /materials
+- /templates
+- /operations
+- /insights
+- /analytics
+- /how-to-use
+- /settings
 
-### 6.9 Analytics
-- Show circularity trend line chart.
-- Show waste breakdown pie chart.
-- Show material efficiency bar chart.
+All workspace routes are gated by mock auth.
 
-### 6.10 Settings
-- Edit profile metadata (company, email, role, timezone).
-- Toggle anomaly and recommendation notifications.
-- Edit daily AI token budget.
+### 6.3 Authentication (Current)
 
-### 6.11 Search and Navigation
-- Sidebar navigation to all internal modules.
-- Header search maps keywords to workspace and landing destinations.
-- Navigation order should support first-time learning flow.
+- Mock auth stored in localStorage
+- Session expiration at 8 hours
+- Social sign-in actions are mocked
+- Protected route redirects to /auth when unauthenticated
 
-### 6.12 How To Use Guide
-- Provide dedicated onboarding page with quick-start modules and first-day checklist.
-- Provide field cheatsheet for common operational inputs.
-- Keep language concise and mobile-readable.
+### 6.4 Dashboard
 
-## 7. Data and API Requirements
+Implemented capabilities:
+- Circular gauge
+- Mission Control queue with prioritized actions
+- KPI cards
+- Waste trend chart
+- Anomaly highlight
+- Insights preview cards
+- Data Integrity Pulse (avg confidence, open red flags, post-score edits, overdue closures)
+- Score methodology explanation text
 
-### 7.1 Domain Entities
-- Circular insight
+### 6.5 Operations
+
+Implemented capabilities:
+- Create batch with output and expected waste
+- Inventory IN/OUT logging (OUT requires running batch)
+- Waste logging bound to running batch
+- Waste destination classification (reuse, repair, dispose)
+- Optional auto-convert waste to inventory IN for reuse/repair
+- Batch close assistant with:
+  - Auto summary fetch
+  - Variance threshold validation
+  - Reason required above threshold
+  - Confirmation dialog before close
+- Integrity tab with activity logs and audit trail
+- Overdue running-batch warning banner
+
+### 6.6 Scan (OCR)
+
+Implemented capabilities:
+- Upload image or capture via camera input
+- OCR request flow
+- Editable OCR lines (material, quantity, unit, price)
+- Save OCR lines as inventory IN logs
+- Required running-batch selection before save
+- Runtime validation that selected batch is still running at submission
+
+### 6.7 Materials
+
+Implemented capabilities:
+- List materials (category, grade, stock, supplier)
+- Add/edit material modal
+- Per-material and all-material stock history view from inventory logs
+
+### 6.8 Templates
+
+Implemented capabilities:
+- List production templates
+- Add/edit template metadata
+- Add/remove template material lines
+- Expected waste per template
+
+### 6.9 Insights
+
+Implemented capabilities:
+- Recommendations and anomalies tabs
+- Status updates (new/applied/ignored)
+- Action Queue prioritization across recommendations and anomalies
+- Bulk apply new recommendations
+- Resolve top anomaly shortcut
+
+### 6.10 Analytics
+
+Implemented capabilities:
+- Circularity trend
+- Waste breakdown
+- Material efficiency
+- Landfill share trend
+- Landfill intensity trend
+- Period report section (weekly/monthly):
+  - Window label
+  - Summary cards
+  - Circular score trend
+  - Waste flow trend
+  - Top actions
+  - Top contributors
+  - Highlights
+
+### 6.11 Guide
+
+Implemented capabilities:
+- Quick start flow
+- First-day checklist
+- Field cheatsheet
+
+### 6.12 Settings
+
+Implemented capabilities:
+- Edit company name, email, role
+- Notification toggles
+- Daily token budget with bounded validation
+- Time display note set to local device time
+
+Decision:
+- Timezone selection UI is intentionally de-scoped for now.
+- Frontend displays local device time and backend should keep canonical UTC timestamps.
+
+## 7. Functional Requirements
+
+### 7.1 Routing And Access
+
+- Public routes must render without auth.
+- Protected routes must require authentication.
+- Route-level lazy loading is required.
+
+### 7.2 Data Fetching And Error States
+
+- Every core page must provide loading, empty, and retry-capable error states.
+- API failures must show user-facing feedback (toast and/or error component).
+
+### 7.3 Validation Rules (Frontend)
+
+- Batch creation:
+  - templateName required
+  - outputUnits > 0
+  - estimatedWaste >= 0
+- Inventory log:
+  - material required
+  - quantity > 0
+  - OUT requires running batch selection
+- Waste log:
+  - running batch required
+  - selected batch must still be running at submit
+  - material required
+  - quantity > 0
+- Batch close:
+  - running batch required
+  - outputUnits > 0
+  - close reason required when |variance| > CLOSE_VARIANCE_THRESHOLD
+- OCR rows:
+  - material non-empty
+  - quantity >= 0.01
+  - unit non-empty
+  - price > 0
+  - selected batch still running at save time
+- Settings:
+  - company non-empty
+  - valid email
+  - dailyTokenBudget within configured bounds
+
+### 7.4 Integrity Requirements
+
+- User actions must create activity log and/or audit trail records where relevant.
+- Post-score edits must be traceable and reflected in integrity signals.
+- Batch close must produce summary and confidence context.
+
+## 8. Data Contract Requirements
+
+### 8.1 Core Entity Set
+
+- CircularInsight
 - Anomaly
-- Production batch
-- Inventory log
-- Waste log
+- ProductionBatch
+- InventoryLog
+- WasteLog
 - Material
-- Production template
-- OCR material line
-- Dashboard payload
-- Analytics payload
-- User settings
+- ProductionTemplate (+ lines)
+- ActivityLogEntry
+- AuditTrailEntry
+- BatchCloseSummary
+- IntegrityOverview
+- AnalyticsPayload
+- ReportsPayload
+- UserSettings
 
-### 7.2 API Layer Requirements
-- Must provide typed internal API contract.
-- Must support provider mode: mock or spring.
-- Must support configurable timeout and fallback.
-- Must support multipart request path for OCR image.
+### 8.2 API Adapter Requirements
 
-### 7.3 Spring Endpoint Targets
+- Typed API interface shared across mock and spring providers
+- Runtime provider selection via environment variable
+- Configurable timeout for spring provider
+- Optional fallback to mock provider in spring mode
+
+Environment variables:
+- VITE_INTERNAL_API_PROVIDER: mock | spring
+- VITE_SPRING_API_BASE_URL
+- VITE_SPRING_API_TIMEOUT_MS
+- VITE_SPRING_FALLBACK_TO_MOCK
+
+Recommendation:
+- Production should set VITE_SPRING_FALLBACK_TO_MOCK=false to avoid silent fallback masking backend defects.
+
+## 9. Backend API Contract (Frontend-Expected)
+
+### 9.1 Endpoint List
+
 - GET /api/v1/dashboard
 - GET /api/v1/operations
 - POST /api/v1/operations/batches
 - POST /api/v1/operations/inventory-logs
 - POST /api/v1/operations/waste-logs
-- GET and POST and PUT /api/v1/materials
-- GET and POST and PUT /api/v1/templates
-- GET and PATCH /api/v1/ai/insights
-- GET and PATCH /api/v1/ai/anomaly
+- POST /api/v1/operations/waste-logs/recover
+- GET /api/v1/operations/batch-close/summary/{batchId}
+- POST /api/v1/operations/batch-close
+- GET /api/v1/materials
+- POST /api/v1/materials
+- PUT /api/v1/materials/{id}
+- GET /api/v1/templates
+- POST /api/v1/templates
+- PUT /api/v1/templates/{id}
+- GET /api/v1/ai/insights
+- PATCH /api/v1/ai/insights/{id}/status
+- PATCH /api/v1/ai/anomaly/{id}/status
 - GET /api/v1/analytics
-- POST /api/v1/ai/ocr
-- GET and PUT /api/v1/settings
+- GET /api/v1/reports?period=weekly|monthly
+- POST /api/v1/ai/ocr (multipart/form-data)
+- GET /api/v1/settings
+- PUT /api/v1/settings
+- GET /api/v1/integrity/activity-logs
+- GET /api/v1/integrity/audit-trail
+- GET /api/v1/integrity/overview
 
-## 8. Non-Functional Requirements
+### 9.2 Backend Validation Must Exist (Server-Side)
 
-### 8.1 Usability
-- Responsive behavior for mobile and desktop.
-- Low-friction workflows for operators.
-- Consistent component behavior and visual hierarchy.
+Frontend validation is only first-line UX protection.
+Backend must enforce:
+- Required fields and value bounds
+- Referential integrity for batch/material/template relationships
+- Waste recovery idempotency and status constraints
+- Batch close threshold rule and reason requirement
+- Authorization for write operations
 
-### 8.2 Performance
-- Initial route load should feel immediate in modern browsers.
-- Chart-heavy views should remain interactive on common laptops.
-- Simulated API delays should not block user actions unnecessarily.
+## 10. Frontend Vs Backend Boundary
 
-### 8.3 Reliability
-- Errors from API calls must show actionable retry states.
-- Protected routing must be deterministic.
+### 10.1 Frontend Responsibilities
 
-### 8.4 Security (Current and Target)
+- Present workflows and forms
+- Client-side validation for fast feedback
+- Route protection and UX session handling (current mock)
+- Local state updates and interaction feedback
+- Display formatting in local device time
+- API error handling and retry affordances
+
+### 10.2 Backend Responsibilities
+
+- Authentication and authorization enforcement
+- Persistent storage and transaction boundaries
+- Domain validation as source of truth
+- Circular score, confidence, and red-flag calculation integrity
+- OCR provider integration and quality thresholds
+- Recommendation/anomaly generation logic
+- Auditability and compliance-level integrity records
+- Notification policy and downstream delivery
+
+### 10.3 Shared Contract Responsibilities
+
+- Stable DTO schema and versioning strategy
+- Consistent enums and status transitions
+- Error payload structure
+- Pagination/filtering for large datasets
+
+## 11. Known Gaps Requiring Backend To Reach 100%
+
+- Real auth (JWT/session/OAuth) and role-based access control
+- Persistent database storage for all entities
+- Concurrency handling for simultaneous operators
+- Strong idempotency for recover and close operations
+- Real OCR and AI model endpoints
+- Alert delivery mechanisms (email/chat/webhook)
+- Production-grade observability and audit retention
+
+## 12. Non-Functional Requirements
+
+### 12.1 Usability
+
+- Must work on desktop and mobile breakpoints
+- Critical actions must remain discoverable and reversible when possible
+- Loading/error/empty states required for data surfaces
+
+### 12.2 Performance
+
+- Core route transitions should remain responsive
+- Charts should render smoothly on mainstream hardware
+- Avoid blocking user interaction on routine fetches
+
+### 12.3 Reliability
+
+- API errors must be surfaced clearly
+- Data mutations must either complete or show actionable failure messages
+- No silent data corruption paths in write workflows
+
+### 12.4 Security
+
 Current:
-- Mock auth in local storage for development only.
+- Mock auth only, local session simulation
 
 Target:
-- OAuth or JWT-backed auth.
-- Secure session handling.
-- Role-based authorization checks for sensitive operations.
+- JWT/OIDC auth
+- Endpoint-level authorization
+- Input validation and sanitization
+- CORS policy and secure cookie/session settings where applicable
 
-### 8.5 Observability (Target)
-- Frontend error tracking.
-- API request diagnostics.
-- Adoption analytics for key workflows.
+### 12.5 Observability
 
-## 9. Success Metrics
+Target backend requirements:
+- Request tracing with correlation IDs
+- Structured audit logs for critical mutations
+- Metrics for endpoint latency/error rates
 
-### 9.1 Product KPIs
-- Weekly active operators in internal workspace.
-- Percentage of production days with complete waste logs.
-- Recommendation action rate (applied vs ignored).
-- Circular score trend over rolling 4-week windows.
-- OCR-assisted intake usage rate vs manual entry.
+## 13. Success Metrics
 
-### 9.2 Reliability KPIs
-- Internal route error rate.
-- API request failure and fallback rate (spring mode).
-- Median interactive load time per core page.
+### 13.1 Product KPIs
 
-## 10. Release Scope
+- Weekly active workspace users
+- Batch closure discipline rate
+- Waste recovery rate and landfill share trend
+- Recommendation application rate
+- OCR-assisted intake adoption rate
 
-### 10.1 Current MVP Scope
-- Public marketing and auth screens.
-- Fully navigable internal workspace modules.
-- Mock-backed mission-driven workspace behaviors (Mission Control, Flow Assistant, Action Queue).
-- Configurable API adapter for spring integration.
+### 13.2 Technical KPIs
 
-### 10.2 Next Release Scope (Recommended)
-- Real authentication and authorization.
-- Backend persistence for all core entities.
-- End-to-end tests for critical workflows.
-- Real OCR provider integration.
-- Notification pipeline for anomaly and recommendation events.
+- Build success rate
+- Frontend route error rate
+- API request failure rate
+- Time-to-interactive for key routes
 
-## 11. Risks and Mitigations
+## 14. Release Plan
 
-### Risk 1: Mock-production drift
-Mitigation:
-- Keep API contract parity tests between frontend adapter and backend endpoints.
+### 14.1 Current Release (MVP)
 
-### Risk 2: Low trust in insights
-Mitigation:
-- Add explainability metadata for each recommendation and anomaly source.
+- Full frontend workflow coverage for all workspace modules
+- Mock-backed data and integrity simulation
+- Spring API contract and runtime provider switch
 
-### Risk 3: Data quality issues from OCR
-Mitigation:
-- Keep editable review step mandatory before persistence.
+### 14.2 Next Release (Backend Integration)
 
-### Risk 4: Under-tested release
-Mitigation:
-- Introduce baseline unit and e2e suites before production launch.
+- Deploy Spring Boot + MySQL API with full endpoint parity
+- Switch provider to spring in environment
+- Disable mock fallback in production-like environments
+- Run end-to-end integration validation against live API
 
-## 12. Open Questions
+### 14.3 Production Hardening
 
-- Which auth provider and identity model will be used for production?
-- What is the expected update cadence for dashboard and analytics data?
-- Should recommendation status changes require audit trails?
-- What minimum OCR confidence threshold is acceptable before operator review?
-- Will materials and templates be shared across multiple sites in phase 2?
+- Implement real auth and role policies
+- Add backend migrations and CI checks
+- Add observability dashboards and alerting
+- Finalize data retention and compliance strategy
 
-## 13. Implementation Reference (Current Code)
+## 15. Acceptance Criteria Snapshot
 
-Primary implementation areas:
+- No frontend compile errors
+- Tests pass for integrity-critical mock flows
+- All protected routes reachable after auth
+- Operations and OCR submissions blocked on invalid input
+- Batch close requires confirmation and supports variance rules
+- Dashboard and analytics render with data and graceful fallback states
+
+## 16. Implementation Reference
+
+Primary implementation files include:
 - src/App.tsx
-- src/pages/Index.tsx
-- src/pages/Auth.tsx
+- src/lib/api/internal-api.ts
+- src/features/internal/mock-api.ts
+- src/features/internal/types.ts
 - src/pages/internal/DashboardPage.tsx
 - src/pages/internal/OperationsPage.tsx
 - src/pages/internal/ScanPage.tsx
@@ -303,14 +485,7 @@ Primary implementation areas:
 - src/pages/internal/TemplatesPage.tsx
 - src/pages/internal/InsightsPage.tsx
 - src/pages/internal/AnalyticsPage.tsx
+- src/pages/internal/GuidePage.tsx
 - src/pages/internal/SettingsPage.tsx
-- src/features/internal/mock-api.ts
-- src/features/internal/types.ts
-- src/lib/api/internal-api.ts
+- src/components/ProtectedRoute.tsx
 - src/lib/mock-auth.ts
-
----
-
-Document status: Draft v1
-Date: 2026-04-18
-Owner: Product and Engineering

@@ -3,13 +3,12 @@ import { Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { PageHeader } from "@/features/internal/components/PageHeader";
 import { DataError, DataLoading } from "@/features/internal/components/StateViews";
 import { UserSettings } from "@/features/internal/types";
 import { internalApi } from "@/lib/api/internal-api";
-import { APP_TIMEZONES, clampNumber, isAllowedTimezone, isValidEmail } from "@/lib/validation";
+import { clampNumber, isValidEmail } from "@/lib/validation";
 import { toast } from "sonner";
 
 const MIN_DAILY_TOKEN_BUDGET = 0;
@@ -49,11 +48,6 @@ const SettingsPage = () => {
 
     if (!isValidEmail(settings.email)) {
       toast.error("Please enter a valid email address.");
-      return;
-    }
-
-    if (!isAllowedTimezone(settings.timezone)) {
-      toast.error("Please select a valid timezone.");
       return;
     }
 
@@ -123,22 +117,10 @@ const SettingsPage = () => {
                 />
               </div>
               <div className="grid gap-2">
-                <Label className="text-white/75">Timezone</Label>
-                <Select
-                  value={settings.timezone}
-                  onValueChange={(value) => setSettings((prev) => (prev ? { ...prev, timezone: value } : prev))}
-                >
-                  <SelectTrigger className="rounded-xl bg-white/[0.04] border-white/10 text-white">
-                    <SelectValue placeholder="Select timezone" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {APP_TIMEZONES.map((timezone) => (
-                      <SelectItem key={timezone} value={timezone}>
-                        {timezone}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label className="text-white/75">Time Display</Label>
+                <div className="rounded-xl bg-white/[0.04] border border-white/10 text-white px-3 py-2 text-sm font-body">
+                  Uses your device local time automatically.
+                </div>
               </div>
             </div>
           </div>

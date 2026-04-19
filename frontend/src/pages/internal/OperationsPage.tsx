@@ -1,6 +1,16 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { AlertTriangle, CheckCircle2, Clock3, Plus, ShieldCheck } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -14,12 +24,11 @@ import {
   OperationsPayload,
   WasteDestination,
 } from "@/features/internal/types";
+import { CLOSE_VARIANCE_THRESHOLD } from "@/features/internal/constants";
 import { PageHeader } from "@/features/internal/components/PageHeader";
 import { DataEmpty, DataError, DataLoading } from "@/features/internal/components/StateViews";
 import { internalApi } from "@/lib/api/internal-api";
 import { toast } from "sonner";
-
-const CLOSE_VARIANCE_THRESHOLD = 5;
 
 type OperationTab = "batches" | "inventory" | "waste" | "batch-close" | "integrity";
 
@@ -34,6 +43,21 @@ const severityTone = {
   medium: "bg-amber-500/15 text-amber-300",
   high: "bg-rose-500/15 text-rose-300",
 } as const;
+
+const wasteSuggestionByDestination: Record<WasteDestination, string> = {
+  reuse: "Route this material for immediate reuse in secondary production.",
+  repair: "Send this material for repair and quality check before re-entry.",
+  dispose: "Isolate and dispose according to compliance policy.",
+};
+
+function resolveWasteSuggestion(destination: WasteDestination, materialName: string) {
+  const material = materialName.trim();
+  if (!material) {
+    return wasteSuggestionByDestination[destination];
+  }
+
+  return `${wasteSuggestionByDestination[destination]} Material: ${material}.`;
+}
 
 function hoursSince(iso: string) {
   return (Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60);
@@ -66,6 +90,7 @@ const OperationsPage = () => {
   const [closeReason, setCloseReason] = useState("");
   const [closingBatch, setClosingBatch] = useState(false);
   const [loadingCloseSummary, setLoadingCloseSummary] = useState(false);
+  const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
 
   const [activityLogs, setActivityLogs] = useState<ActivityLogEntry[]>([]);
   const [auditTrail, setAuditTrail] = useState<AuditTrailEntry[]>([]);
@@ -87,8 +112,6 @@ const OperationsPage = () => {
       if (runningBatch) {
         setActiveCloseBatchId((prev) => prev || runningBatch.id);
         setCloseOutputUnits(String(runningBatch.outputUnits));
-        setSelectedInventoryBatchId((prev) => prev || runningBatch.id);
-        setSelectedWasteBatchId((prev) => prev || runningBatch.id);
       } else {
         setActiveCloseBatchId("");
         setCloseSummary(null);
@@ -126,6 +149,8 @@ const OperationsPage = () => {
     const fetchCloseSummary = async () => {
       try {
         setLoadingCloseSummary(true);
+        setCloseSummary(null);
+        setCloseOutputUnits("0");
         const summary = await internalApi.fetchBatchCloseSummary(activeCloseBatchId);
         if (!mounted) {
           return;
@@ -174,11 +199,11 @@ const OperationsPage = () => {
     const hasSelectedInventoryBatch = runningBatches.some((batch) => batch.id === selectedInventoryBatchId);
     const hasSelectedWasteBatch = runningBatches.some((batch) => batch.id === selectedWasteBatchId);
 
-    if (!hasSelectedInventoryBatch) {
-      setSelectedInventoryBatchId(runningBatches[0].id);
+    if (selectedInventoryBatchId && !hasSelectedInventoryBatch) {
+      setSelectedInventoryBatchId("");
     }
-    if (!hasSelectedWasteBatch) {
-      setSelectedWasteBatchId(runningBatches[0].id);
+    if (selectedWasteBatchId && !hasSelectedWasteBatch) {
+      setSelectedWasteBatchId("");
     }
   }, [runningBatches, selectedInventoryBatchId, selectedWasteBatchId]);
 
@@ -232,6 +257,14 @@ const OperationsPage = () => {
         return;
       }
 
+      if (
+        inventoryType === "OUT"
+        && !runningBatches.some((batch) => batch.id === selectedInventoryBatchId)
+      ) {
+        toast.error("Selected batch is no longer running. Please choose another batch.");
+        return;
+      }
+
       const created = await internalApi.createInventoryLog({
         batchId: inventoryType === "OUT" ? selectedInventoryBatchId : undefined,
         materialName: inventoryMaterial,
@@ -264,13 +297,18 @@ const OperationsPage = () => {
         return;
       }
 
+      if (!runningBatches.some((batch) => batch.id === selectedWasteBatchId)) {
+        toast.error("Selected batch is no longer running. Please choose another batch.");
+        return;
+      }
+
       const created = await internalApi.createWasteLog({
         batchId: selectedWasteBatchId,
         materialName: wasteMaterial,
         quantityKg: Number(wasteQty),
         destination: wasteDestination,
         reason: "Operator input",
-        aiSuggestedAction: "Collect for secondary accessory production.",
+        aiSuggestedAction: resolveWasteSuggestion(wasteDestination, wasteMaterial),
         isRepurposed: wasteDestination === "reuse",
       });
 
@@ -326,23 +364,44 @@ const OperationsPage = () => {
     }
   };
 
-  const handleCloseBatch = async (event: FormEvent) => {
-    event.preventDefault();
+  const getCloseValidationError = () => {
     if (!activeCloseBatchId || !closeSummary) {
-      toast.error("Please select a running batch first.");
-      return;
+      return "Please select a running batch first.";
     }
 
     const outputUnits = Number(closeOutputUnits);
     if (!Number.isFinite(outputUnits) || outputUnits <= 0) {
-      toast.error("Output units must be greater than zero.");
-      return;
+      return "Output units must be greater than zero.";
     }
 
     if (Math.abs(closeSummary.variancePercent) > CLOSE_VARIANCE_THRESHOLD && !closeReason.trim()) {
-      toast.error(`Variance above ${CLOSE_VARIANCE_THRESHOLD}% requires a close reason.`);
+      return `Variance above ${CLOSE_VARIANCE_THRESHOLD}% requires a close reason.`;
+    }
+
+    return null;
+  };
+
+  const handleCloseBatch = (event: FormEvent) => {
+    event.preventDefault();
+
+    const validationError = getCloseValidationError();
+    if (validationError) {
+      toast.error(validationError);
       return;
     }
+
+    setCloseConfirmOpen(true);
+  };
+
+  const confirmCloseBatch = async () => {
+    const validationError = getCloseValidationError();
+    if (validationError) {
+      toast.error(validationError);
+      setCloseConfirmOpen(false);
+      return;
+    }
+
+    const outputUnits = Number(closeOutputUnits);
 
     try {
       setClosingBatch(true);
@@ -354,6 +413,7 @@ const OperationsPage = () => {
 
       toast.success("Batch closed successfully with integrity snapshot.");
       setCloseReason("");
+      setCloseConfirmOpen(false);
       await load();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to close batch.");
@@ -885,7 +945,7 @@ const OperationsPage = () => {
                       <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
                         {activityLogs.slice(0, 18).map((log) => (
                           <div key={log.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                            <p className="text-white text-sm font-body font-medium">{log.action.replaceAll("_", " ")}</p>
+                            <p className="text-white text-sm font-body font-medium">{log.action.split("_").join(" ")}</p>
                             <p className="text-white/60 text-xs mt-1">{log.actor} • {new Date(log.timestamp).toLocaleString()}</p>
                             {log.details && <p className="text-white/70 text-sm mt-2">{log.details}</p>}
                           </div>
@@ -936,6 +996,29 @@ const OperationsPage = () => {
           </AnimatePresence>
         </Tabs>
       )}
+
+      <AlertDialog open={closeConfirmOpen} onOpenChange={setCloseConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Batch Close</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action finalizes the selected batch and it cannot be reopened. Please confirm to continue.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={closingBatch}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                void confirmCloseBatch();
+              }}
+              disabled={closingBatch}
+            >
+              {closingBatch ? "Closing..." : "Yes, close batch"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -194,7 +194,15 @@ const DashboardPage = () => {
           </section>
 
           <section className="grid grid-cols-1 xl:grid-cols-[320px_1fr] gap-4">
-            <CircularGauge value={data.circularScore} />
+            <div className="space-y-3">
+              <CircularGauge value={data.circularScore} />
+              <div className="liquid-glass rounded-2xl p-4 border border-white/10">
+                <p className="text-white text-sm font-body font-medium">How the score is calculated</p>
+                <p className="text-white/60 text-xs font-body mt-2">
+                  Weighted by recovery rate, landfill share, batch close discipline, anomaly resolution, and post-score edits.
+                </p>
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {data.metrics.map((metric) => (
@@ -275,7 +283,14 @@ const DashboardPage = () => {
                     </div>
                     <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-3">
                       <p className="text-white/55">Open Red Flags</p>
-                      <p className="text-white mt-1">{integrity.openRedFlags}</p>
+                      <div className="mt-1 flex items-center justify-between gap-2">
+                        <p className="text-white">{integrity.openRedFlags}</p>
+                        <Link to="/operations">
+                          <Button variant="outline" className="h-7 rounded-full border-white/20 bg-white/5 text-white hover:bg-white/10 px-3 text-xs">
+                            Resolve
+                          </Button>
+                        </Link>
+                      </div>
                     </div>
                     <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-3">
                       <p className="text-white/55">Post-Score Edits</p>
