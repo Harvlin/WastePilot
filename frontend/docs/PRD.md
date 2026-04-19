@@ -15,11 +15,14 @@ MVP / pre-production frontend with mocked data services and backend-ready API co
 
 Manufacturing teams, especially small-to-mid sized operations, often manage waste and material flows through spreadsheets and fragmented tools. This creates delayed visibility, weak traceability, and poor optimization loops.
 
+Even when teams adopt digital tools, many internal systems still behave like generic CRUD software, forcing users to manually decide next actions without impact context.
+
 WastePilot addresses this by providing:
 - A single workspace for circular operations.
 - Structured waste and batch logging.
 - Fast material intake through invoice image OCR.
 - Continuous KPI visibility and anomaly awareness.
+- Mission-driven guidance that prioritizes what to do next.
 
 ## 3. Goals and Non-Goals
 
@@ -29,6 +32,7 @@ WastePilot addresses this by providing:
 - Provide actionable insight surfaces for operators and managers.
 - Make weekly circular performance measurable and visible.
 - Maintain a backend-agnostic frontend architecture that can switch from mock to Spring API.
+- Shift core UX from entity CRUD to guided, impact-oriented execution.
 
 ### 3.2 Non-Goals (Current Scope)
 - Full enterprise auth and identity management.
@@ -68,9 +72,10 @@ Success criteria:
 
 ### 5.2 Batch Operations Journey
 1. User opens Operations.
-2. User creates a production batch.
-3. User logs inventory movements and waste records.
-4. Workspace summaries update to reflect latest state.
+2. User follows Flow Assistant recommendations.
+3. User creates a production batch.
+4. User logs inventory movements and waste records.
+5. User closes batch and reviews integrity output.
 
 Success criteria:
 - New logs appear immediately in lists.
@@ -78,8 +83,8 @@ Success criteria:
 
 ### 5.3 Insight Action Journey
 1. User opens Insights.
-2. User reviews recommendations and anomalies.
-3. User updates status (new, applied, ignored).
+2. User reviews Action Queue with impact estimates.
+3. User resolves top anomaly and/or applies recommendations.
 4. Updated status persists in current session state.
 
 Success criteria:
@@ -88,8 +93,9 @@ Success criteria:
 
 ### 5.4 Circular Performance Review Journey
 1. User opens Dashboard and Analytics.
-2. User reviews circular score, trend charts, and breakdowns.
-3. User identifies areas for waste reduction action.
+2. User checks Mission Control priorities on Dashboard.
+3. User reviews circular score, trend charts, and period reports.
+4. User executes linked actions from mission cards.
 
 Success criteria:
 - Charts load successfully.
@@ -99,7 +105,7 @@ Success criteria:
 
 ### 6.1 Routing and Access
 - Public routes: landing, auth, not found.
-- Protected routes: dashboard, operations, scan, materials, templates, insights, analytics, settings.
+- Protected routes: dashboard, scan, materials, templates, operations, insights, analytics, how-to-use, settings.
 - Protected areas redirect unauthenticated users to auth page.
 
 ### 6.2 Authentication (Current)
@@ -112,12 +118,14 @@ Success criteria:
 - Display metric cards for input, waste, reuse.
 - Display waste trend chart.
 - Display anomaly highlight and insight preview.
+- Display Mission Control queue with prioritized action cards and direct CTAs.
 
 ### 6.4 Operations
 - Create production batch records.
 - Add inventory IN and OUT logs.
 - Add waste logs with destination and suggested action.
 - Show aggregate summaries (running, completed, total waste).
+- Provide Flow Assistant sequence with next-best-step navigation across tabs.
 
 ### 6.5 Scan (OCR)
 - Accept image upload and camera capture input.
@@ -139,6 +147,8 @@ Success criteria:
 - Show recommendation cards and anomaly cards in separate tabs.
 - Update item statuses with action buttons.
 - Reflect status changes without full page reload.
+- Provide Action Queue that combines high-priority recommendations and anomalies with estimated impact.
+- Support bulk apply for new recommendations and quick resolve for top anomaly.
 
 ### 6.9 Analytics
 - Show circularity trend line chart.
@@ -153,6 +163,12 @@ Success criteria:
 ### 6.11 Search and Navigation
 - Sidebar navigation to all internal modules.
 - Header search maps keywords to workspace and landing destinations.
+- Navigation order should support first-time learning flow.
+
+### 6.12 How To Use Guide
+- Provide dedicated onboarding page with quick-start modules and first-day checklist.
+- Provide field cheatsheet for common operational inputs.
+- Keep language concise and mobile-readable.
 
 ## 7. Data and API Requirements
 
@@ -238,7 +254,7 @@ Target:
 ### 10.1 Current MVP Scope
 - Public marketing and auth screens.
 - Fully navigable internal workspace modules.
-- Mock-backed CRUD and dashboard behaviors.
+- Mock-backed mission-driven workspace behaviors (Mission Control, Flow Assistant, Action Queue).
 - Configurable API adapter for spring integration.
 
 ### 10.2 Next Release Scope (Recommended)

@@ -21,6 +21,8 @@ import { toast } from "sonner";
 
 const CLOSE_VARIANCE_THRESHOLD = 5;
 
+type OperationTab = "batches" | "inventory" | "waste" | "batch-close" | "integrity";
+
 const confidenceTone = {
   high: "bg-emerald-500/15 text-emerald-300",
   medium: "bg-amber-500/15 text-amber-300",
@@ -41,6 +43,7 @@ const OperationsPage = () => {
   const [data, setData] = useState<OperationsPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<OperationTab>("batches");
 
   const [batchTemplate, setBatchTemplate] = useState("Plain Tee v2");
   const [batchOutput, setBatchOutput] = useState("280");
@@ -395,7 +398,7 @@ const OperationsPage = () => {
       {error && !loading && <DataError message={error} onRetry={load} />}
 
       {!loading && !error && data && (
-        <Tabs defaultValue="batches" className="space-y-4">
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as OperationTab)} className="space-y-4">
           <TabsList className="liquid-glass rounded-full h-auto p-1 w-full justify-start overflow-x-auto whitespace-nowrap">
             <TabsTrigger value="batches" className="shrink-0 rounded-full data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70">
               Batches

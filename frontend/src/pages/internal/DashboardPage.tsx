@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
-import { AlertTriangle, ShieldCheck, Sparkles } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { AlertTriangle, ArrowRight, ShieldCheck, Sparkles, Target } from "lucide-react";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import { internalApi } from "@/lib/api/internal-api";
 import { DashboardPayload, IntegrityOverview } from "@/features/internal/types";
 import { CircularGauge } from "@/features/internal/components/CircularGauge";
@@ -13,6 +15,23 @@ import { Badge } from "@/components/ui/badge";
 const chartConfig = {
   waste: { label: "Waste (kg)", color: "hsl(var(--palette-tea-green))" },
   reused: { label: "Reused (kg)", color: "hsl(var(--palette-light-green) / 0.85)" },
+};
+
+type MissionItem = {
+  id: string;
+  title: string;
+  detail: string;
+  impact: string;
+  to: string;
+  cta: string;
+  priority: number;
+  tone: "high" | "medium" | "low";
+};
+
+const missionToneClass: Record<MissionItem["tone"], string> = {
+  high: "bg-rose-500/15 text-rose-300",
+  medium: "bg-amber-500/15 text-amber-300",
+  low: "bg-emerald-500/15 text-emerald-300",
 };
 
 const DashboardPage = () => {
@@ -42,6 +61,84 @@ const DashboardPage = () => {
     load();
   }, []);
 
+  const missionQueue = useMemo<MissionItem[]>(() => {
+    if (!data) {
+      return [];
+    }
+
+    const queue: MissionItem[] = [];
+    const newRecommendationCount = data.insights.filter((item) => item.status === "new").length;
+
+    if (integrity && integrity.openRedFlags > 0) {
+      queue.push({
+        id: "mission-red-flags",
+        title: `Resolve ${integrity.openRedFlags} integrity red flag${integrity.openRedFlags > 1 ? "s" : ""}`,
+        detail: "Unresolved red flags lower trust in operational scores and reporting.",
+        impact: `Confidence risk now: ${integrity.averageConfidenceScore}% average`,
+        to: "/operations",
+        cta: "Open Integrity",
+        priority: 100,
+        tone: "high",
+      });
+    }
+
+    if (data.topAnomaly.status === "new") {
+      queue.push({
+        id: "mission-anomaly",
+        title: `Investigate anomaly in ${data.topAnomaly.process}`,
+        detail: `Detected z-score ${data.topAnomaly.zScore} with ${data.topAnomaly.wasteKg}kg unusual waste signal.`,
+        impact: `Potential avoidable waste: ${Math.max(1, Math.round(data.topAnomaly.wasteKg * 0.35))}kg`,
+        to: "/insights",
+        cta: "Handle Anomaly",
+        priority: 90,
+        tone: "high",
+      });
+    }
+
+    if (newRecommendationCount > 0) {
+      queue.push({
+        id: "mission-insights",
+        title: `Apply ${newRecommendationCount} new AI recommendation${newRecommendationCount > 1 ? "s" : ""}`,
+        detail: "Recommendations are ready and waiting for operational confirmation.",
+        impact: `Expected score lift: +${(newRecommendationCount * 1.8).toFixed(1)} pts`,
+        to: "/insights",
+        cta: "Apply Insights",
+        priority: 75,
+        tone: "medium",
+      });
+    }
+
+    if (integrity && integrity.overdueBatchClosures > 0) {
+      queue.push({
+        id: "mission-close-overdue",
+        title: `Close ${integrity.overdueBatchClosures} overdue batch${integrity.overdueBatchClosures > 1 ? "es" : ""}`,
+        detail: "Open batches delay reports and increase data drift in score calculations.",
+        impact: "Operational clarity improves after close snapshots are finalized.",
+        to: "/operations",
+        cta: "Close Batches",
+        priority: 70,
+        tone: "medium",
+      });
+    }
+
+    if (queue.length === 0) {
+      queue.push({
+        id: "mission-optimize",
+        title: "Optimization window available",
+        detail: "No urgent blockers detected. This is a good moment to optimize process efficiency.",
+        impact: "Use analytics trend to lock in current performance gains.",
+        to: "/analytics",
+        cta: "Open Analytics",
+        priority: 30,
+        tone: "low",
+      });
+    }
+
+    return queue.sort((a, b) => b.priority - a.priority).slice(0, 4);
+  }, [data, integrity]);
+
+  const topMission = missionQueue[0] ?? null;
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -54,6 +151,48 @@ const DashboardPage = () => {
 
       {!loading && !error && data && (
         <>
+          <section className="liquid-glass-strong rounded-3xl p-4 md:p-6 border border-white/10 space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div>
+                <p className="text-white text-xl font-heading italic">Mission Control</p>
+                <p className="text-white/60 text-sm font-body mt-1">
+                  Prioritized tasks to move circular score faster, not just update records.
+                </p>
+              </div>
+              {topMission && (
+                <Link to={topMission.to}>
+                  <Button className="rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]">
+                    {topMission.cta}
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </Link>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+              {missionQueue.map((mission) => (
+                <div key={mission.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Target className="w-4 h-4 text-[hsl(var(--palette-tea-green))] shrink-0" />
+                      <p className="text-white font-body font-medium truncate">{mission.title}</p>
+                    </div>
+                    <span className={`px-2.5 py-1 rounded-full text-xs ${missionToneClass[mission.tone]} shrink-0`}>
+                      {mission.tone}
+                    </span>
+                  </div>
+                  <p className="text-white/65 text-sm font-body mt-3">{mission.detail}</p>
+                  <p className="text-white/50 text-xs font-body mt-2">{mission.impact}</p>
+                  <Link to={mission.to} className="inline-block mt-4">
+                    <Button variant="outline" className="rounded-full border-white/20 bg-white/5 text-white hover:bg-white/10">
+                      {mission.cta}
+                    </Button>
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </section>
+
           <section className="grid grid-cols-1 xl:grid-cols-[320px_1fr] gap-4">
             <CircularGauge value={data.circularScore} />
 

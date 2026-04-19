@@ -1,6 +1,6 @@
 import { ArrowLeft, Menu, Search, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { internalNav } from "@/features/internal/components/navigation";
 import { resolveSearchDestination } from "@/features/internal/components/search-index";
@@ -27,7 +27,10 @@ const SidebarContent = ({ closeMobile }: { closeMobile?: () => void }) => {
         {closeMobile && (
           <button
             type="button"
-            onClick={closeMobile}
+            onClick={(event) => {
+              event.stopPropagation();
+              closeMobile();
+            }}
             aria-label="Close navigation"
             className="w-9 h-9 rounded-full liquid-glass flex items-center justify-center text-[hsl(var(--palette-light-green))] lg:hidden"
           >
@@ -82,6 +85,12 @@ const AppShell = () => {
   const navigate = useNavigate();
   const pageLabel = internalNav.find((item) => item.to === location.pathname)?.label ?? "Workspace";
 
+  useEffect(() => {
+    if (mobileOpen) {
+      setMobileOpen(false);
+    }
+  }, [location.pathname, location.search, location.hash]);
+
   const handleSearchSubmit = () => {
     const query = searchText.trim();
     if (!query) {
@@ -132,7 +141,10 @@ const AppShell = () => {
                 <div className="flex items-center gap-3 min-w-0">
                 <button
                   className="lg:hidden w-10 h-10 rounded-full liquid-glass flex items-center justify-center"
-                  onClick={() => setMobileOpen((prev) => !prev)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setMobileOpen((prev) => !prev);
+                  }}
                   aria-label="Open navigation"
                 >
                   <Menu className="w-5 h-5 text-[hsl(var(--palette-light-green))]" />
@@ -224,7 +236,11 @@ const AppShell = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setMobileOpen(false)}
+              onClick={(event) => {
+                event.stopPropagation();
+                setMobileOpen(false);
+              }}
+              aria-label="Close navigation overlay"
               className="fixed inset-0 bg-black/60 z-40 lg:hidden"
             />
             <motion.aside
@@ -232,6 +248,7 @@ const AppShell = () => {
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: -320, opacity: 0 }}
               transition={{ duration: 0.24, ease: "easeOut" }}
+              onClick={(event) => event.stopPropagation()}
               className="fixed top-0 left-0 h-full w-[88vw] max-w-[320px] z-50 border-r border-[hsl(var(--palette-house-green))]/70 bg-black/95 backdrop-blur-2xl lg:hidden"
             >
               <SidebarContent closeMobile={() => setMobileOpen(false)} />
