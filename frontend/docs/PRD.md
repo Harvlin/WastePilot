@@ -4,7 +4,7 @@
 
 - Product: WastePilot
 - Document version: v2.0 (implementation-aligned)
-- Date: 2026-04-19
+- Date: 2026-04-20
 - Status: Active working PRD for frontend MVP plus backend implementation handoff
 - Owners: Product, Frontend Engineering, Backend Engineering
 
@@ -210,6 +210,46 @@ Implemented capabilities:
 - First-day checklist
 - Field cheatsheet
 
+Design intent for new users:
+- Guide content is written for first-time operators, not only for expert users.
+- Instructions must use plain language, one action per line, and consistent terms with UI labels.
+- Every step should clearly answer: what to do, why it matters, and what output to expect.
+
+Beginner-friendly workflow in /how-to-use:
+- Step 1 - Login and orientation (2-3 minutes)
+  - Confirm workspace access and identify the main menu items.
+  - Understand where daily operations happen: Operations, Scan, Insights, Analytics.
+- Step 2 - Start shift and open batch (3-5 minutes)
+  - Create or select a batch before recording production movement.
+  - Verify expected output and expected waste before continuing.
+- Step 3 - Record material movement during shift (ongoing)
+  - Log inventory IN and OUT with complete material name and quantity.
+  - Use OCR scan when invoice data exists to reduce manual typing.
+- Step 4 - Record waste with destination (ongoing)
+  - Log waste as reuse, repair, or dispose based on actual condition.
+  - Use recovery conversion for reuse and repair when material should re-enter stock.
+- Step 5 - Close batch at end of shift (2-4 minutes)
+  - Review close summary and variance.
+  - Provide close reason if variance exceeds threshold.
+  - Confirm close after re-checking quantities.
+- Step 6 - Review integrity and priorities (2-3 minutes)
+  - Check Integrity tab for red flags, confidence, and audit trail.
+  - Continue with Action Queue in Dashboard or Insights for follow-up tasks.
+
+First-week enablement checklist:
+- Day 1: Complete one full batch lifecycle with supervisor support.
+- Day 2-3: Use OCR for at least one inbound record per shift.
+- Day 4-5: Resolve at least one recommendation and one anomaly.
+- End of week: Review analytics window and discuss top contributors and top actions.
+
+Common mistakes and prevention:
+- Mistake: logging OUT without selecting running batch.
+  - Prevention: always confirm active running batch in Operations before submission.
+- Mistake: closing batch with unexplained high variance.
+  - Prevention: validate output units and document close reason early.
+- Mistake: treating guide as read-once document.
+  - Prevention: use quick cheatsheet during each shift handover until routine is stable.
+
 ### 6.12 Settings
 
 Implemented capabilities:
@@ -270,6 +310,15 @@ Decision:
 - User actions must create activity log and/or audit trail records where relevant.
 - Post-score edits must be traceable and reflected in integrity signals.
 - Batch close must produce summary and confidence context.
+
+### 7.5 How-to-Use Requirements
+
+- Guide page must present workflow in chronological shift order, not by feature list only.
+- Each guide step must include objective, action, and completion signal.
+- Guide language must remain role-friendly for operators with minimal product training.
+- Guide content must stay aligned with active UI behavior and validation constraints.
+- Guide page must be readable on mobile and tablet without hidden critical instructions.
+- Guide page must include a compact field cheatsheet for in-shift reference.
 
 ## 8. Data Contract Requirements
 
@@ -432,6 +481,8 @@ Target backend requirements:
 - Waste recovery rate and landfill share trend
 - Recommendation application rate
 - OCR-assisted intake adoption rate
+- How-to-use completion rate for new users in first week
+- Time to first successful full batch lifecycle for new operators
 
 ### 13.2 Technical KPIs
 
@@ -470,6 +521,8 @@ Target backend requirements:
 - Operations and OCR submissions blocked on invalid input
 - Batch close requires confirmation and supports variance rules
 - Dashboard and analytics render with data and graceful fallback states
+- Guide page explains complete shift workflow with beginner-readable steps
+- New user can follow guide and complete one end-to-end batch flow without external documentation
 
 ## 16. Implementation Reference
 

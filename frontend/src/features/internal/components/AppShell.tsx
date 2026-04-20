@@ -1,6 +1,6 @@
 import { ArrowLeft, Menu, Search, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { internalNav } from "@/features/internal/components/navigation";
 import { resolveSearchDestination } from "@/features/internal/components/search-index";
@@ -84,21 +84,23 @@ const AppShell = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [isOnline, setIsOnline] = useState(() => (typeof navigator === "undefined" ? true : navigator.onLine));
+  const mobileDrawerRef = useRef<HTMLElement | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const pageLabel = internalNav.find((item) => item.to === location.pathname)?.label ?? "Workspace";
 
-  const closeMobileNav = () => {
+  const closeMobileNav = useCallback(() => {
     setMobileOpen(false);
-  };
+  }, []);
 
-  const toggleMobileNav = () => {
+  const toggleMobileNav = useCallback(() => {
     setMobileOpen((prev) => !prev);
-  };
+  }, []);
 
   useEffect(() => {
-    setMobileOpen(false);
-  }, [location.pathname, location.search, location.hash]);
+    // Close drawer on any navigation transition, including same-path navigations with different location keys.
+    closeMobileNav();
+  }, [closeMobileNav, location.key]);
 
   useEffect(() => {
     const body = document.body;
@@ -106,16 +108,22 @@ const AppShell = () => {
 
     if (!mobileOpen) {
       body.style.removeProperty("overflow");
+      body.style.removeProperty("touch-action");
       html.style.removeProperty("overflow");
+      html.style.removeProperty("touch-action");
       return;
     }
 
     body.style.overflow = "hidden";
+    body.style.touchAction = "none";
     html.style.overflow = "hidden";
+    html.style.touchAction = "none";
 
     return () => {
       body.style.removeProperty("overflow");
+      body.style.removeProperty("touch-action");
       html.style.removeProperty("overflow");
+      html.style.removeProperty("touch-action");
     };
   }, [mobileOpen]);
 
@@ -126,7 +134,7 @@ const AppShell = () => {
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setMobileOpen(false);
+        closeMobileNav();
       }
     };
 
@@ -134,12 +142,36 @@ const AppShell = () => {
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [mobileOpen]);
+  }, [closeMobileNav, mobileOpen]);
+
+  useEffect(() => {
+    if (!mobileOpen) {
+      return;
+    }
+
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      const drawer = mobileDrawerRef.current;
+
+      if (!target || !drawer) {
+        return;
+      }
+
+      if (!drawer.contains(target)) {
+        closeMobileNav();
+      }
+    };
+
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown, true);
+    };
+  }, [closeMobileNav, mobileOpen]);
 
   useEffect(() => {
     const onResize = () => {
       if (window.innerWidth >= DESKTOP_BREAKPOINT) {
-        setMobileOpen(false);
+        closeMobileNav();
       }
     };
 
@@ -147,7 +179,7 @@ const AppShell = () => {
     return () => {
       window.removeEventListener("resize", onResize);
     };
-  }, []);
+  }, [closeMobileNav]);
 
   useEffect(() => {
     const onOnline = () => setIsOnline(true);
@@ -181,6 +213,7 @@ const AppShell = () => {
   };
 
   const handleLogout = () => {
+    closeMobileNav();
     signOutMockUser();
     toast.success("You have been logged out.");
     navigate("/");
@@ -211,6 +244,7 @@ const AppShell = () => {
               <div className="flex items-center justify-between gap-3 md:gap-4">
                 <div className="flex items-center gap-3 min-w-0">
                 <button
+                  type="button"
                   className="lg:hidden w-10 h-10 rounded-full liquid-glass flex items-center justify-center"
                   onClick={(event) => {
                     event.stopPropagation();
@@ -310,7 +344,7 @@ const AppShell = () => {
         </div>
       </div>
 
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {mobileOpen && (
           <>
             <motion.button
@@ -325,6 +359,7 @@ const AppShell = () => {
               className="fixed inset-0 bg-black/60 z-40 lg:hidden"
             />
             <motion.aside
+              ref={mobileDrawerRef}
               initial={{ x: -320, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: -320, opacity: 0 }}
