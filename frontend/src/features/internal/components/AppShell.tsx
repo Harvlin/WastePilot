@@ -1,6 +1,6 @@
 import { ArrowLeft, Menu, Search, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { MouseEvent as ReactMouseEvent, useCallback, useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { internalNav } from "@/features/internal/components/navigation";
 import { resolveSearchDestination } from "@/features/internal/components/search-index";
@@ -20,6 +20,19 @@ const clearGlobalInteractionLocks = () => {
   html.style.removeProperty("overflow");
   html.style.removeProperty("touch-action");
   html.style.removeProperty("pointer-events");
+};
+
+const scheduleGlobalUnlock = () => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const unlock = () => clearGlobalInteractionLocks();
+
+  unlock();
+  window.requestAnimationFrame(unlock);
+  window.setTimeout(unlock, 0);
+  window.setTimeout(unlock, 120);
 };
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -97,7 +110,6 @@ const AppShell = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [isOnline, setIsOnline] = useState(() => (typeof navigator === "undefined" ? true : navigator.onLine));
-  const mobileDrawerRef = useRef<HTMLElement | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const pageLabel = internalNav.find((item) => item.to === location.pathname)?.label ?? "Workspace";
@@ -108,9 +120,10 @@ const AppShell = () => {
 
   const closeMobileNav = useCallback(() => {
     setMobileOpen(false);
+    scheduleGlobalUnlock();
   }, []);
 
-  const handleMobileMenuButtonClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+  const handleMobileMenuButtonClick = useCallback((event: ReactMouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
     if (mobileOpen) {
       closeMobileNav();
@@ -127,7 +140,7 @@ const AppShell = () => {
   useEffect(() => {
     // Defensive cleanup for intermittent UI locks left by layered components during route transitions.
     if (!mobileOpen) {
-      clearGlobalInteractionLocks();
+      scheduleGlobalUnlock();
     }
   }, [location.key, mobileOpen]);
 
@@ -142,16 +155,18 @@ const AppShell = () => {
 
     body.style.overflow = "hidden";
     body.style.touchAction = "none";
+    body.style.pointerEvents = "auto";
     html.style.overflow = "hidden";
     html.style.touchAction = "none";
+    html.style.pointerEvents = "auto";
 
     return () => {
-      clearGlobalInteractionLocks();
+      scheduleGlobalUnlock();
     };
   }, [mobileOpen]);
 
   useEffect(() => () => {
-    clearGlobalInteractionLocks();
+    scheduleGlobalUnlock();
   }, []);
 
   useEffect(() => {
@@ -168,30 +183,6 @@ const AppShell = () => {
     window.addEventListener("keydown", onKeyDown);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [closeMobileNav, mobileOpen]);
-
-  useEffect(() => {
-    if (!mobileOpen) {
-      return;
-    }
-
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target as Node | null;
-      const drawer = mobileDrawerRef.current;
-
-      if (!target || !drawer) {
-        return;
-      }
-
-      if (!drawer.contains(target)) {
-        closeMobileNav();
-      }
-    };
-
-    document.addEventListener("pointerdown", onPointerDown, true);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown, true);
     };
   }, [closeMobileNav, mobileOpen]);
 
@@ -266,7 +257,7 @@ const AppShell = () => {
         </div>
 
         <div className="flex-1 min-w-0">
-          <header className="sticky top-3 md:top-4 z-30 px-3 md:px-8">
+          <header className="sticky top-3 md:top-4 z-[70] px-3 md:px-8">
             <div className="px-3 md:px-6 py-3 liquid-glass-strong rounded-2xl border border-[hsl(var(--palette-house-green))]/70">
               <div className="flex items-center justify-between gap-3 md:gap-4">
                 <div className="flex items-center gap-3 min-w-0">
@@ -380,10 +371,9 @@ const AppShell = () => {
                 closeMobileNav();
               }}
               aria-label="Close navigation overlay"
-              className="fixed inset-0 bg-black/60 z-40 lg:hidden"
+              className="fixed inset-0 bg-black/60 z-[90] lg:hidden pointer-events-auto"
             />
             <motion.aside
-              ref={mobileDrawerRef}
               initial={{ x: -320, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: -320, opacity: 0 }}
@@ -392,7 +382,7 @@ const AppShell = () => {
               role="dialog"
               aria-modal="true"
               aria-label="Mobile navigation"
-              className="fixed top-0 left-0 h-full w-[88vw] max-w-[320px] z-50 border-r border-[hsl(var(--palette-house-green))]/70 bg-black/95 backdrop-blur-2xl lg:hidden"
+              className="fixed top-0 left-0 h-full w-[88vw] max-w-[320px] z-[100] border-r border-[hsl(var(--palette-house-green))]/70 bg-black/95 backdrop-blur-2xl lg:hidden pointer-events-auto"
             >
               <SidebarContent closeMobile={() => closeMobileNav()} />
             </motion.aside>
