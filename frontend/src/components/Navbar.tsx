@@ -4,6 +4,8 @@ import { ArrowUpRight, Menu, X } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { isMockAuthenticated } from "@/lib/mock-auth";
 
+const DESKTOP_NAV_BREAKPOINT = 1024;
+
 const navLinks = [
   { label: "Home", id: "home" },
   { label: "How It Works", id: "how-it-works" },
@@ -30,6 +32,13 @@ const Navbar = () => {
     window.scrollTo({ top: sectionTop, behavior: "smooth" });
   };
 
+  const navigateToSection = (sectionId: string) => {
+    setMobileOpen(false);
+    window.setTimeout(() => {
+      scrollToSection(sectionId);
+    }, 0);
+  };
+
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 30);
@@ -47,7 +56,7 @@ const Navbar = () => {
       setActiveSection(current);
     };
 
-    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
 
     if (window.location.hash) {
@@ -72,16 +81,36 @@ const Navbar = () => {
   }, [location.pathname, location.search, location.hash]);
 
   useEffect(() => {
+    const body = document.body;
+    const html = document.documentElement;
+
     if (!mobileOpen) {
-      document.body.style.removeProperty("overflow");
+      body.style.removeProperty("overflow");
+      html.style.removeProperty("overflow");
       return;
     }
 
-    document.body.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    html.style.overflow = "hidden";
+
     return () => {
-      document.body.style.removeProperty("overflow");
+      body.style.removeProperty("overflow");
+      html.style.removeProperty("overflow");
     };
   }, [mobileOpen]);
+
+  useEffect(() => {
+    const onResize = () => {
+      if (window.innerWidth >= DESKTOP_NAV_BREAKPOINT) {
+        setMobileOpen(false);
+      }
+    };
+
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+    };
+  }, []);
 
   useEffect(() => {
     if (!mobileOpen) {
@@ -109,7 +138,7 @@ const Navbar = () => {
         initial={{ y: -40, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
-        className="fixed top-4 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12"
+        className="fixed top-4 left-0 right-0 z-50 flex items-center justify-between px-5 md:px-8 lg:px-12"
       >
         {/* Logo */}
         <Link to="/" className="w-[160px] h-12 flex items-center">
@@ -133,7 +162,7 @@ const Navbar = () => {
             background: scrolled ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.01)",
           }}
           transition={{ duration: 0.3 }}
-          className="hidden md:flex items-center gap-1 liquid-glass rounded-full px-2 py-1.5 relative"
+          className="hidden lg:flex items-center gap-1 liquid-glass rounded-full px-2 py-1.5 relative"
         >
           {navLinks.map((link) => (
             <button
@@ -142,7 +171,7 @@ const Navbar = () => {
               className="relative text-sm font-medium text-white/90 font-body px-4 py-2 rounded-full transition-colors"
               onMouseEnter={() => setHoveredLink(link.id)}
               onMouseLeave={() => setHoveredLink(null)}
-              onClick={() => scrollToSection(link.id)}
+              onClick={() => navigateToSection(link.id)}
             >
               {activeSection === link.id && (
                 <motion.span
@@ -178,7 +207,7 @@ const Navbar = () => {
         {/* Mobile menu button */}
         <motion.button
           whileTap={{ scale: 0.9 }}
-          className="md:hidden w-12 h-12 rounded-full liquid-glass flex items-center justify-center"
+          className="lg:hidden w-12 h-12 rounded-full liquid-glass flex items-center justify-center"
           onClick={(event) => {
             event.stopPropagation();
             setMobileOpen((prev) => !prev);
@@ -189,7 +218,7 @@ const Navbar = () => {
         </motion.button>
 
         {/* Spacer for balance (desktop) */}
-        <div className="w-[160px] h-12 hidden md:block" />
+        <div className="w-[160px] h-12 hidden lg:block" />
       </motion.nav>
 
       {/* Mobile menu */}
@@ -201,7 +230,7 @@ const Navbar = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setMobileOpen(false)}
-              className="fixed inset-0 z-40 bg-black/55 md:hidden"
+              className="fixed inset-0 z-40 bg-black/55 lg:hidden"
               aria-label="Close mobile menu overlay"
             />
 
@@ -211,7 +240,7 @@ const Navbar = () => {
               exit={{ opacity: 0, y: -20, filter: "blur(10px)" }}
               transition={{ duration: 0.3 }}
               onClick={(event) => event.stopPropagation()}
-              className="fixed top-20 left-4 right-4 z-50 liquid-glass-strong rounded-2xl p-6 md:hidden"
+              className="fixed top-20 left-4 right-4 z-50 liquid-glass-strong rounded-2xl p-6 lg:hidden"
               role="dialog"
               aria-modal="true"
               aria-label="Mobile landing navigation"
@@ -228,8 +257,7 @@ const Navbar = () => {
                       activeSection === link.id ? "bg-white/10" : "hover:bg-white/5"
                     }`}
                     onClick={() => {
-                      scrollToSection(link.id);
-                      setMobileOpen(false);
+                      navigateToSection(link.id);
                     }}
                   >
                     {link.label}

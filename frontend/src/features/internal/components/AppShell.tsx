@@ -1,11 +1,13 @@
 import { ArrowLeft, Menu, Search, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { internalNav } from "@/features/internal/components/navigation";
 import { resolveSearchDestination } from "@/features/internal/components/search-index";
 import { signOutMockUser } from "@/lib/mock-auth";
 import { toast } from "sonner";
+
+const DESKTOP_BREAKPOINT = 1024;
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `group relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-body transition-colors ${
@@ -82,51 +84,38 @@ const AppShell = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [isOnline, setIsOnline] = useState(() => (typeof navigator === "undefined" ? true : navigator.onLine));
-  const closeGuardUntilRef = useRef(0);
   const location = useLocation();
   const navigate = useNavigate();
   const pageLabel = internalNav.find((item) => item.to === location.pathname)?.label ?? "Workspace";
 
-  const closeMobileNav = (guardMs = 280) => {
+  const closeMobileNav = () => {
     setMobileOpen(false);
-    closeGuardUntilRef.current = Date.now() + guardMs;
-  };
-
-  const openMobileNav = () => {
-    if (Date.now() < closeGuardUntilRef.current) {
-      return;
-    }
-    setMobileOpen(true);
   };
 
   const toggleMobileNav = () => {
-    if (mobileOpen) {
-      closeMobileNav();
-      return;
-    }
-    openMobileNav();
+    setMobileOpen((prev) => !prev);
   };
 
   useEffect(() => {
-    setMobileOpen((prev) => {
-      if (!prev) {
-        return prev;
-      }
-
-      closeGuardUntilRef.current = Date.now() + 120;
-      return false;
-    });
+    setMobileOpen(false);
   }, [location.pathname, location.search, location.hash]);
 
   useEffect(() => {
+    const body = document.body;
+    const html = document.documentElement;
+
     if (!mobileOpen) {
-      document.body.style.removeProperty("overflow");
+      body.style.removeProperty("overflow");
+      html.style.removeProperty("overflow");
       return;
     }
 
-    document.body.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    html.style.overflow = "hidden";
+
     return () => {
-      document.body.style.removeProperty("overflow");
+      body.style.removeProperty("overflow");
+      html.style.removeProperty("overflow");
     };
   }, [mobileOpen]);
 
@@ -137,7 +126,7 @@ const AppShell = () => {
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        closeMobileNav();
+        setMobileOpen(false);
       }
     };
 
@@ -149,8 +138,8 @@ const AppShell = () => {
 
   useEffect(() => {
     const onResize = () => {
-      if (window.innerWidth >= 1024) {
-        closeMobileNav(0);
+      if (window.innerWidth >= DESKTOP_BREAKPOINT) {
+        setMobileOpen(false);
       }
     };
 
@@ -227,9 +216,11 @@ const AppShell = () => {
                     event.stopPropagation();
                     toggleMobileNav();
                   }}
-                  aria-label="Open navigation"
+                  aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
                 >
-                  <Menu className="w-5 h-5 text-[hsl(var(--palette-light-green))]" />
+                  {mobileOpen
+                    ? <X className="w-5 h-5 text-[hsl(var(--palette-light-green))]" />
+                    : <Menu className="w-5 h-5 text-[hsl(var(--palette-light-green))]" />}
                 </button>
                 <div className="min-w-0">
                   <p className="text-[hsl(var(--palette-light-green))]/60 text-xs uppercase tracking-[0.18em] font-body">Workspace</p>

@@ -473,7 +473,7 @@ Target backend requirements:
 
 ## 16. Implementation Reference
 
-Primary implementation files include:
+Primary implementation files include (current phase):
 - src/App.tsx
 - src/lib/api/internal-api.ts
 - src/features/internal/mock-api.ts

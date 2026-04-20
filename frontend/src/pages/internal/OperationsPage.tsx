@@ -11,7 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,38 @@ import { internalApi } from "@/lib/api/internal-api";
 import { toast } from "sonner";
 
 type OperationTab = "batches" | "inventory" | "waste" | "batch-close" | "integrity";
+
+const operationWorkflowSteps: Array<{
+  tab: OperationTab;
+  title: string;
+  helper: string;
+}> = [
+  {
+    tab: "batches",
+    title: "1. Start Batch",
+    helper: "Create a running batch for the current shift.",
+  },
+  {
+    tab: "inventory",
+    title: "2. Log Material",
+    helper: "Record stock IN/OUT while production is active.",
+  },
+  {
+    tab: "waste",
+    title: "3. Log Waste",
+    helper: "Classify waste destination and recovery status.",
+  },
+  {
+    tab: "batch-close",
+    title: "4. Close Batch",
+    helper: "Review summary and confirm final output.",
+  },
+  {
+    tab: "integrity",
+    title: "5. Integrity Check",
+    helper: "Review activity and audit trail before handover.",
+  },
+];
 
 const confidenceTone = {
   high: "bg-emerald-500/15 text-emerald-300",
@@ -218,6 +250,65 @@ const OperationsPage = () => {
     [runningBatches],
   );
 
+  const completedStepMap = useMemo<Record<OperationTab, boolean>>(() => ({
+    batches: (data?.batches.length ?? 0) > 0,
+    inventory: (data?.inventoryLogs.length ?? 0) > 0,
+    waste: (data?.wasteLogs.length ?? 0) > 0,
+    "batch-close": (data?.batches.some((batch) => batch.status === "completed") ?? false),
+    integrity: activityLogs.length > 0 || auditTrail.length > 0,
+  }), [data, activityLogs.length, auditTrail.length]);
+
+  const workflowStepIndex = useMemo(
+    () => operationWorkflowSteps.findIndex((step) => step.tab === activeTab),
+    [activeTab],
+  );
+
+  const canMoveToStep = (targetIndex: number) => {
+    if (targetIndex <= 0) {
+      return true;
+    }
+
+    for (let index = 0; index < targetIndex; index += 1) {
+      const step = operationWorkflowSteps[index];
+      if (!completedStepMap[step.tab]) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const goToStep = (targetIndex: number) => {
+    if (targetIndex < 0 || targetIndex >= operationWorkflowSteps.length) {
+      return;
+    }
+
+    if (!canMoveToStep(targetIndex)) {
+      toast.info("Complete previous step(s) first to keep shift flow clean.");
+      return;
+    }
+
+    setActiveTab(operationWorkflowSteps[targetIndex].tab);
+  };
+
+  const goToPreviousStep = () => {
+    goToStep(workflowStepIndex - 1);
+  };
+
+  const goToNextStep = () => {
+    const currentStep = operationWorkflowSteps[workflowStepIndex];
+    if (!currentStep) {
+      return;
+    }
+
+    if (!completedStepMap[currentStep.tab]) {
+      toast.info("Finish the current step before moving to the next one.");
+      return;
+    }
+
+    goToStep(workflowStepIndex + 1);
+  };
+
   const handleCreateBatch = async (e: FormEvent) => {
     e.preventDefault();
     if (!data) return;
@@ -235,8 +326,12 @@ const OperationsPage = () => {
       });
 
       setData({ ...data, batches: [newBatch, ...data.batches] });
+      setSelectedInventoryBatchId(newBatch.id);
+      setSelectedWasteBatchId(newBatch.id);
+      setActiveCloseBatchId(newBatch.id);
+      setActiveTab("inventory");
       await refreshIntegrity();
-      toast.success(`Batch ${newBatch.id} created.`);
+      toast.success(`Batch ${newBatch.id} created. Continue to material logging.`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create batch.");
     }
@@ -275,8 +370,12 @@ const OperationsPage = () => {
       });
 
       setData({ ...data, inventoryLogs: [created, ...data.inventoryLogs] });
+      if (created.batchId && !selectedWasteBatchId) {
+        setSelectedWasteBatchId(created.batchId);
+      }
+      setActiveTab("waste");
       await refreshIntegrity();
-      toast.success("Inventory log added.");
+      toast.success("Inventory log added. Continue to waste logging.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to add inventory log.");
     }
@@ -339,6 +438,8 @@ const OperationsPage = () => {
       }
 
       setData({ ...data, wasteLogs: nextWasteLogs, inventoryLogs: nextInventoryLogs });
+      setActiveCloseBatchId(selectedWasteBatchId);
+      setActiveTab("batch-close");
       await refreshIntegrity();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save waste log.");
@@ -415,6 +516,7 @@ const OperationsPage = () => {
       setCloseReason("");
       setCloseConfirmOpen(false);
       await load();
+      setActiveTab("integrity");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to close batch.");
     } finally {
@@ -426,7 +528,7 @@ const OperationsPage = () => {
     <div className="space-y-6">
       <PageHeader
         title="Operations"
-        description="Run day-to-day production with smart templates, inventory movement, and waste classifications in one super page."
+        description="Follow the daily shift workflow: start batch, log material, classify waste, close, and verify integrity."
       />
 
       {overdueBatches.length > 0 && (
@@ -459,23 +561,73 @@ const OperationsPage = () => {
 
       {!loading && !error && data && (
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as OperationTab)} className="space-y-4">
-          <TabsList className="liquid-glass rounded-full h-auto p-1 w-full justify-start overflow-x-auto whitespace-nowrap">
-            <TabsTrigger value="batches" className="shrink-0 rounded-full data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70">
-              Batches
-            </TabsTrigger>
-            <TabsTrigger value="inventory" className="shrink-0 rounded-full data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70">
-              Inventory
-            </TabsTrigger>
-            <TabsTrigger value="waste" className="shrink-0 rounded-full data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70">
-              Waste
-            </TabsTrigger>
-            <TabsTrigger value="batch-close" className="shrink-0 rounded-full data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70">
-              Batch Close
-            </TabsTrigger>
-            <TabsTrigger value="integrity" className="shrink-0 rounded-full data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70">
-              Integrity
-            </TabsTrigger>
-          </TabsList>
+          <div className="liquid-glass-strong rounded-3xl p-4 md:p-5 border border-white/10 space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div>
+                <p className="text-white text-lg font-heading italic">Daily Shift Workflow</p>
+                <p className="text-white/60 text-sm font-body mt-1">
+                  Follow this sequence to reduce input mistakes and keep handover clean.
+                </p>
+              </div>
+              <span className="px-3 py-1 rounded-full text-xs bg-white/10 text-white/80 w-fit">
+                Step {workflowStepIndex + 1} of {operationWorkflowSteps.length}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-2">
+              {operationWorkflowSteps.map((step, index) => {
+                const isActive = step.tab === activeTab;
+                const isCompleted = completedStepMap[step.tab];
+                const unlocked = canMoveToStep(index);
+
+                return (
+                  <button
+                    key={step.tab}
+                    type="button"
+                    onClick={() => goToStep(index)}
+                    disabled={!unlocked}
+                    className={`text-left rounded-2xl border px-3 py-3 transition-colors ${
+                      isActive
+                        ? "border-emerald-300/30 bg-emerald-500/10"
+                        : unlocked
+                          ? "border-white/15 bg-white/[0.02] hover:bg-white/[0.05]"
+                          : "border-white/10 bg-white/[0.01] opacity-55"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-white text-sm font-medium">{step.title}</p>
+                      {isCompleted ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                      ) : (
+                        <Clock3 className="w-4 h-4 text-white/45" />
+                      )}
+                    </div>
+                    <p className="text-white/60 text-xs mt-1">{step.helper}</p>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={goToPreviousStep}
+                disabled={workflowStepIndex <= 0}
+                className="rounded-full border-white/20 bg-white/5 text-white hover:bg-white/10"
+              >
+                Previous Step
+              </Button>
+              <Button
+                type="button"
+                onClick={goToNextStep}
+                disabled={workflowStepIndex >= operationWorkflowSteps.length - 1}
+                className="rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]"
+              >
+                Next Step
+              </Button>
+            </div>
+          </div>
 
           <AnimatePresence mode="wait">
             <TabsContent value="batches" asChild>
