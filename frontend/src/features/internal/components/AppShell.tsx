@@ -9,6 +9,19 @@ import { toast } from "sonner";
 
 const DESKTOP_BREAKPOINT = 1024;
 
+const clearGlobalInteractionLocks = () => {
+  const body = document.body;
+  const html = document.documentElement;
+
+  body.style.removeProperty("overflow");
+  body.style.removeProperty("touch-action");
+  body.style.removeProperty("pointer-events");
+
+  html.style.removeProperty("overflow");
+  html.style.removeProperty("touch-action");
+  html.style.removeProperty("pointer-events");
+};
+
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `group relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-body transition-colors ${
     isActive ? "text-[hsl(var(--palette-tea-green))]" : "text-[hsl(var(--palette-light-green))]/70 hover:text-[hsl(var(--palette-light-green))]"
@@ -89,13 +102,22 @@ const AppShell = () => {
   const navigate = useNavigate();
   const pageLabel = internalNav.find((item) => item.to === location.pathname)?.label ?? "Workspace";
 
+  const openMobileNav = useCallback(() => {
+    setMobileOpen(true);
+  }, []);
+
   const closeMobileNav = useCallback(() => {
     setMobileOpen(false);
   }, []);
 
-  const toggleMobileNav = useCallback(() => {
-    setMobileOpen((prev) => !prev);
-  }, []);
+  const handleMobileMenuButtonClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    if (mobileOpen) {
+      closeMobileNav();
+      return;
+    }
+    openMobileNav();
+  }, [closeMobileNav, mobileOpen, openMobileNav]);
 
   useEffect(() => {
     // Close drawer on any navigation transition, including same-path navigations with different location keys.
@@ -103,16 +125,20 @@ const AppShell = () => {
   }, [closeMobileNav, location.key]);
 
   useEffect(() => {
-    const body = document.body;
-    const html = document.documentElement;
-
+    // Defensive cleanup for intermittent UI locks left by layered components during route transitions.
     if (!mobileOpen) {
-      body.style.removeProperty("overflow");
-      body.style.removeProperty("touch-action");
-      html.style.removeProperty("overflow");
-      html.style.removeProperty("touch-action");
+      clearGlobalInteractionLocks();
+    }
+  }, [location.key, mobileOpen]);
+
+  useEffect(() => {
+    if (!mobileOpen) {
+      clearGlobalInteractionLocks();
       return;
     }
+
+    const body = document.body;
+    const html = document.documentElement;
 
     body.style.overflow = "hidden";
     body.style.touchAction = "none";
@@ -120,12 +146,13 @@ const AppShell = () => {
     html.style.touchAction = "none";
 
     return () => {
-      body.style.removeProperty("overflow");
-      body.style.removeProperty("touch-action");
-      html.style.removeProperty("overflow");
-      html.style.removeProperty("touch-action");
+      clearGlobalInteractionLocks();
     };
   }, [mobileOpen]);
+
+  useEffect(() => () => {
+    clearGlobalInteractionLocks();
+  }, []);
 
   useEffect(() => {
     if (!mobileOpen) {
@@ -246,10 +273,7 @@ const AppShell = () => {
                 <button
                   type="button"
                   className="lg:hidden w-10 h-10 rounded-full liquid-glass flex items-center justify-center"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    toggleMobileNav();
-                  }}
+                  onClick={handleMobileMenuButtonClick}
                   aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
                 >
                   {mobileOpen
