@@ -165,6 +165,25 @@ const AppShell = () => {
     };
   }, [mobileOpen]);
 
+  useEffect(() => {
+    if (!mobileOpen) {
+      return;
+    }
+
+    // Some layered components can temporarily re-apply pointer locks; keep drawer interaction healthy while open.
+    const syncPointerState = () => {
+      document.body.style.pointerEvents = "auto";
+      document.documentElement.style.pointerEvents = "auto";
+    };
+
+    syncPointerState();
+    const intervalId = window.setInterval(syncPointerState, 120);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [mobileOpen]);
+
   useEffect(() => () => {
     scheduleGlobalUnlock();
   }, []);
@@ -359,36 +378,29 @@ const AppShell = () => {
         </div>
       </div>
 
-      <AnimatePresence initial={false}>
-        {mobileOpen && (
-          <>
-            <motion.button
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={(event) => {
-                event.stopPropagation();
-                closeMobileNav();
-              }}
-              aria-label="Close navigation overlay"
-              className="fixed inset-0 bg-black/60 z-[90] lg:hidden pointer-events-auto"
-            />
-            <motion.aside
-              initial={{ x: -320, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -320, opacity: 0 }}
-              transition={{ duration: 0.24, ease: "easeOut" }}
-              onClick={(event) => event.stopPropagation()}
-              role="dialog"
-              aria-modal="true"
-              aria-label="Mobile navigation"
-              className="fixed top-0 left-0 h-full w-[88vw] max-w-[320px] z-[100] border-r border-[hsl(var(--palette-house-green))]/70 bg-black/95 backdrop-blur-2xl lg:hidden pointer-events-auto"
-            >
-              <SidebarContent closeMobile={() => closeMobileNav()} />
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          closeMobileNav();
+        }}
+        aria-label="Close navigation overlay"
+        className={`fixed inset-0 bg-black/60 z-[90] lg:hidden transition-opacity duration-200 ${
+          mobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+      />
+
+      <aside
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Mobile navigation"
+        className={`fixed top-0 left-0 h-full w-[88vw] max-w-[320px] z-[100] border-r border-[hsl(var(--palette-house-green))]/70 bg-black/95 backdrop-blur-2xl lg:hidden transition-transform duration-200 ease-out ${
+          mobileOpen ? "translate-x-0 pointer-events-auto" : "-translate-x-full pointer-events-none"
+        }`}
+      >
+        <SidebarContent closeMobile={() => closeMobileNav()} />
+      </aside>
     </motion.div>
   );
 };
