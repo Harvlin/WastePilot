@@ -97,31 +97,6 @@ const Hero = () => {
             <Play className="w-4 h-4" /> Watch Demo
           </motion.button>
         </motion.div>
-
-        {/* Core tech stack */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.4, duration: 0.8 }}
-          className="mt-auto pb-8 pt-16 flex flex-col items-center"
-        >
-          <div className="liquid-glass rounded-full px-3.5 py-1 text-xs font-medium text-[hsl(var(--palette-light-green))] font-body inline-block mb-6">
-            Core Technology Stack
-          </div>
-          <div className="flex items-center gap-8 md:gap-12 flex-wrap justify-center">
-            {techStack.map((name, i) => (
-              <motion.span
-                key={name}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.6 + i * 0.1 }}
-                className="text-2xl md:text-3xl font-heading italic text-white/70 hover:text-[hsl(var(--palette-light-green))] transition-colors cursor-default"
-              >
-                {name}
-              </motion.span>
-            ))}
-          </div>
-        </motion.div>
       </motion.div>
     </section>
   );

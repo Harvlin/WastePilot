@@ -16,14 +16,7 @@ const DemoExplainerSection = () => {
       <div className="absolute bottom-0 left-0 right-0 z-[2] h-[200px]" style={{ background: "linear-gradient(to top, black, transparent)" }} />
 
       <div className="relative z-10 max-w-6xl mx-auto text-center">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="liquid-glass rounded-full px-3.5 py-1 text-xs font-medium text-white font-body inline-block mb-4"
-        >
-          SaaS Explainer Demo
-        </motion.div>
+        
 
         <motion.h2
           initial={{ opacity: 0, y: 30, filter: "blur(10px)" }}

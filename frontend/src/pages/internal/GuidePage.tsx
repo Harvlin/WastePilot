@@ -161,7 +161,7 @@ const GuidePage = () => {
     <div className="space-y-6">
       <PageHeader
         title="How To Use"
-        description="Guide ini sudah disesuaikan dengan fitur yang aktif di workspace saat ini. Ikuti urutan core flow dulu, lalu pakai modul pendukung sesuai kebutuhan."
+        description="This guide is aligned with the currently active workspace features. Follow the core flow first, then use supporting modules as needed."
       />
 
       <section className="liquid-glass-strong rounded-3xl border border-white/10 p-4 md:p-6 space-y-4">
@@ -169,7 +169,7 @@ const GuidePage = () => {
           <div>
             <p className="text-white text-xl font-heading italic">Core Shift Flow (Operations)</p>
             <p className="text-white/60 text-sm font-body mt-1">
-              Urutan di bawah mengikuti label langkah yang ada di halaman Operations.
+              The sequence below follows the exact step labels shown in Operations.
             </p>
           </div>
           <Link to="/dashboard">
@@ -184,7 +184,7 @@ const GuidePage = () => {
           <div className="flex items-start gap-2">
             <Clock3 className="w-4 h-4 mt-0.5 text-emerald-200" />
             <p className="text-emerald-100 text-sm font-body">
-              Rata-rata onboarding awal: 8-15 menit untuk 1 siklus batch lengkap.
+              Typical first-time onboarding: 8-15 minutes for one complete batch cycle.
             </p>
           </div>
         </div>
@@ -250,7 +250,7 @@ const GuidePage = () => {
           </div>
 
           <p className="text-white/65 text-sm font-body">
-            Pakai modul ini sebagai pelengkap alur utama, bukan pengganti urutan di Operations.
+            Use these modules to support the main flow, not to replace the Operations sequence.
           </p>
 
           <div className="space-y-2">
