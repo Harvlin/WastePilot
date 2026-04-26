@@ -16,7 +16,6 @@ const DemoExplainerSection = () => {
       <div className="absolute bottom-0 left-0 right-0 z-[2] h-[200px]" style={{ background: "linear-gradient(to top, black, transparent)" }} />
 
       <div className="relative z-10 max-w-6xl mx-auto text-center">
-        
 
         <motion.h2
           initial={{ opacity: 0, y: 30, filter: "blur(10px)" }}

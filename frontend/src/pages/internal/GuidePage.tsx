@@ -156,6 +156,69 @@ const commonMistakes = [
   },
 ];
 
+const scenarioPlaybooks = [
+  {
+    title: "No Running Batch At Shift Start",
+    signal: "You open Operations and no batch is marked as running.",
+    doNow: [
+      "Create a new batch in Step 1 using a valid template, output units, and estimated waste.",
+      "Confirm the batch appears in Production List with running status.",
+      "Continue to Step 2 before logging OUT or waste.",
+    ],
+    expected: "Inventory and waste logging become valid for the active shift.",
+  },
+  {
+    title: "Invoice Arrives During Shift",
+    signal: "You need fast stock-in logging from supplier invoice image.",
+    doNow: [
+      "Open Scan and run OCR from uploaded or camera image.",
+      "Correct material, quantity, unit, and price fields before save.",
+      "Select a running batch and click Confirm & Save.",
+    ],
+    expected: "Rows are saved as inventory IN logs with traceable source data.",
+  },
+  {
+    title: "Inventory OUT Gets Blocked",
+    signal: "OUT submission fails or cannot proceed in Inventory Input.",
+    doNow: [
+      "Check that movement type is OUT and a running batch is selected.",
+      "Confirm quantity is above zero and material name is not empty.",
+      "Submit Add Log again after correcting fields.",
+    ],
+    expected: "OUT movement is accepted and appears in Inventory Logs.",
+  },
+  {
+    title: "Variance Is Too High At Batch Close",
+    signal: `Close summary shows variance above ${CLOSE_VARIANCE_THRESHOLD}.`,
+    doNow: [
+      "Re-check output and waste quantities first.",
+      `Fill Close Reason because variance exceeds ${CLOSE_VARIANCE_THRESHOLD}.`,
+      "Confirm close only after reason and values are complete.",
+    ],
+    expected: "Batch closes with complete audit context and no validation block.",
+  },
+  {
+    title: "Anomaly Appears In Insights",
+    signal: "Action Queue shows a new anomaly with high impact.",
+    doNow: [
+      "Open Insights and jump to the anomaly item.",
+      "Review process context and supporting notes.",
+      "Mark status as resolved or ignored with clear operational decision.",
+    ],
+    expected: "Team handover is clearer and unresolved anomaly count is reduced.",
+  },
+  {
+    title: "Need Weekly Or Monthly Review",
+    signal: "Supervisor asks for performance update and trend snapshot.",
+    doNow: [
+      "Open Analytics and switch to weekly or monthly tab.",
+      "Review circular score trend, waste flow trend, and top actions.",
+      "Use summary cards to discuss on-time close and landfill impact.",
+    ],
+    expected: "You can share evidence-based status using current reporting views.",
+  },
+];
+
 const GuidePage = () => {
   return (
     <div className="space-y-6">
@@ -239,6 +302,47 @@ const GuidePage = () => {
               </div>
             );
           })}
+        </div>
+      </section>
+
+      <section className="liquid-glass-strong rounded-3xl border border-white/10 p-4 md:p-6 space-y-4">
+        <div className="flex items-start gap-2">
+          <Target className="w-4 h-4 mt-1 text-[hsl(var(--palette-light-green))]" />
+          <div>
+            <p className="text-white text-xl font-heading italic">Scenario Playbooks (Real Use Cases)</p>
+            <p className="text-white/60 text-sm font-body mt-1">
+              Use these playbooks when specific situations happen. Each case tells you exactly what to do next.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+          {scenarioPlaybooks.map((playbook) => (
+            <div key={playbook.title} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+              <p className="text-white font-body font-medium">{playbook.title}</p>
+
+              <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                <p className="text-white/60 text-xs uppercase tracking-[0.16em]">Situation</p>
+                <p className="text-white/80 text-sm font-body mt-2">{playbook.signal}</p>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-white/60 text-xs uppercase tracking-[0.16em]">What You Can Do</p>
+                {playbook.doNow.map((action) => (
+                  <div key={action} className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 flex items-start gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 text-[hsl(var(--palette-light-green))]" />
+                    <p className="text-white/80 text-sm font-body">{action}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3">
+                <p className="text-emerald-100 text-sm font-body">
+                  <span className="font-medium">Expected result:</span> {playbook.expected}
+                </p>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
