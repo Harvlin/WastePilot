@@ -1,0 +1,57 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: wastepilot-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-wastepilot}
+      MYSQL_USER: ${DB_USER:-wastepilot}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-wastepilot}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+    ports:
+      - "${DB_EXTERNAL_PORT:-3307}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-rootpassword}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wastepilot-app
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SERVER_PORT: 8080
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-wastepilot}
+      DB_USER: ${DB_USER:-wastepilot}
+      DB_PASSWORD: ${DB_PASSWORD:-wastepilot}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO:-update}
+      SPRING_FLYWAY_ENABLED: ${SPRING_FLYWAY_ENABLED:-false}
+    ports:
+      - "${APP_EXTERNAL_PORT:-8080}:8080"
+
+  adminer:
+    image: adminer:latest
+    container_name: wastepilot-adminer
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_started
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql
+    ports:
+      - "${ADMINER_EXTERNAL_PORT:-8888}:8080"
+
+volumes:
+  mysql_data:
