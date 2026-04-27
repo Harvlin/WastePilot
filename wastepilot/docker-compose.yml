@@ -37,7 +37,6 @@ services:
       DB_USER: ${DB_USER:-wastepilot}
       DB_PASSWORD: ${DB_PASSWORD:-wastepilot}
       SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO:-update}
-      SPRING_FLYWAY_ENABLED: ${SPRING_FLYWAY_ENABLED:-false}
     ports:
       - "${APP_EXTERNAL_PORT:-8080}:8080"
 

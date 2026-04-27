@@ -1,6 +1,6 @@
 import { motion, useScroll, useTransform } from "motion/react";
 import { ArrowUpRight, Play } from "lucide-react";
-import { useRef } from "react";
+import { useRef, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import BlurText from "./BlurText";
 import { isMockAuthenticated } from "@/lib/mock-auth";
@@ -10,6 +10,8 @@ const techStack = ["Spring Boot", "Next.js 15", "Gemini Flash", "Docker", "MySQL
 
 const Hero = () => {
   const sectionRef = useRef<HTMLElement>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [videoLoaded, setVideoLoaded] = useState(false);
   const { scrollYProgress } = useScroll({
     target: sectionRef,
     offset: ["start start", "end start"],
@@ -30,10 +32,48 @@ const Hero = () => {
     toast.info("Demo section ready below.");
   };
 
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !videoLoaded) {
+            setVideoLoaded(true);
+          }
+        });
+      },
+      { root: null, rootMargin: "200px", threshold: 0.1 }
+    );
+
+    observer.observe(section);
+    return () => observer.disconnect();
+  }, [videoLoaded]);
+
+  useEffect(() => {
+    if (!videoLoaded) return;
+    const videoEl = document.querySelector('#hero-lazy-video') as HTMLVideoElement | null;
+    if (!videoEl) return;
+    // set src when visible so network fetch happens later
+    const src = "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260307_083826_e938b29f-a43a-41ec-a153-3d4730578ab8.mp4";
+    if (!videoEl.src) {
+      videoEl.src = src;
+      // try to play (muted allows autoplay in most browsers)
+      videoEl
+        .play()
+        .catch(() => {
+          /* ignore autoplay rejection */
+        });
+    }
+  }, [videoLoaded]);
+
   return (
     <section ref={sectionRef} id="home" className="relative overflow-visible h-[1000px] bg-black">
-      {/* Background video with parallax */}
+      {/* Background video with parallax (lazy-loaded source) */}
       <motion.video
+        id="hero-lazy-video"
+        ref={videoRef}
         style={{ scale: videoScale, opacity: videoOpacity }}
         className="absolute top-[20%] w-full h-auto object-contain z-0"
         autoPlay
@@ -41,7 +81,7 @@ const Hero = () => {
         muted
         playsInline
         poster="/images/hero_bg.jpeg"
-        src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260307_083826_e938b29f-a43a-41ec-a153-3d4730578ab8.mp4"
+        preload="metadata"
       />
 
       <div className="absolute inset-0 bg-black/5 z-0" />
