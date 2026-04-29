@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { AlertTriangle, CheckCircle2, Clock3, Plus, ShieldCheck } from "lucide-react";
+import { Activity, AlertTriangle, CheckCircle2, Clock3, Eye, Filter, Plus, ShieldCheck, User } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,6 +21,7 @@ import {
   ActivityLogEntry,
   AuditTrailEntry,
   BatchCloseSummary,
+  IntegrityOverview,
   OperationsPayload,
   WasteDestination,
 } from "@/features/internal/types";
@@ -95,6 +96,50 @@ function hoursSince(iso: string) {
   return (Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60);
 }
 
+type ActivityEntity = ActivityLogEntry["entity"];
+type ActivityFilterKey = "all" | ActivityEntity;
+
+const entityAccent: Record<ActivityEntity, string> = {
+  batch: "border-l-emerald-400/60",
+  inventory: "border-l-amber-400/60",
+  waste: "border-l-rose-400/60",
+  score: "border-l-sky-400/60",
+  system: "border-l-white/30",
+};
+
+const entityBadge: Record<ActivityEntity, string> = {
+  batch: "bg-emerald-500/15 text-emerald-300",
+  inventory: "bg-amber-500/15 text-amber-300",
+  waste: "bg-rose-500/15 text-rose-300",
+  score: "bg-sky-500/15 text-sky-300",
+  system: "bg-white/10 text-white/70",
+};
+
+const sourceBadge: Record<ActivityLogEntry["source"], string> = {
+  ocr: "bg-violet-500/15 text-violet-300",
+  manual: "bg-white/10 text-white/60",
+  system: "bg-sky-500/10 text-sky-300/80",
+};
+
+const activityFilterOptions: Array<{ key: ActivityFilterKey; label: string }> = [
+  { key: "all", label: "All" },
+  { key: "batch", label: "Batch" },
+  { key: "inventory", label: "Inventory" },
+  { key: "waste", label: "Waste" },
+  { key: "system", label: "System" },
+];
+
+function relativeTime(iso: string) {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
+
 const OperationsPage = () => {
   const [data, setData] = useState<OperationsPayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -126,19 +171,23 @@ const OperationsPage = () => {
 
   const [activityLogs, setActivityLogs] = useState<ActivityLogEntry[]>([]);
   const [auditTrail, setAuditTrail] = useState<AuditTrailEntry[]>([]);
+  const [integrityOverview, setIntegrityOverview] = useState<IntegrityOverview | null>(null);
+  const [activityFilter, setActivityFilter] = useState<ActivityFilterKey>("all");
 
   const load = async () => {
     try {
       setLoading(true);
       setError(null);
-      const [payload, logs, audits] = await Promise.all([
+      const [payload, logs, audits, intOverview] = await Promise.all([
         internalApi.fetchOperationsPayload(),
         internalApi.fetchActivityLogs(),
         internalApi.fetchAuditTrail(),
+        internalApi.fetchIntegrityOverview(),
       ]);
       setData(payload);
       setActivityLogs(logs);
       setAuditTrail(audits);
+      setIntegrityOverview(intOverview);
 
       const runningBatch = payload.batches.find((item) => item.status === "running");
       if (runningBatch) {
@@ -158,12 +207,14 @@ const OperationsPage = () => {
   };
 
   const refreshIntegrity = async () => {
-    const [logs, audits] = await Promise.all([
+    const [logs, audits, intOverview] = await Promise.all([
       internalApi.fetchActivityLogs(),
       internalApi.fetchAuditTrail(),
+      internalApi.fetchIntegrityOverview(),
     ]);
     setActivityLogs(logs);
     setAuditTrail(audits);
+    setIntegrityOverview(intOverview);
   };
 
   useEffect(() => {
@@ -257,6 +308,22 @@ const OperationsPage = () => {
     "batch-close": (data?.batches.some((batch) => batch.status === "completed") ?? false),
     integrity: activityLogs.length > 0 || auditTrail.length > 0,
   }), [data, activityLogs.length, auditTrail.length]);
+
+  const filteredActivityLogs = useMemo(() => {
+    if (activityFilter === "all") return activityLogs;
+    return activityLogs.filter((log) => log.entity === activityFilter);
+  }, [activityLogs, activityFilter]);
+
+  const activityEntityCounts = useMemo(() => {
+    const counts: Record<ActivityFilterKey, number> = {
+      all: activityLogs.length,
+      batch: 0, inventory: 0, waste: 0, score: 0, system: 0,
+    };
+    for (const log of activityLogs) {
+      counts[log.entity] = (counts[log.entity] ?? 0) + 1;
+    }
+    return counts;
+  }, [activityLogs]);
 
   const workflowStepIndex = useMemo(
     () => operationWorkflowSteps.findIndex((step) => step.tab === activeTab),
@@ -1084,62 +1151,219 @@ const OperationsPage = () => {
             </TabsContent>
 
             <TabsContent value="integrity" asChild>
-              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}>
+              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} className="space-y-4">
+                {/* ── Integrity Overview Summary Strip ── */}
+                {integrityOverview && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <motion.div
+                      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+                      className="liquid-glass rounded-2xl p-4 border border-white/10"
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <ShieldCheck className="w-4 h-4 text-emerald-300" />
+                        <p className="text-white/55 text-xs font-body uppercase tracking-wide">Avg Confidence</p>
+                      </div>
+                      <p className="text-2xl font-heading italic text-white">{integrityOverview.averageConfidenceScore}<span className="text-base text-white/50 ml-0.5">%</span></p>
+                      <span className={`mt-2 inline-block px-2 py-0.5 rounded-full text-xs ${
+                        integrityOverview.averageConfidenceScore >= 85 ? "bg-emerald-500/15 text-emerald-300"
+                          : integrityOverview.averageConfidenceScore >= 65 ? "bg-amber-500/15 text-amber-300"
+                          : "bg-rose-500/15 text-rose-300"
+                      }`}>
+                        {integrityOverview.averageConfidenceScore >= 85 ? "high" : integrityOverview.averageConfidenceScore >= 65 ? "medium" : "low"}
+                      </span>
+                    </motion.div>
+
+                    <motion.div
+                      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+                      className={`liquid-glass rounded-2xl p-4 border ${integrityOverview.openRedFlags > 0 ? "border-rose-400/25" : "border-white/10"}`}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <AlertTriangle className={`w-4 h-4 ${integrityOverview.openRedFlags > 0 ? "text-rose-300" : "text-white/40"}`} />
+                        <p className="text-white/55 text-xs font-body uppercase tracking-wide">Open Red Flags</p>
+                      </div>
+                      <p className={`text-2xl font-heading italic ${integrityOverview.openRedFlags > 0 ? "text-rose-300" : "text-white"}`}>{integrityOverview.openRedFlags}</p>
+                      <p className="text-white/40 text-xs font-body mt-2">{integrityOverview.openRedFlags === 0 ? "All clear" : "Needs attention"}</p>
+                    </motion.div>
+
+                    <motion.div
+                      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+                      className="liquid-glass rounded-2xl p-4 border border-white/10"
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <Eye className="w-4 h-4 text-sky-300/70" />
+                        <p className="text-white/55 text-xs font-body uppercase tracking-wide">Post-Score Edits</p>
+                      </div>
+                      <p className={`text-2xl font-heading italic ${integrityOverview.postScoreEdits > 0 ? "text-amber-300" : "text-white"}`}>{integrityOverview.postScoreEdits}</p>
+                      <p className="text-white/40 text-xs font-body mt-2">{integrityOverview.postScoreEdits === 0 ? "No edits after scoring" : "Traceable edits flagged"}</p>
+                    </motion.div>
+
+                    <motion.div
+                      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+                      className={`liquid-glass rounded-2xl p-4 border ${integrityOverview.overdueBatchClosures > 0 ? "border-amber-400/25" : "border-white/10"}`}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <Clock3 className={`w-4 h-4 ${integrityOverview.overdueBatchClosures > 0 ? "text-amber-300" : "text-white/40"}`} />
+                        <p className="text-white/55 text-xs font-body uppercase tracking-wide">Overdue Closures</p>
+                      </div>
+                      <p className={`text-2xl font-heading italic ${integrityOverview.overdueBatchClosures > 0 ? "text-amber-300" : "text-white"}`}>{integrityOverview.overdueBatchClosures}</p>
+                      <p className="text-white/40 text-xs font-body mt-2">{integrityOverview.overdueBatchClosures === 0 ? "On schedule" : "Close pending batches"}</p>
+                    </motion.div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                  {/* ── Activity Logs ── */}
                   <div className="liquid-glass rounded-3xl p-5 overflow-hidden">
-                    <div className="flex items-center gap-2 mb-3">
-                      <ShieldCheck className="w-4 h-4 text-[hsl(var(--palette-tea-green))]" />
-                      <h3 className="text-white text-xl font-heading italic">Activity Logs</h3>
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <div className="flex items-center gap-2">
+                        <Activity className="w-4 h-4 text-[hsl(var(--palette-tea-green))]" />
+                        <h3 className="text-white text-xl font-heading italic">Activity Logs</h3>
+                      </div>
+                      <span className="px-2.5 py-1 rounded-full text-xs bg-white/10 text-white/60 font-body">{activityLogs.length} total</span>
                     </div>
+                    <p className="text-white/50 text-xs font-body mb-4">System events and operator actions tracked across all batches.</p>
+
+                    {/* Filter pills */}
+                    <div className="flex flex-wrap gap-1.5 mb-4">
+                      {activityFilterOptions.map((opt) => {
+                        const count = activityEntityCounts[opt.key];
+                        if (opt.key !== "all" && count === 0) return null;
+                        const isActive = activityFilter === opt.key;
+                        return (
+                          <button
+                            key={opt.key}
+                            type="button"
+                            onClick={() => setActivityFilter(opt.key)}
+                            className={`px-3 py-1.5 rounded-full text-xs font-body transition-colors flex items-center gap-1.5 ${
+                              isActive
+                                ? "bg-[hsl(var(--palette-tea-green))]/20 text-[hsl(var(--palette-tea-green))] border border-[hsl(var(--palette-tea-green))]/30"
+                                : "bg-white/[0.04] text-white/55 border border-white/10 hover:bg-white/[0.08] hover:text-white/75"
+                            }`}
+                          >
+                            {opt.key === "all" && <Filter className="w-3 h-3" />}
+                            {opt.label}
+                            <span className={`text-[10px] ${isActive ? "text-[hsl(var(--palette-tea-green))]/70" : "text-white/35"}`}>{count}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
                     {activityLogs.length === 0 ? (
                       <DataEmpty title="No activity logs" description="System events and operator actions will appear here." />
+                    ) : filteredActivityLogs.length === 0 ? (
+                      <DataEmpty title="No matching logs" description="No activity logs match the selected filter." />
                     ) : (
-                      <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
-                        {activityLogs.slice(0, 18).map((log) => (
-                          <div key={log.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                            <p className="text-white text-sm font-body font-medium">{log.action.split("_").join(" ")}</p>
-                            <p className="text-white/60 text-xs mt-1">{log.actor} • {new Date(log.timestamp).toLocaleString()}</p>
-                            {log.details && <p className="text-white/70 text-sm mt-2">{log.details}</p>}
-                          </div>
+                      <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
+                        {filteredActivityLogs.slice(0, 20).map((log, index) => (
+                          <motion.div
+                            key={log.id}
+                            initial={{ opacity: 0, x: -8 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: Math.min(index * 0.03, 0.3) }}
+                            className={`rounded-2xl border border-white/10 bg-white/[0.03] p-3.5 border-l-[3px] ${entityAccent[log.entity]}`}
+                          >
+                            <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-body ${entityBadge[log.entity]}`}>
+                                {log.entity}
+                              </span>
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-body ${sourceBadge[log.source]}`}>
+                                {log.source}
+                              </span>
+                              {log.batchId && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-body bg-white/[0.06] text-white/50">
+                                  {log.batchId}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-white text-sm font-body font-medium capitalize">{log.action.split("_").join(" ")}</p>
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <User className="w-3 h-3 text-white/35" />
+                              <p className="text-white/50 text-xs font-body">{log.actor}</p>
+                              <span className="text-white/20">·</span>
+                              <Clock3 className="w-3 h-3 text-white/35" />
+                              <p className="text-white/50 text-xs font-body">{relativeTime(log.timestamp)}</p>
+                              <span className="text-white/20 hidden sm:inline">·</span>
+                              <p className="text-white/35 text-xs font-body hidden sm:block">{new Date(log.timestamp).toLocaleString()}</p>
+                            </div>
+                            {log.details && (
+                              <p className="text-white/60 text-sm font-body mt-2 pl-1 border-l-2 border-white/10">{log.details}</p>
+                            )}
+                          </motion.div>
                         ))}
                       </div>
                     )}
                   </div>
 
+                  {/* ── Audit Trail ── */}
                   <div className="liquid-glass rounded-3xl p-5 overflow-hidden">
-                    <div className="flex items-center gap-2 mb-3">
-                      <ShieldCheck className="w-4 h-4 text-[hsl(var(--palette-light-green))]" />
-                      <h3 className="text-white text-xl font-heading italic">Audit Trail</h3>
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="w-4 h-4 text-[hsl(var(--palette-light-green))]" />
+                        <h3 className="text-white text-xl font-heading italic">Audit Trail</h3>
+                      </div>
+                      <span className="px-2.5 py-1 rounded-full text-xs bg-white/10 text-white/60 font-body">{auditTrail.length} entries</span>
                     </div>
+                    <p className="text-white/50 text-xs font-body mb-4">Field-level change tracking for integrity review and compliance.</p>
+
                     {auditTrail.length === 0 ? (
                       <DataEmpty title="No audit trail entries" description="Field-level edits will be tracked for integrity review." />
                     ) : (
-                      <Table className="min-w-[760px]">
-                        <TableHeader>
-                          <TableRow className="border-white/10 hover:bg-transparent">
-                            <TableHead className="text-white/60">Field</TableHead>
-                            <TableHead className="text-white/60">Change</TableHead>
-                            <TableHead className="text-white/60">Editor</TableHead>
-                            <TableHead className="text-white/60">Flags</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {auditTrail.slice(0, 14).map((entry) => (
-                            <TableRow key={entry.id} className="border-white/10 hover:bg-white/[0.03]">
-                              <TableCell>{entry.field}</TableCell>
-                              <TableCell className="text-white/70 text-sm">{entry.oldValue} → {entry.newValue}</TableCell>
-                              <TableCell className="text-white/75 text-sm">{entry.editedBy}</TableCell>
-                              <TableCell>
-                                {entry.postScoreEditFlag ? (
-                                  <span className="px-2 py-1 rounded-full text-xs bg-rose-500/15 text-rose-300">post-score edit</span>
-                                ) : (
-                                  <span className="px-2 py-1 rounded-full text-xs bg-emerald-500/15 text-emerald-300">tracked</span>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                      <div className="space-y-2.5 max-h-[480px] overflow-y-auto pr-1">
+                        {auditTrail.slice(0, 14).map((entry, index) => (
+                          <motion.div
+                            key={entry.id}
+                            initial={{ opacity: 0, x: -6 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: Math.min(index * 0.04, 0.3) }}
+                            className={`rounded-2xl border bg-white/[0.025] p-4 border-l-[3px] ${
+                              entry.postScoreEditFlag
+                                ? "border-rose-400/50 border-l-rose-400/70"
+                                : "border-white/10 border-l-emerald-400/50"
+                            }`}
+                          >
+                            {/* Top: field + batch + flag */}
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <p className="text-white text-sm font-body font-medium font-mono">{entry.field}</p>
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-body bg-white/[0.06] text-white/45 shrink-0">{entry.batchId}</span>
+                              </div>
+                              {entry.postScoreEditFlag ? (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] bg-rose-500/15 text-rose-300 flex items-center gap-1 shrink-0">
+                                  <AlertTriangle className="w-3 h-3" />
+                                  post-score
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/15 text-emerald-300 flex items-center gap-1 shrink-0">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  tracked
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Change value */}
+                            <div className="flex items-center gap-2 mt-2.5">
+                              <span className="text-rose-300/70 bg-rose-500/10 px-2 py-1 rounded-lg font-mono text-xs">{entry.oldValue}</span>
+                              <span className="text-white/25 text-sm">→</span>
+                              <span className="text-emerald-300/90 bg-emerald-500/10 px-2 py-1 rounded-lg font-mono text-xs">{entry.newValue}</span>
+                            </div>
+
+                            {/* Meta row */}
+                            <div className="flex items-center gap-2 mt-2.5 text-white/45 text-xs font-body">
+                              <User className="w-3 h-3" />
+                              <span>{entry.editedBy}</span>
+                              <span className="text-white/15">·</span>
+                              <Clock3 className="w-3 h-3" />
+                              <span>{relativeTime(entry.editedAt)}</span>
+                              {entry.reason && (
+                                <>
+                                  <span className="text-white/15">·</span>
+                                  <span className="text-white/35 truncate max-w-[200px]" title={entry.reason}>{entry.reason}</span>
+                                </>
+                              )}
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
                     )}
                   </div>
                 </div>
