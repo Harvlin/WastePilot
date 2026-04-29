@@ -167,27 +167,27 @@ Examples:
 
 ```java
 public record CreateBatchRequest(
-  @NotBlank String templateName,
-  @DecimalMin(value = "0.1") BigDecimal outputUnits,
-  @DecimalMin(value = "0.0") BigDecimal wasteKg
+        @NotBlank String templateName,
+        @DecimalMin(value = "0.1") BigDecimal outputUnits,
+        @DecimalMin(value = "0.0") BigDecimal wasteKg
 ) {}
 
 public record BatchResponse(
-  String id,
-  String templateName,
-  Instant startedAt,
-  BigDecimal outputUnits,
-  BigDecimal wasteKg,
-  String status,
-  Instant closedAt,
-  String closedBy,
-  String closeReason
+        String id,
+        String templateName,
+        Instant startedAt,
+        BigDecimal outputUnits,
+        BigDecimal wasteKg,
+        String status,
+        Instant closedAt,
+        String closedBy,
+        String closeReason
 ) {}
 
 public record CloseBatchRequest(
-  @NotBlank String batchId,
-  @DecimalMin(value = "0.1") BigDecimal outputUnits,
-  String closeReason
+        @NotBlank String batchId,
+        @DecimalMin(value = "0.1") BigDecimal outputUnits,
+        String closeReason
 ) {}
 ```
 
@@ -326,7 +326,7 @@ public class OperationsController {
 
 Minimum production baseline:
 - Stateless JWT bearer authentication
-- Role-based authorization (e.g., ROLE_OPERATOR, ROLE_MANAGER, ROLE_ADMIN)
+- Single access level (authenticated users only)
 - CORS allow frontend origin only
 - CSRF disabled for stateless API
 
@@ -341,10 +341,7 @@ SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
     .authorizeHttpRequests(auth -> auth
       .requestMatchers("/actuator/health", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
-      .requestMatchers(HttpMethod.GET, "/api/v1/**").hasAnyRole("OPERATOR", "MANAGER", "ADMIN")
-      .requestMatchers(HttpMethod.POST, "/api/v1/**").hasAnyRole("OPERATOR", "MANAGER", "ADMIN")
-      .requestMatchers(HttpMethod.PUT, "/api/v1/**").hasAnyRole("MANAGER", "ADMIN")
-      .requestMatchers(HttpMethod.PATCH, "/api/v1/**").hasAnyRole("OPERATOR", "MANAGER", "ADMIN")
+      .requestMatchers("/api/v1/**").authenticated()
       .anyRequest().authenticated()
     )
     .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
@@ -1040,6 +1037,681 @@ public class AiJobRunEntity {
   @Column(length = 500)
   private String errorMessage;
 }
+
+```
+
+### 23.4 Full entity code (copy-ready)
+
+Use the same package layout described in Section 3. The blocks below omit the `package` line so you can paste into the correct domain folder.
+
+#### MaterialEntity
+
+```java
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "materials")
+@Getter
+@Setter
+public class MaterialEntity extends AuditableEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @Column(nullable = false, unique = true, length = 160)
+  private String name;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 32)
+  private MaterialCategory category;
+
+  @Column(nullable = false, length = 16)
+  private String unit;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 1)
+  private CircularGrade circularGrade;
+
+  @Column(nullable = false, precision = 14, scale = 3)
+  private BigDecimal stock;
+
+  @Column(nullable = false, length = 120)
+  private String supplier;
+}
+```
+
+#### TemplateEntity
+
+```java
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "templates")
+@Getter
+@Setter
+public class TemplateEntity extends AuditableEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @Column(nullable = false, length = 160)
+  private String name;
+
+  @Column(nullable = false, unique = true, length = 80)
+  private String sku;
+
+  @Column(name = "expected_waste_kg", nullable = false, precision = 14, scale = 3)
+  private BigDecimal expectedWasteKg;
+
+  @OneToMany(mappedBy = "template", cascade = CascadeType.ALL, orphanRemoval = true)
+  private List<TemplateLineEntity> lines = new ArrayList<>();
+}
+```
+
+#### TemplateLineEntity
+
+```java
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "template_lines")
+@Getter
+@Setter
+public class TemplateLineEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "template_id", nullable = false)
+  private TemplateEntity template;
+
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "material_id", nullable = false)
+  private MaterialEntity material;
+
+  @Column(nullable = false, precision = 14, scale = 3)
+  private BigDecimal quantity;
+
+  @Column(nullable = false, length = 16)
+  private String unit;
+}
+```
+
+#### BatchEntity
+
+```java
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "batches")
+@Getter
+@Setter
+public class BatchEntity extends AuditableEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @Column(name = "template_name", nullable = false, length = 160)
+  private String templateName;
+
+  @Column(name = "started_at", nullable = false)
+  private Instant startedAt;
+
+  @Column(name = "output_units", nullable = false, precision = 14, scale = 3)
+  private BigDecimal outputUnits;
+
+  @Column(name = "waste_kg", nullable = false, precision = 14, scale = 3)
+  private BigDecimal wasteKg;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 16)
+  private BatchStatus status;
+
+  @Column(name = "closed_at")
+  private Instant closedAt;
+
+  @Column(name = "closed_by", length = 120)
+  private String closedBy;
+
+  @Column(name = "close_reason", length = 500)
+  private String closeReason;
+}
+```
+
+#### InventoryLogEntity
+
+```java
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "inventory_logs")
+@Getter
+@Setter
+public class InventoryLogEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "batch_id")
+  private BatchEntity batch;
+
+  @Column(name = "material_name", nullable = false, length = 160)
+  private String materialName;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 8)
+  private InventoryType type;
+
+  @Column(nullable = false, precision = 14, scale = 3)
+  private BigDecimal quantity;
+
+  @Column(nullable = false, length = 16)
+  private String unit;
+
+  @Column(nullable = false, length = 32)
+  private String source;
+
+  @Column(nullable = false)
+  private Instant timestamp;
+}
+```
+
+#### WasteLogEntity
+
+```java
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "waste_logs")
+@Getter
+@Setter
+public class WasteLogEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "batch_id", nullable = false)
+  private BatchEntity batch;
+
+  @Column(name = "material_name", nullable = false, length = 160)
+  private String materialName;
+
+  @Column(name = "quantity_kg", nullable = false, precision = 14, scale = 3)
+  private BigDecimal quantityKg;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 16)
+  private WasteDestination destination;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "recovery_status", nullable = false, length = 24)
+  private RecoveryStatus recoveryStatus;
+
+  @Column(name = "ai_suggested_action", length = 500)
+  private String aiSuggestedAction;
+
+  @Column(nullable = false)
+  private Instant timestamp;
+}
+```
+
+#### ActivityLogEntity
+
+```java
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "activity_logs")
+@Getter
+@Setter
+public class ActivityLogEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 32)
+  private EntityType entity;
+
+  @Column(name = "entity_id", nullable = false, length = 64)
+  private String entityId;
+
+  @Column(nullable = false, length = 64)
+  private String action;
+
+  @Column(nullable = false, length = 160)
+  private String actor;
+
+  @Column(nullable = false, length = 500)
+  private String detail;
+
+  @Column(nullable = false)
+  private Instant timestamp;
+}
+```
+
+#### AuditTrailEntity
+
+```java
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "audit_trail")
+@Getter
+@Setter
+public class AuditTrailEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 32)
+  private EntityType entity;
+
+  @Column(name = "entity_id", nullable = false, length = 64)
+  private String entityId;
+
+  @Column(nullable = false, length = 64)
+  private String field;
+
+  @Column(name = "old_value", length = 500)
+  private String oldValue;
+
+  @Column(name = "new_value", length = 500)
+  private String newValue;
+
+  @Column(nullable = false, length = 160)
+  private String actor;
+
+  @Column(nullable = false)
+  private Instant timestamp;
+}
+```
+
+#### RedFlagEntity
+
+```java
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "red_flags")
+@Getter
+@Setter
+public class RedFlagEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 16)
+  private RedFlagSeverity severity;
+
+  @Column(nullable = false, length = 200)
+  private String title;
+
+  @Column(nullable = false, length = 1000)
+  private String message;
+
+  @Column(nullable = false)
+  private boolean resolved;
+
+  @Column(name = "related_batch_id")
+  private UUID relatedBatchId;
+
+  @Column(nullable = false)
+  private Instant createdAt;
+
+  @Column(name = "resolved_at")
+  private Instant resolvedAt;
+}
+```
+
+#### InsightEntity
+
+```java
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "insights")
+@Getter
+@Setter
+public class InsightEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @Column(nullable = false, length = 200)
+  private String title;
+
+  @Column(nullable = false, length = 1500)
+  private String content;
+
+  @Column(name = "impact_category", nullable = false, length = 32)
+  private String impactCategory;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 16)
+  private InsightStatus status;
+
+  @Column(nullable = false)
+  private Instant timestamp;
+}
+```
+
+#### AnomalyEntity
+
+```java
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "anomalies")
+@Getter
+@Setter
+public class AnomalyEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @Column(nullable = false, length = 120)
+  private String process;
+
+  @Column(nullable = false, precision = 8, scale = 2)
+  private BigDecimal zScore;
+
+  @Column(nullable = false, precision = 14, scale = 3)
+  private BigDecimal wasteKg;
+
+  @Column(nullable = false, length = 32)
+  private String date;
+
+  @Column(nullable = false, length = 1000)
+  private String note;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 16)
+  private InsightStatus status;
+
+  @Column(nullable = false)
+  private Instant timestamp;
+}
+```
+
+#### UserSettingsEntity
+
+```java
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "user_settings")
+@Getter
+@Setter
+public class UserSettingsEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @Column(nullable = false, unique = true, length = 160)
+  private String userId;
+
+  @Column(nullable = false, length = 200)
+  private String company;
+
+  @Column(nullable = false, length = 160)
+  private String email;
+
+  @Column(nullable = false, length = 80)
+  private String role;
+
+  @Column(name = "daily_token_budget", nullable = false)
+  private Integer dailyTokenBudget;
+
+  @Column(name = "notify_anomalies", nullable = false)
+  private boolean notifyAnomalies;
+
+  @Column(name = "notify_recommendations", nullable = false)
+  private boolean notifyRecommendations;
+
+  @Column(name = "notify_overdue_batches", nullable = false)
+  private boolean notifyOverdueBatches;
+}
+```
+
+#### AiUsageLogEntity
+
+```java
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "ai_usage_logs")
+@Getter
+@Setter
+public class AiUsageLogEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @Column(nullable = false, length = 120)
+  private String userId;
+
+  @Column(nullable = false, length = 32)
+  private String feature;
+
+  @Column(nullable = false, length = 32)
+  private String provider;
+
+  @Column(nullable = false)
+  private Integer promptTokens;
+
+  @Column(nullable = false)
+  private Integer completionTokens;
+
+  @Column(nullable = false)
+  private Integer totalTokens;
+
+  @Column(nullable = false)
+  private boolean success;
+
+  @Column(length = 500)
+  private String errorCode;
+
+  @Column(nullable = false)
+  private Instant timestamp;
+}
+```
+
+#### AiJobRunEntity
+
+```java
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "ai_job_runs")
+@Getter
+@Setter
+public class AiJobRunEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @Column(nullable = false, length = 64)
+  private String jobName;
+
+  @Column(nullable = false, length = 32)
+  private String status;
+
+  @Column(nullable = false)
+  private Instant startedAt;
+
+  @Column
+  private Instant finishedAt;
+
+  @Column(length = 500)
+  private String errorMessage;
+}
+```
 ```
 
 ## 24. DTO Snippets (contract-ready starter)
@@ -1744,7 +2416,7 @@ This section extends Section 12 with practical security snippets you can impleme
 Recommended default:
 - Resource server mode with external IdP (Keycloak, Auth0, Azure AD, etc).
 - Backend validates bearer JWT.
-- Authorization is enforced via route rules plus method-level guards.
+- Authorization is enforced by authentication only (all /api/v1/** require a valid JWT).
 
 Optional fallback for early internal testing:
 - Local username/password auth module with issued JWT.
@@ -1820,7 +2492,6 @@ public class CorsConfig {
 
 ```java
 @Configuration
-@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -1828,9 +2499,7 @@ public class SecurityConfig {
   private final AccessDeniedHandler accessDeniedHandler;
 
   @Bean
-  SecurityFilterChain securityFilterChain(HttpSecurity http,
-                                          Converter<Jwt, ? extends AbstractAuthenticationToken> jwtAuthConverter)
-      throws Exception {
+  SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     http
       .csrf(csrf -> csrf.disable())
       .cors(Customizer.withDefaults())
@@ -1847,58 +2516,17 @@ public class SecurityConfig {
       )
       .authorizeHttpRequests(auth -> auth
         .requestMatchers("/actuator/health", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
-        .requestMatchers(HttpMethod.GET, "/api/v1/**").hasAnyRole("OPERATOR", "MANAGER", "ADMIN")
-        .requestMatchers(HttpMethod.POST, "/api/v1/**").hasAnyRole("OPERATOR", "MANAGER", "ADMIN")
-        .requestMatchers(HttpMethod.PUT, "/api/v1/**").hasAnyRole("MANAGER", "ADMIN")
-        .requestMatchers(HttpMethod.PATCH, "/api/v1/**").hasAnyRole("OPERATOR", "MANAGER", "ADMIN")
-        .requestMatchers(HttpMethod.DELETE, "/api/v1/**").hasRole("ADMIN")
+        .requestMatchers("/api/v1/**").authenticated()
         .anyRequest().authenticated()
       )
-      .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthConverter)));
+      .oauth2ResourceServer(oauth -> oauth.jwt(Customizer.withDefaults()));
 
     return http.build();
   }
 }
 ```
 
-### 27.6 JWT role mapping converter
-
-Map roles from common claims such as roles, realm_access.roles, or scope/scp.
-
-```java
-@Configuration
-public class JwtRoleConverterConfig {
-
-  @Bean
-  Converter<Jwt, AbstractAuthenticationToken> jwtAuthenticationConverter() {
-    return jwt -> {
-      Set<String> roles = new HashSet<>();
-
-      Object directRoles = jwt.getClaims().get("roles");
-      if (directRoles instanceof Collection<?> collection) {
-        collection.forEach(v -> roles.add(String.valueOf(v)));
-      }
-
-      Object realmAccess = jwt.getClaims().get("realm_access");
-      if (realmAccess instanceof Map<?, ?> map) {
-        Object realmRoles = map.get("roles");
-        if (realmRoles instanceof Collection<?> collection) {
-          collection.forEach(v -> roles.add(String.valueOf(v)));
-        }
-      }
-
-      Collection<GrantedAuthority> authorities = roles.stream()
-        .map(role -> role.startsWith("ROLE_") ? role : "ROLE_" + role.toUpperCase(Locale.ROOT))
-        .map(SimpleGrantedAuthority::new)
-        .toList();
-
-      return new JwtAuthenticationToken(jwt, authorities, jwt.getSubject());
-    };
-  }
-}
-```
-
-### 27.7 JSON auth error responses (401 and 403)
+### 27.6 JSON auth error responses (401 and 403)
 
 ```java
 @Component
@@ -1940,43 +2568,19 @@ public class JsonAccessDeniedHandler implements AccessDeniedHandler {
 }
 ```
 
-### 27.8 Method-level authorization examples
+### 27.7 Ownership checks pattern (no roles)
+
+Use explicit checks in the service layer for sensitive updates.
 
 ```java
-@Service
-@RequiredArgsConstructor
-public class SettingsServiceImpl implements SettingsService {
-
-  @Override
-  @PreAuthorize("hasAnyRole('OPERATOR','MANAGER','ADMIN')")
-  public UserSettingsResponse getMySettings(String userId) {
-    // load by userId
-  }
-
-  @Override
-  @PreAuthorize("#userId == authentication.name or hasAnyRole('MANAGER','ADMIN')")
-  public UserSettingsResponse updateMySettings(String userId, UpdateUserSettingsRequest request) {
-    // update own settings or manager/admin override
-  }
-}
-```
-
-### 27.9 Ownership and row-level checks pattern
-
-Use explicit checks in service layer for sensitive updates.
-
-```java
-private void ensureCanModifyBatch(BatchEntity batch, String actor, Collection<? extends GrantedAuthority> authz) {
-  boolean elevated = authz.stream().map(GrantedAuthority::getAuthority)
-    .anyMatch(role -> role.equals("ROLE_MANAGER") || role.equals("ROLE_ADMIN"));
-
-  if (!elevated && batch.getClosedBy() != null && !batch.getClosedBy().equals(actor)) {
+private void ensureCanModifyBatch(BatchEntity batch, String actor) {
+  if (batch.getClosedBy() != null && !batch.getClosedBy().equals(actor)) {
     throw new AccessDeniedException("Batch is owned by another operator.");
   }
 }
 ```
 
-### 27.10 OCR upload hardening
+### 27.8 OCR upload hardening
 
 Apply strict guards before sending files to OCR provider.
 
@@ -2003,7 +2607,7 @@ Hardening recommendations:
 - Reject SVG for OCR upload unless sanitized.
 - Add malware scanning hook for production.
 
-### 27.11 Rate limiting filter (optional but recommended)
+### 27.9 Rate limiting filter (optional but recommended)
 
 ```java
 @Component
@@ -2044,7 +2648,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
 Register filter before authentication if desired.
 
-### 27.12 Security event auditing
+### 27.10 Security event auditing
 
 Log these events to activity/audit streams:
 - authentication failures (without sensitive token dump)
@@ -2068,7 +2672,7 @@ public void writeSecurityAudit(String actor, String action, String detail) {
 }
 ```
 
-### 27.13 Secrets and key management
+### 27.11 Secrets and key management
 
 Production rules:
 - Never commit JWT issuer URIs, client secrets, API keys, DB passwords to git.
@@ -2086,7 +2690,7 @@ SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI
 OCR_PROVIDER_API_KEY
 ```
 
-### 27.14 Security testing checklist
+### 27.12 Security testing checklist
 
 1. Unauthorized request returns 401 JSON shape.
 2. Authenticated but insufficient role returns 403 JSON shape.
@@ -2097,7 +2701,7 @@ OCR_PROVIDER_API_KEY
 7. Close batch high-variance rule cannot be bypassed.
 8. No stack trace leaks in API error responses.
 
-### 27.15 Optional local-auth bootstrap (non-production profile)
+### 27.13 Optional local-auth bootstrap (non-production profile)
 
 If external IdP is not ready, you can temporarily add:
 - POST /api/v1/auth/login
