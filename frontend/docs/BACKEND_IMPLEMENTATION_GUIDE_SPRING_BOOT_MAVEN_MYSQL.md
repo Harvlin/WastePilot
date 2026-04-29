@@ -12,7 +12,6 @@ Target stack:
 - Spring Security (JWT/OAuth2 resource server)
 - Spring Data JPA
 - MapStruct
-- Flyway
 - Docker + Docker Compose
 
 Use this document as the default execution plan for backend engineering.
@@ -86,201 +85,27 @@ wastepilot-backend/
       ai/
       logging/
   src/main/resources/
-    application.yml
-    application-dev.yml
-    application-prod.yml
-    db/migration/
-      V1__init_schema.sql
-      V2__seed_reference_data.sql
+    application.properties
+    application-docker.properties
   src/test/java/
 ```
 
 ## 4. Maven Configuration
 
-Use this as baseline dependencies:
+Maven setup is implemented in [wastepilot/pom.xml](wastepilot/pom.xml).
+Keep dependency changes there to avoid duplication in this guide.
 
-```xml
-<project>
-  <modelVersion>4.0.0</modelVersion>
-  <groupId>com.wastepilot</groupId>
-  <artifactId>wastepilot-backend</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
+## 5. Configuration (application properties)
 
-  <parent>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.3.2</version>
-  </parent>
+Configuration is implemented in:
+- [wastepilot/src/main/resources/application.properties](wastepilot/src/main/resources/application.properties)
+- [wastepilot/src/main/resources/application-docker.properties](wastepilot/src/main/resources/application-docker.properties)
 
-  <properties>
-    <java.version>21</java.version>
-    <mapstruct.version>1.5.5.Final</mapstruct.version>
-  </properties>
-
-  <dependencies>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-web</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-validation</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-data-jpa</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-security</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>mysql</groupId>
-      <artifactId>mysql-connector-j</artifactId>
-      <scope>runtime</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.flywaydb</groupId>
-      <artifactId>flyway-core</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.mapstruct</groupId>
-      <artifactId>mapstruct</artifactId>
-      <version>${mapstruct.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.projectlombok</groupId>
-      <artifactId>lombok</artifactId>
-      <optional>true</optional>
-    </dependency>
-    <dependency>
-      <groupId>org.springdoc</groupId>
-      <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-      <version>2.6.0</version>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-actuator</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-test</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.testcontainers</groupId>
-      <artifactId>junit-jupiter</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.testcontainers</groupId>
-      <artifactId>mysql</artifactId>
-      <scope>test</scope>
-    </dependency>
-  </dependencies>
-
-  <build>
-    <plugins>
-      <plugin>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-maven-plugin</artifactId>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <configuration>
-          <source>${java.version}</source>
-          <target>${java.version}</target>
-          <annotationProcessorPaths>
-            <path>
-              <groupId>org.mapstruct</groupId>
-              <artifactId>mapstruct-processor</artifactId>
-              <version>${mapstruct.version}</version>
-            </path>
-            <path>
-              <groupId>org.projectlombok</groupId>
-              <artifactId>lombok</artifactId>
-            </path>
-          </annotationProcessorPaths>
-        </configuration>
-      </plugin>
-    </plugins>
-  </build>
-</project>
-```
-
-## 5. Configuration (application.yml)
-
-Use UTC as canonical server timezone.
-
-```yaml
-server:
-  port: 8080
-
-spring:
-  application:
-    name: wastepilot-backend
-  datasource:
-    url: jdbc:mysql://localhost:3306/wastepilot?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-    username: wastepilot
-    password: wastepilot
-  jpa:
-    open-in-view: false
-    hibernate:
-      ddl-auto: validate
-    properties:
-      hibernate:
-        format_sql: true
-        jdbc:
-          time_zone: UTC
-  flyway:
-    enabled: true
-    locations: classpath:db/migration
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics,prometheus
-
-wastepilot:
-  ops:
-    close-variance-threshold: 5
-  security:
-    cors-allowed-origins:
-      - http://localhost:5173
-  ai:
-    ocr-provider: gemini
-    recommendations-enabled: true
-```
-
-Profile examples:
-
-```yaml
-# application-dev.yml
-spring:
-  jpa:
-    hibernate:
-      ddl-auto: update
-
-# application-prod.yml
-spring:
-  jpa:
-    hibernate:
-      ddl-auto: validate
-logging:
-  level:
-    root: INFO
-```
+Use UTC as canonical timezone and rely on env vars for DB and runtime settings.
 
 DDL guidance:
 - Local dev only: ddl-auto=update is acceptable for speed.
-- Shared/prod environments: use Flyway and keep ddl-auto=validate.
+- Shared/prod environments: use ddl-auto=validate and manage schema changes manually.
 
 ## 6. Core Domain Entities
 
@@ -297,6 +122,8 @@ Minimum entity set:
 - InsightEntity
 - AnomalyEntity
 - UserSettingsEntity
+- AiUsageLogEntity (AI usage logs)
+- AiJobRunEntity (AI job runs)
 
 Example entity:
 
@@ -499,7 +326,7 @@ public class OperationsController {
 
 Minimum production baseline:
 - Stateless JWT bearer authentication
-- Role-based authorization (e.g., ROLE_OPERATOR, ROLE_MANAGER, ROLE_ADMIN)
+- Single access level (authenticated users only)
 - CORS allow frontend origin only
 - CSRF disabled for stateless API
 
@@ -514,10 +341,7 @@ SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
     .authorizeHttpRequests(auth -> auth
       .requestMatchers("/actuator/health", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
-      .requestMatchers(HttpMethod.GET, "/api/v1/**").hasAnyRole("OPERATOR", "MANAGER", "ADMIN")
-      .requestMatchers(HttpMethod.POST, "/api/v1/**").hasAnyRole("OPERATOR", "MANAGER", "ADMIN")
-      .requestMatchers(HttpMethod.PUT, "/api/v1/**").hasAnyRole("MANAGER", "ADMIN")
-      .requestMatchers(HttpMethod.PATCH, "/api/v1/**").hasAnyRole("OPERATOR", "MANAGER", "ADMIN")
+      .requestMatchers("/api/v1/**").authenticated()
       .anyRequest().authenticated()
     )
     .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
@@ -562,80 +386,18 @@ Backend must:
 
 ## 14. Dockerization
 
-### 14.1 Dockerfile
+Docker setup is implemented in:
+- [wastepilot/Dockerfile](wastepilot/Dockerfile)
+- [wastepilot/docker-compose.yml](wastepilot/docker-compose.yml)
+- [wastepilot/.env](wastepilot/.env)
 
-```dockerfile
-FROM maven:3.9.8-eclipse-temurin-21 AS build
-WORKDIR /app
-COPY pom.xml .
-COPY src ./src
-RUN mvn -DskipTests clean package
+## 15. Schema Management (No Flyway)
 
-FROM eclipse-temurin:21-jre
-WORKDIR /app
-COPY --from=build /app/target/wastepilot-backend-0.0.1-SNAPSHOT.jar app.jar
-EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
-```
-
-### 14.2 docker-compose.yml
-
-```yaml
-version: "3.9"
-services:
-  mysql:
-    image: mysql:8.4
-    container_name: wastepilot-mysql
-    environment:
-      MYSQL_DATABASE: wastepilot
-      MYSQL_USER: wastepilot
-      MYSQL_PASSWORD: wastepilot
-      MYSQL_ROOT_PASSWORD: root
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-
-  api:
-    build: .
-    container_name: wastepilot-api
-    depends_on:
-      - mysql
-    environment:
-      SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/wastepilot?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      SPRING_DATASOURCE_USERNAME: wastepilot
-      SPRING_DATASOURCE_PASSWORD: wastepilot
-    ports:
-      - "8080:8080"
-
-volumes:
-  mysql_data:
-```
-
-## 15. Flyway Migration Starter
-
-Example V1 migration outline:
-
-```sql
-CREATE TABLE materials (...);
-CREATE TABLE templates (...);
-CREATE TABLE template_lines (...);
-CREATE TABLE batches (...);
-CREATE TABLE inventory_logs (...);
-CREATE TABLE waste_logs (...);
-CREATE TABLE activity_logs (...);
-CREATE TABLE audit_trail (...);
-CREATE TABLE red_flags (...);
-CREATE TABLE insights (...);
-CREATE TABLE anomalies (...);
-CREATE TABLE user_settings (...);
-```
-
-Guidelines:
-- Keep all timestamps in UTC
-- Add indexes for batchId, timestamp, status
-- Add unique constraints where domain requires (e.g., material name)
+Use JPA `ddl-auto` for local development only, and manage schema changes manually for shared/prod.
+Recommended rules:
+- Keep all timestamps in UTC.
+- Add indexes for batchId, timestamp, and status.
+- Add unique constraints where the domain requires (e.g., material name).
 
 ## 16. Error Handling Contract
 
@@ -696,7 +458,7 @@ Critical path integration tests:
 ## 19. Feature Delivery Roadmap
 
 Phase 1 (foundation):
-- project skeleton, Flyway, security baseline
+- project skeleton, security baseline
 - materials/templates/settings CRUD
 
 Phase 2 (operations core):
@@ -1207,6 +969,751 @@ public class UserSettingsEntity {
 }
 ```
 
+#### AiUsageLogEntity
+
+```java
+@Entity
+@Table(name = "ai_usage_logs")
+@Getter
+@Setter
+public class AiUsageLogEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @Column(nullable = false, length = 120)
+  private String userId;
+
+  @Column(nullable = false, length = 32)
+  private String feature; // OCR | INSIGHTS | ANOMALY
+
+  @Column(nullable = false, length = 32)
+  private String provider;
+
+  @Column(nullable = false)
+  private Integer promptTokens;
+
+  @Column(nullable = false)
+  private Integer completionTokens;
+
+  @Column(nullable = false)
+  private Integer totalTokens;
+
+  @Column(nullable = false)
+  private boolean success;
+
+  @Column(length = 500)
+  private String errorCode;
+
+  @Column(nullable = false)
+  private Instant timestamp;
+}
+```
+
+#### AiJobRunEntity
+
+```java
+@Entity
+@Table(name = "ai_job_runs")
+@Getter
+@Setter
+public class AiJobRunEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @Column(nullable = false, length = 64)
+  private String jobName; // RECOMMENDATION_GENERATION | ANOMALY_DETECTION
+
+  @Column(nullable = false, length = 32)
+  private String status; // STARTED | SUCCESS | FAILED
+
+  @Column(nullable = false)
+  private Instant startedAt;
+
+  @Column
+  private Instant finishedAt;
+
+  @Column(length = 500)
+  private String errorMessage;
+}
+
+```
+
+### 23.4 Full entity code (copy-ready)
+
+Use the same package layout described in Section 3. The blocks below omit the `package` line so you can paste into the correct domain folder.
+
+#### MaterialEntity
+
+```java
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "materials")
+@Getter
+@Setter
+public class MaterialEntity extends AuditableEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @Column(nullable = false, unique = true, length = 160)
+  private String name;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 32)
+  private MaterialCategory category;
+
+  @Column(nullable = false, length = 16)
+  private String unit;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 1)
+  private CircularGrade circularGrade;
+
+  @Column(nullable = false, precision = 14, scale = 3)
+  private BigDecimal stock;
+
+  @Column(nullable = false, length = 120)
+  private String supplier;
+}
+```
+
+#### TemplateEntity
+
+```java
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "templates")
+@Getter
+@Setter
+public class TemplateEntity extends AuditableEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @Column(nullable = false, length = 160)
+  private String name;
+
+  @Column(nullable = false, unique = true, length = 80)
+  private String sku;
+
+  @Column(name = "expected_waste_kg", nullable = false, precision = 14, scale = 3)
+  private BigDecimal expectedWasteKg;
+
+  @OneToMany(mappedBy = "template", cascade = CascadeType.ALL, orphanRemoval = true)
+  private List<TemplateLineEntity> lines = new ArrayList<>();
+}
+```
+
+#### TemplateLineEntity
+
+```java
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "template_lines")
+@Getter
+@Setter
+public class TemplateLineEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "template_id", nullable = false)
+  private TemplateEntity template;
+
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "material_id", nullable = false)
+  private MaterialEntity material;
+
+  @Column(nullable = false, precision = 14, scale = 3)
+  private BigDecimal quantity;
+
+  @Column(nullable = false, length = 16)
+  private String unit;
+}
+```
+
+#### BatchEntity
+
+```java
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "batches")
+@Getter
+@Setter
+public class BatchEntity extends AuditableEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @Column(name = "template_name", nullable = false, length = 160)
+  private String templateName;
+
+  @Column(name = "started_at", nullable = false)
+  private Instant startedAt;
+
+  @Column(name = "output_units", nullable = false, precision = 14, scale = 3)
+  private BigDecimal outputUnits;
+
+  @Column(name = "waste_kg", nullable = false, precision = 14, scale = 3)
+  private BigDecimal wasteKg;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 16)
+  private BatchStatus status;
+
+  @Column(name = "closed_at")
+  private Instant closedAt;
+
+  @Column(name = "closed_by", length = 120)
+  private String closedBy;
+
+  @Column(name = "close_reason", length = 500)
+  private String closeReason;
+}
+```
+
+#### InventoryLogEntity
+
+```java
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "inventory_logs")
+@Getter
+@Setter
+public class InventoryLogEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "batch_id")
+  private BatchEntity batch;
+
+  @Column(name = "material_name", nullable = false, length = 160)
+  private String materialName;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 8)
+  private InventoryType type;
+
+  @Column(nullable = false, precision = 14, scale = 3)
+  private BigDecimal quantity;
+
+  @Column(nullable = false, length = 16)
+  private String unit;
+
+  @Column(nullable = false, length = 32)
+  private String source;
+
+  @Column(nullable = false)
+  private Instant timestamp;
+}
+```
+
+#### WasteLogEntity
+
+```java
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "waste_logs")
+@Getter
+@Setter
+public class WasteLogEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "batch_id", nullable = false)
+  private BatchEntity batch;
+
+  @Column(name = "material_name", nullable = false, length = 160)
+  private String materialName;
+
+  @Column(name = "quantity_kg", nullable = false, precision = 14, scale = 3)
+  private BigDecimal quantityKg;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 16)
+  private WasteDestination destination;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "recovery_status", nullable = false, length = 24)
+  private RecoveryStatus recoveryStatus;
+
+  @Column(name = "ai_suggested_action", length = 500)
+  private String aiSuggestedAction;
+
+  @Column(nullable = false)
+  private Instant timestamp;
+}
+```
+
+#### ActivityLogEntity
+
+```java
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "activity_logs")
+@Getter
+@Setter
+public class ActivityLogEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 32)
+  private EntityType entity;
+
+  @Column(name = "entity_id", nullable = false, length = 64)
+  private String entityId;
+
+  @Column(nullable = false, length = 64)
+  private String action;
+
+  @Column(nullable = false, length = 160)
+  private String actor;
+
+  @Column(nullable = false, length = 500)
+  private String detail;
+
+  @Column(nullable = false)
+  private Instant timestamp;
+}
+```
+
+#### AuditTrailEntity
+
+```java
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "audit_trail")
+@Getter
+@Setter
+public class AuditTrailEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 32)
+  private EntityType entity;
+
+  @Column(name = "entity_id", nullable = false, length = 64)
+  private String entityId;
+
+  @Column(nullable = false, length = 64)
+  private String field;
+
+  @Column(name = "old_value", length = 500)
+  private String oldValue;
+
+  @Column(name = "new_value", length = 500)
+  private String newValue;
+
+  @Column(nullable = false, length = 160)
+  private String actor;
+
+  @Column(nullable = false)
+  private Instant timestamp;
+}
+```
+
+#### RedFlagEntity
+
+```java
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "red_flags")
+@Getter
+@Setter
+public class RedFlagEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 16)
+  private RedFlagSeverity severity;
+
+  @Column(nullable = false, length = 200)
+  private String title;
+
+  @Column(nullable = false, length = 1000)
+  private String message;
+
+  @Column(nullable = false)
+  private boolean resolved;
+
+  @Column(name = "related_batch_id")
+  private UUID relatedBatchId;
+
+  @Column(nullable = false)
+  private Instant createdAt;
+
+  @Column(name = "resolved_at")
+  private Instant resolvedAt;
+}
+```
+
+#### InsightEntity
+
+```java
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "insights")
+@Getter
+@Setter
+public class InsightEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @Column(nullable = false, length = 200)
+  private String title;
+
+  @Column(nullable = false, length = 1500)
+  private String content;
+
+  @Column(name = "impact_category", nullable = false, length = 32)
+  private String impactCategory;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 16)
+  private InsightStatus status;
+
+  @Column(nullable = false)
+  private Instant timestamp;
+}
+```
+
+#### AnomalyEntity
+
+```java
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "anomalies")
+@Getter
+@Setter
+public class AnomalyEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @Column(nullable = false, length = 120)
+  private String process;
+
+  @Column(nullable = false, precision = 8, scale = 2)
+  private BigDecimal zScore;
+
+  @Column(nullable = false, precision = 14, scale = 3)
+  private BigDecimal wasteKg;
+
+  @Column(nullable = false, length = 32)
+  private String date;
+
+  @Column(nullable = false, length = 1000)
+  private String note;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 16)
+  private InsightStatus status;
+
+  @Column(nullable = false)
+  private Instant timestamp;
+}
+```
+
+#### UserSettingsEntity
+
+```java
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "user_settings")
+@Getter
+@Setter
+public class UserSettingsEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @Column(nullable = false, unique = true, length = 160)
+  private String userId;
+
+  @Column(nullable = false, length = 200)
+  private String company;
+
+  @Column(nullable = false, length = 160)
+  private String email;
+
+  @Column(nullable = false, length = 80)
+  private String role;
+
+  @Column(name = "daily_token_budget", nullable = false)
+  private Integer dailyTokenBudget;
+
+  @Column(name = "notify_anomalies", nullable = false)
+  private boolean notifyAnomalies;
+
+  @Column(name = "notify_recommendations", nullable = false)
+  private boolean notifyRecommendations;
+
+  @Column(name = "notify_overdue_batches", nullable = false)
+  private boolean notifyOverdueBatches;
+}
+```
+
+#### AiUsageLogEntity
+
+```java
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "ai_usage_logs")
+@Getter
+@Setter
+public class AiUsageLogEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @Column(nullable = false, length = 120)
+  private String userId;
+
+  @Column(nullable = false, length = 32)
+  private String feature;
+
+  @Column(nullable = false, length = 32)
+  private String provider;
+
+  @Column(nullable = false)
+  private Integer promptTokens;
+
+  @Column(nullable = false)
+  private Integer completionTokens;
+
+  @Column(nullable = false)
+  private Integer totalTokens;
+
+  @Column(nullable = false)
+  private boolean success;
+
+  @Column(length = 500)
+  private String errorCode;
+
+  @Column(nullable = false)
+  private Instant timestamp;
+}
+```
+
+#### AiJobRunEntity
+
+```java
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "ai_job_runs")
+@Getter
+@Setter
+public class AiJobRunEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @Column(nullable = false, length = 64)
+  private String jobName;
+
+  @Column(nullable = false, length = 32)
+  private String status;
+
+  @Column(nullable = false)
+  private Instant startedAt;
+
+  @Column
+  private Instant finishedAt;
+
+  @Column(length = 500)
+  private String errorMessage;
+}
+```
+```
+
 ## 24. DTO Snippets (contract-ready starter)
 
 ### 24.1 Common
@@ -1532,10 +2039,12 @@ public interface BatchRepository extends JpaRepository<BatchEntity, UUID> {
 public interface InventoryLogRepository extends JpaRepository<InventoryLogEntity, UUID> {
   List<InventoryLogEntity> findByBatchIdOrderByTimestampDesc(UUID batchId);
   List<InventoryLogEntity> findByMaterialNameIgnoreCaseOrderByTimestampDesc(String materialName);
+  List<InventoryLogEntity> findTop200ByOrderByTimestampDesc();
 }
 
 public interface WasteLogRepository extends JpaRepository<WasteLogEntity, UUID> {
   List<WasteLogEntity> findByBatchIdOrderByTimestampDesc(UUID batchId);
+  List<WasteLogEntity> findTop200ByOrderByTimestampDesc();
 
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("select w from WasteLogEntity w where w.id = :id")
@@ -1632,6 +2141,108 @@ public interface OperationsService {
   WasteRecoveryResponse recoverWasteToInventory(RecoverWasteRequest request, String actor);
   BatchCloseSummaryResponse getBatchCloseSummary(String batchId);
   BatchCloseSummaryResponse closeBatch(CloseBatchRequest request, String actor);
+}
+```
+
+### 26.4.1 Input normalization + validation helper (recommended)
+
+Keep semantic validation in services while normalizing input early:
+
+```java
+private static String requireTrim(String value, String field) {
+  if (value == null || value.trim().isEmpty()) {
+    throw new BusinessException(field + " is required.");
+  }
+  return value.trim();
+}
+
+private static <E extends Enum<E>> E parseEnum(Class<E> type, String value, String field) {
+  try {
+    return Enum.valueOf(type, value.trim());
+  } catch (Exception ex) {
+    throw new BusinessException("Invalid " + field + ": " + value);
+  }
+}
+```
+
+Use these helpers in every service method before persisting.
+
+### 26.4.2 Activity + audit writer helper
+
+Centralize audit writes to avoid duplicate logic:
+
+```java
+@Component
+@RequiredArgsConstructor
+public class AuditWriter {
+  private final ActivityLogRepository activityLogRepository;
+  private final AuditTrailRepository auditTrailRepository;
+
+  public void activity(EntityType entity, String entityId, String action, String actor, String detail) {
+    ActivityLogEntity log = new ActivityLogEntity();
+    log.setEntity(entity);
+    log.setEntityId(entityId);
+    log.setAction(action);
+    log.setActor(actor);
+    log.setDetail(detail);
+    log.setTimestamp(Instant.now());
+    activityLogRepository.save(log);
+  }
+
+  public void audit(EntityType entity, String entityId, String field,
+                    String oldValue, String newValue, String actor) {
+    AuditTrailEntity audit = new AuditTrailEntity();
+    audit.setEntity(entity);
+    audit.setEntityId(entityId);
+    audit.setField(field);
+    audit.setOldValue(oldValue);
+    audit.setNewValue(newValue);
+    audit.setActor(actor);
+    audit.setTimestamp(Instant.now());
+    auditTrailRepository.save(audit);
+  }
+}
+```
+
+### 26.4.3 Operations payload read-model assembly
+
+Keep the list endpoints fast and consistent by aggregating once:
+
+```java
+@Transactional(readOnly = true)
+public OperationsPayloadResponse getOperationsPayload() {
+  List<BatchResponse> batches = batchRepository.findByStatusOrderByStartedAtDesc(BatchStatus.running)
+    .stream().map(batchMapper::toResponse).toList();
+
+  List<InventoryLogResponse> inventoryLogs = inventoryLogRepository.findTop200ByOrderByTimestampDesc()
+    .stream().map(inventoryMapper::toResponse).toList();
+
+  List<WasteLogResponse> wasteLogs = wasteLogRepository.findTop200ByOrderByTimestampDesc()
+    .stream().map(wasteMapper::toResponse).toList();
+
+  return new OperationsPayloadResponse(batches, inventoryLogs, wasteLogs);
+}
+```
+
+### 26.4.4 Status patch pattern (insight/anomaly)
+
+Patch endpoints should be idempotent and validate allowed status values:
+
+```java
+@Transactional
+public CircularInsightResponse updateInsightStatus(UUID id, StatusPatchRequest request, String actor) {
+  InsightStatus status = parseEnum(InsightStatus.class, request.status(), "status");
+  InsightEntity entity = insightRepository.findById(id)
+    .orElseThrow(() -> new NotFoundException("Insight not found."));
+
+  String oldStatus = entity.getStatus().name();
+  entity.setStatus(status);
+  insightRepository.save(entity);
+
+  auditWriter.activity(EntityType.insight, entity.getId().toString(), "status_patch",
+    actor, "Status " + oldStatus + " -> " + status.name());
+
+  return insightMapper.toResponse(entity);
 }
 ```
 
@@ -1805,7 +2416,7 @@ This section extends Section 12 with practical security snippets you can impleme
 Recommended default:
 - Resource server mode with external IdP (Keycloak, Auth0, Azure AD, etc).
 - Backend validates bearer JWT.
-- Authorization is enforced via route rules plus method-level guards.
+- Authorization is enforced by authentication only (all /api/v1/** require a valid JWT).
 
 Optional fallback for early internal testing:
 - Local username/password auth module with issued JWT.
@@ -1881,7 +2492,6 @@ public class CorsConfig {
 
 ```java
 @Configuration
-@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -1889,9 +2499,7 @@ public class SecurityConfig {
   private final AccessDeniedHandler accessDeniedHandler;
 
   @Bean
-  SecurityFilterChain securityFilterChain(HttpSecurity http,
-                                          Converter<Jwt, ? extends AbstractAuthenticationToken> jwtAuthConverter)
-      throws Exception {
+  SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     http
       .csrf(csrf -> csrf.disable())
       .cors(Customizer.withDefaults())
@@ -1908,58 +2516,17 @@ public class SecurityConfig {
       )
       .authorizeHttpRequests(auth -> auth
         .requestMatchers("/actuator/health", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
-        .requestMatchers(HttpMethod.GET, "/api/v1/**").hasAnyRole("OPERATOR", "MANAGER", "ADMIN")
-        .requestMatchers(HttpMethod.POST, "/api/v1/**").hasAnyRole("OPERATOR", "MANAGER", "ADMIN")
-        .requestMatchers(HttpMethod.PUT, "/api/v1/**").hasAnyRole("MANAGER", "ADMIN")
-        .requestMatchers(HttpMethod.PATCH, "/api/v1/**").hasAnyRole("OPERATOR", "MANAGER", "ADMIN")
-        .requestMatchers(HttpMethod.DELETE, "/api/v1/**").hasRole("ADMIN")
+        .requestMatchers("/api/v1/**").authenticated()
         .anyRequest().authenticated()
       )
-      .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthConverter)));
+      .oauth2ResourceServer(oauth -> oauth.jwt(Customizer.withDefaults()));
 
     return http.build();
   }
 }
 ```
 
-### 27.6 JWT role mapping converter
-
-Map roles from common claims such as roles, realm_access.roles, or scope/scp.
-
-```java
-@Configuration
-public class JwtRoleConverterConfig {
-
-  @Bean
-  Converter<Jwt, AbstractAuthenticationToken> jwtAuthenticationConverter() {
-    return jwt -> {
-      Set<String> roles = new HashSet<>();
-
-      Object directRoles = jwt.getClaims().get("roles");
-      if (directRoles instanceof Collection<?> collection) {
-        collection.forEach(v -> roles.add(String.valueOf(v)));
-      }
-
-      Object realmAccess = jwt.getClaims().get("realm_access");
-      if (realmAccess instanceof Map<?, ?> map) {
-        Object realmRoles = map.get("roles");
-        if (realmRoles instanceof Collection<?> collection) {
-          collection.forEach(v -> roles.add(String.valueOf(v)));
-        }
-      }
-
-      Collection<GrantedAuthority> authorities = roles.stream()
-        .map(role -> role.startsWith("ROLE_") ? role : "ROLE_" + role.toUpperCase(Locale.ROOT))
-        .map(SimpleGrantedAuthority::new)
-        .toList();
-
-      return new JwtAuthenticationToken(jwt, authorities, jwt.getSubject());
-    };
-  }
-}
-```
-
-### 27.7 JSON auth error responses (401 and 403)
+### 27.6 JSON auth error responses (401 and 403)
 
 ```java
 @Component
@@ -2001,43 +2568,19 @@ public class JsonAccessDeniedHandler implements AccessDeniedHandler {
 }
 ```
 
-### 27.8 Method-level authorization examples
+### 27.7 Ownership checks pattern (no roles)
+
+Use explicit checks in the service layer for sensitive updates.
 
 ```java
-@Service
-@RequiredArgsConstructor
-public class SettingsServiceImpl implements SettingsService {
-
-  @Override
-  @PreAuthorize("hasAnyRole('OPERATOR','MANAGER','ADMIN')")
-  public UserSettingsResponse getMySettings(String userId) {
-    // load by userId
-  }
-
-  @Override
-  @PreAuthorize("#userId == authentication.name or hasAnyRole('MANAGER','ADMIN')")
-  public UserSettingsResponse updateMySettings(String userId, UpdateUserSettingsRequest request) {
-    // update own settings or manager/admin override
-  }
-}
-```
-
-### 27.9 Ownership and row-level checks pattern
-
-Use explicit checks in service layer for sensitive updates.
-
-```java
-private void ensureCanModifyBatch(BatchEntity batch, String actor, Collection<? extends GrantedAuthority> authz) {
-  boolean elevated = authz.stream().map(GrantedAuthority::getAuthority)
-    .anyMatch(role -> role.equals("ROLE_MANAGER") || role.equals("ROLE_ADMIN"));
-
-  if (!elevated && batch.getClosedBy() != null && !batch.getClosedBy().equals(actor)) {
+private void ensureCanModifyBatch(BatchEntity batch, String actor) {
+  if (batch.getClosedBy() != null && !batch.getClosedBy().equals(actor)) {
     throw new AccessDeniedException("Batch is owned by another operator.");
   }
 }
 ```
 
-### 27.10 OCR upload hardening
+### 27.8 OCR upload hardening
 
 Apply strict guards before sending files to OCR provider.
 
@@ -2064,7 +2607,7 @@ Hardening recommendations:
 - Reject SVG for OCR upload unless sanitized.
 - Add malware scanning hook for production.
 
-### 27.11 Rate limiting filter (optional but recommended)
+### 27.9 Rate limiting filter (optional but recommended)
 
 ```java
 @Component
@@ -2105,7 +2648,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
 Register filter before authentication if desired.
 
-### 27.12 Security event auditing
+### 27.10 Security event auditing
 
 Log these events to activity/audit streams:
 - authentication failures (without sensitive token dump)
@@ -2129,7 +2672,7 @@ public void writeSecurityAudit(String actor, String action, String detail) {
 }
 ```
 
-### 27.13 Secrets and key management
+### 27.11 Secrets and key management
 
 Production rules:
 - Never commit JWT issuer URIs, client secrets, API keys, DB passwords to git.
@@ -2147,7 +2690,7 @@ SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI
 OCR_PROVIDER_API_KEY
 ```
 
-### 27.14 Security testing checklist
+### 27.12 Security testing checklist
 
 1. Unauthorized request returns 401 JSON shape.
 2. Authenticated but insufficient role returns 403 JSON shape.
@@ -2158,7 +2701,7 @@ OCR_PROVIDER_API_KEY
 7. Close batch high-variance rule cannot be bypassed.
 8. No stack trace leaks in API error responses.
 
-### 27.15 Optional local-auth bootstrap (non-production profile)
+### 27.13 Optional local-auth bootstrap (non-production profile)
 
 If external IdP is not ready, you can temporarily add:
 - POST /api/v1/auth/login
