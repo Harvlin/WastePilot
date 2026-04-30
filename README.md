@@ -65,6 +65,20 @@ Fokus utama proyek ini adalah membuat sistem yang **langsung bisa dipakai operas
 
 ---
 
+## AI Strategy (Practical & Cost-Efficient)
+
+WastePilot disiapkan dengan pendekatan **AI-ready, production-safe**:
+
+- **Current mode:** AI-dependent flow tetap tersedia melalui mock/fallback agar operasional tidak terblokir.
+- **Planned provider:** `Google Gemini API` sebagai primary AI service karena integrasi cepat dan biaya rendah (tersedia free tier untuk tahap awal).
+- **Scope implementasi AI bertahap:**
+  - `AI Vision Scan` untuk ekstraksi invoice/material line.
+  - `Insights` untuk rekomendasi aksi pengurangan waste dan tindak lanjut anomali.
+
+Pendekatan ini menjaga keseimbangan antara **time-to-market**, **biaya**, dan **maintainability**.
+
+---
+
 ## Panduan Penggunaan (Diambil dari halaman `/how-to-use`)
 
 Bagian ini mencerminkan workflow aktual yang ada di aplikasi.
