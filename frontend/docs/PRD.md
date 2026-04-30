@@ -133,7 +133,7 @@ Implemented capabilities:
 - Waste trend chart
 - Anomaly highlight
 - Insights preview cards
-- Data Integrity Pulse (avg confidence, open red flags, post-score edits, overdue closures)
+- Data Integrity Pulse (avg confidence, open red flags, overdue closures)
 - Score methodology explanation text
 
 ### 6.5 Operations
@@ -308,7 +308,6 @@ Decision:
 ### 7.4 Integrity Requirements
 
 - User actions must create activity log and/or audit trail records where relevant.
-- Post-score edits must be traceable and reflected in integrity signals.
 - Batch close must produce summary and confidence context.
 
 ### 7.5 How-to-Use Requirements

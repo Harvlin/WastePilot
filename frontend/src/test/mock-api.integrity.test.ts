@@ -111,28 +111,7 @@ describe("mock-api integrity and scoring flows", () => {
     expect(closed?.closedAt).toBeTruthy();
   });
 
-  it("flags post-score edits in audit trail", async () => {
-    const api = await loadMockApi();
 
-    await api.closeBatch({
-      batchId: "B-102",
-      outputUnits: 340,
-      closeReason: "Closing with verified count",
-    });
-
-    await api.createWasteLog({
-      batchId: "B-102",
-      materialName: "Late recorded trim",
-      quantityKg: 2,
-      destination: "dispose",
-      reason: "Delayed operator update",
-      aiSuggestedAction: "Review end-of-shift checklist",
-      isRepurposed: false,
-    });
-
-    const trail = await api.fetchAuditTrail("B-102");
-    expect(trail.some((entry) => entry.postScoreEditFlag)).toBe(true);
-  });
 
   it("provides integrity overview and bounded dashboard score", async () => {
     const api = await loadMockApi();

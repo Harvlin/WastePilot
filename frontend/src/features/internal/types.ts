@@ -150,14 +150,13 @@ export interface AuditTrailEntry {
   editedBy: string;
   editedAt: string;
   reason: string;
-  postScoreEditFlag: boolean;
 }
 
 export interface BatchRedFlag {
   id: string;
   batchId: string;
   severity: "low" | "medium" | "high";
-  type: "variance" | "post-score-edit" | "overdue-close" | "landfill-risk";
+  type: "variance" | "overdue-close" | "landfill-risk";
   message: string;
   createdAt: string;
   resolvedAt?: string;
@@ -192,7 +191,6 @@ export interface BatchCloseSummary {
 export interface IntegrityOverview {
   averageConfidenceScore: number;
   openRedFlags: number;
-  postScoreEdits: number;
   overdueBatchClosures: number;
 }
 

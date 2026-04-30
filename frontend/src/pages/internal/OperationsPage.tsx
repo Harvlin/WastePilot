@@ -1154,7 +1154,7 @@ const OperationsPage = () => {
               <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} className="space-y-4">
                 {/* ── Integrity Overview Summary Strip ── */}
                 {integrityOverview && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <motion.div
                       initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
                       className="liquid-glass rounded-2xl p-4 border border-white/10"
@@ -1185,17 +1185,7 @@ const OperationsPage = () => {
                       <p className="text-white/40 text-xs font-body mt-2">{integrityOverview.openRedFlags === 0 ? "All clear" : "Needs attention"}</p>
                     </motion.div>
 
-                    <motion.div
-                      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-                      className="liquid-glass rounded-2xl p-4 border border-white/10"
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <Eye className="w-4 h-4 text-sky-300/70" />
-                        <p className="text-white/55 text-xs font-body uppercase tracking-wide">Post-Score Edits</p>
-                      </div>
-                      <p className={`text-2xl font-heading italic ${integrityOverview.postScoreEdits > 0 ? "text-amber-300" : "text-white"}`}>{integrityOverview.postScoreEdits}</p>
-                      <p className="text-white/40 text-xs font-body mt-2">{integrityOverview.postScoreEdits === 0 ? "No edits after scoring" : "Traceable edits flagged"}</p>
-                    </motion.div>
+
 
                     <motion.div
                       initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
@@ -1315,11 +1305,7 @@ const OperationsPage = () => {
                             initial={{ opacity: 0, x: -6 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: Math.min(index * 0.04, 0.3) }}
-                            className={`rounded-2xl border bg-white/[0.025] p-4 border-l-[3px] ${
-                              entry.postScoreEditFlag
-                                ? "border-rose-400/50 border-l-rose-400/70"
-                                : "border-white/10 border-l-emerald-400/50"
-                            }`}
+                            className="rounded-2xl border bg-white/[0.025] p-4 border-l-[3px] border-white/10 border-l-emerald-400/50"
                           >
                             {/* Top: field + batch + flag */}
                             <div className="flex items-center justify-between gap-2">
@@ -1327,17 +1313,10 @@ const OperationsPage = () => {
                                 <p className="text-white text-sm font-body font-medium font-mono">{entry.field}</p>
                                 <span className="px-2 py-0.5 rounded-full text-[10px] font-body bg-white/[0.06] text-white/45 shrink-0">{entry.batchId}</span>
                               </div>
-                              {entry.postScoreEditFlag ? (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] bg-rose-500/15 text-rose-300 flex items-center gap-1 shrink-0">
-                                  <AlertTriangle className="w-3 h-3" />
-                                  post-score
-                                </span>
-                              ) : (
                                 <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/15 text-emerald-300 flex items-center gap-1 shrink-0">
                                   <CheckCircle2 className="w-3 h-3" />
                                   tracked
                                 </span>
-                              )}
                             </div>
 
                             {/* Change value */}

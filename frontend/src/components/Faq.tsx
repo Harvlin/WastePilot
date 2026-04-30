@@ -25,7 +25,7 @@ const faqItems = [
   {
     question: "How do we keep data trustworthy without IoT sensors?",
     answer:
-      "WastePilot includes Activity Logs, Audit Trail, confidence scoring, and red-flag detection. The system records who changed what and when, and post-score edits are explicitly marked for reviewer attention.",
+      "WastePilot includes Activity Logs, Audit Trail, confidence scoring, and red-flag detection. The system records who changed what and when.",
   },
   {
     question: "Can we still operate if AI services are unavailable?",

@@ -301,7 +301,6 @@ let auditTrailStore: AuditTrailEntry[] = [
     editedBy: "supervisor.ari",
     editedAt: "2026-03-28T13:03:00Z",
     reason: "Final QC count adjustment.",
-    postScoreEditFlag: false,
   },
 ];
 
@@ -396,8 +395,7 @@ function buildBatchCloseSummary(batchId: string, outputUnitsOverride?: number): 
 
   const completeness = [hasInventorySignal, hasWasteSignal, hasOutputSignal].filter(Boolean).length / 3;
   const timeliness = overdue ? 0.72 : 1;
-  const postScoreEdits = auditForBatch(batchId).filter((item) => item.postScoreEditFlag).length;
-  const auditIntegrity = clamp(1 - postScoreEdits * 0.15, 0.45, 1);
+  const auditIntegrity = 1;
   const confidenceScore = Math.round((0.5 * completeness + 0.3 * timeliness + 0.2 * auditIntegrity) * 100);
   const confidenceLevel = confidenceScore >= 85 ? "high" : confidenceScore >= 65 ? "medium" : "low";
 
@@ -432,16 +430,7 @@ function buildBatchCloseSummary(batchId: string, outputUnitsOverride?: number): 
       createdAt: nowIso(),
     });
   }
-  if (postScoreEdits > 0) {
-    redFlags.push({
-      id: `RF-S-${batchId}-post-edit`,
-      batchId,
-      severity: "high",
-      type: "post-score-edit",
-      message: "Detected edits after score publication.",
-      createdAt: nowIso(),
-    });
-  }
+
 
   return {
     batchId,
@@ -497,7 +486,6 @@ function computeIntegrityOverviewInternal(): IntegrityOverview {
     ? Math.round(summaries.reduce((sum, item) => sum + item.confidenceScore, 0) / summaries.length)
     : 100;
 
-  const postScoreEdits = auditTrailStore.filter((item) => item.postScoreEditFlag).length;
   const overdueBatchClosures = batchesStore.filter((batch) => batch.status === "running" && hoursSince(batch.startedAt) > OVERDUE_HOURS).length;
   const activeStoreFlags = redFlagStore.filter((flag) => !flag.resolvedAt).length;
   const activeSummaryFlags = summaries.reduce((sum, item) => sum + item.redFlags.length, 0);
@@ -505,7 +493,6 @@ function computeIntegrityOverviewInternal(): IntegrityOverview {
   return {
     averageConfidenceScore,
     openRedFlags: activeStoreFlags + activeSummaryFlags,
-    postScoreEdits,
     overdueBatchClosures,
   };
 }
@@ -927,8 +914,7 @@ export async function createWasteLog(input: Omit<WasteLog, "id" | "timestamp">) 
   });
 
   const scopedBatch = batchesStore.find((item) => item.id === newItem.batchId);
-  const postScoreEditFlag = Boolean(scopedBatch?.status === "completed" && scoreSnapshots[newItem.batchId]);
-  if (postScoreEditFlag) {
+  if (scopedBatch?.status === "completed") {
     addAuditTrail({
       batchId: newItem.batchId,
       field: "wasteLog",
@@ -936,19 +922,7 @@ export async function createWasteLog(input: Omit<WasteLog, "id" | "timestamp">) 
       newValue: `${newItem.quantityKg}kg ${newItem.destination}`,
       editedBy: "operator.session",
       reason: "Post-close correction submitted.",
-      postScoreEditFlag,
     });
-    redFlagStore = [
-      {
-        id: `RF-${redFlagStore.length + 1}`,
-        batchId: newItem.batchId,
-        severity: "high",
-        type: "post-score-edit",
-        message: "Waste data edited after score publication.",
-        createdAt: nowIso(),
-      },
-      ...redFlagStore,
-    ];
   }
 
   return newItem;
@@ -1017,7 +991,6 @@ export async function recoverWasteToInventory(input: { wasteLogId: string }) {
     newValue: "converted",
     editedBy: "operator.session",
     reason: "Recovered waste converted to inventory IN.",
-    postScoreEditFlag: false,
   });
 
   return {
@@ -1074,7 +1047,6 @@ export async function closeBatch(input: {
       newValue: String(input.outputUnits),
       editedBy: "operator.session",
       reason: "Final count on batch closure.",
-      postScoreEditFlag: false,
     });
   }
 

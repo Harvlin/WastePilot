@@ -42,15 +42,14 @@ This checklist validates the frontend-only implementation for:
   - Expected: entries appear with actor, action, and timestamp
 - [ ] B3. Audit trail displays old value -> new value for tracked edits
   - Expected: at least one tracked audit row visible
-- [ ] B4. Post-score edit is marked explicitly in audit trail
-  - Expected: entry shows `post-score edit` flag
+
 
 ## C. Scoring and Trust
 
 - [ ] C1. Dashboard shows circular score in range 0 to 100
   - Expected: score never goes below 0 or above 100
 - [ ] C2. Data Integrity Pulse displays confidence and red-flag metrics
-  - Expected: confidence, open red flags, post-score edits, overdue closures all visible
+  - Expected: confidence, open red flags, overdue closures all visible
 - [ ] C3. Confidence level (high/medium/low) appears in batch close summary
   - Expected: chip reflects score band consistently
 - [ ] C4. Red flags are displayed when risk conditions are triggered

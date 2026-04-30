@@ -2007,7 +2007,6 @@ public record AuditTrailEntryResponse(
 public record IntegrityOverviewResponse(
   BigDecimal averageConfidenceScore,
   Integer openRedFlags,
-  Integer postScoreEdits,
   Integer overdueBatchClosures
 ) {}
 ```

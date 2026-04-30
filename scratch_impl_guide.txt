@@ -1,0 +1,85 @@
+1: # Backend Implementation Guide (Spring Boot + Maven + MySQL)
+3: ## 1. Purpose
+19: ## 2. Frontend Contract Alignment
+57: ## 3. Recommended Project Structure
+96: ## 4. Maven Configuration
+101: ## 5. Configuration (application properties)
+113: ## 6. Core Domain Entities
+117: ## 7. DTO Design
+121: ## 8. MapStruct Mapping
+140: ## 9. Repository Layer
+144: ## 10. Service Layer (Business Rules)
+148: ### 10.1 Batch create
+156: ### 10.2 Inventory log create
+164: ### 10.3 Waste log create
+172: ### 10.4 Waste recover to inventory
+191: ### 10.5 Batch close
+202: ## 11. Controller Design
+232: ## 12. Security Implementation
+260: ## 13. AI Integration Plan
+264: ### 13.1 OCR endpoint
+275: ### 13.2 Recommendation + anomaly generation
+286: ### 13.3 Token budget integration
+294: ## 14. Dockerization
+301: ## 15. Schema Management (No Flyway)
+309: ## 16. Error Handling Contract
+327: ## 17. Logging And Observability
+342: ## 18. Testing Strategy
+344: ### 18.1 Unit tests
+350: ### 18.2 Integration tests
+360: ### 18.3 Contract tests
+365: ## 19. Feature Delivery Roadmap
+389: ## 20. Frontend-Backend Handshake Checklist
+400: ## 21. Backend-Owned Items Required For Full Completion
+410: ## 22. Final Notes
+416: ## 23. Project-Init Code Pack (Entities + DTOs + Repositories)
+420: ## 26. Service Layer: How To Implement (practical blueprint)
+422: ### 26.1 Recommended service package layout
+450: ### 26.2 Service method pattern (repeat this in all domains)
+461: ### 26.3 Transaction boundary matrix
+472: ### 26.4 OperationsService interface starter
+486: ### 26.4.1 Input normalization + validation helper (recommended)
+509: ### 26.4.2 Activity + audit writer helper
+546: ### 26.4.3 Operations payload read-model assembly
+566: ### 26.4.4 Status patch pattern (insight/anomaly)
+588: ### 26.5 Example: inventory log service implementation
+652: ### 26.6 Example: recover waste to inventory (idempotent + atomic)
+688: ### 26.7 Example: close batch rule enforcement
+721: ### 26.8 Service layer execution checklist (what to implement first)
+740: ### 26.9 Common service-layer mistakes to avoid
+749: ## 27. Security Implementation Pack (Project-Init Ready)
+753: ### 27.1 Security architecture decision
+764: ### 27.2 Security properties (application.yml)
+781: ### 27.3 Typed properties class
+804: ### 27.4 CORS configuration snippet
+830: ### 27.5 Security config with JSON error handlers
+868: ### 27.6 JSON auth error responses (401 and 403)
+910: ### 27.7 Ownership checks pattern (no roles)
+922: ### 27.8 OCR upload hardening
+949: ### 27.9 Rate limiting filter (optional but recommended)
+990: ### 27.10 Security event auditing
+1014: ### 27.11 Secrets and key management
+1032: ### 27.12 Security testing checklist
+1043: ### 27.13 Optional local-auth bootstrap (non-production profile)
+1052: ## 28. AI Implementation Pack (Project-Init Ready)
+1062: ### 28.1 AI architecture overview
+1078: ### 28.2 AI configuration (application.yml)
+1101: ### 28.3 Typed AI properties
+1126: ### 28.4 Persistence for AI usage and idempotency
+1213: ### 28.5 Provider adapter contracts
+1238: ### 28.6 Gemini OCR provider skeleton
+1280: ### 28.7 OCR service orchestration (validation + token budget + fallback)
+1331: ### 28.8 Recommendation/anomaly generation pipeline
+1363: ### 28.9 Prompting and output contract strategy
+1375: ### 28.10 Token budget implementation details
+1418: ### 28.11 Reliability and resilience (must-have)
+1431: ### 28.12 AI-specific observability
+1443: ### 28.13 AI test strategy
+1459: ### 28.14 AI rollout stages
+1476: ### 28.15 AI implementation checklist
+1486: ## 29. Production-Ready Enhancements (Added)
+1490: ### 29.1 Pagination and Sorting
+1521: ### 29.2 Global Exception Handling (@RestControllerAdvice)
+1548: ### 29.3 Current User Extraction Context
+1566: ### 29.4 Analytics & Dashboard Query Strategy
+1584: ### 29.5 Database Migration (Flyway)
