@@ -10,4 +10,5 @@ import java.util.List;
 @Repository
 public interface TemplateRepository extends JpaRepository<TemplateEntity, UUID> {
   Optional<TemplateEntity> findBySkuIgnoreCase(String sku);
+  Optional<TemplateEntity> findByNameIgnoreCase(String name);
 }

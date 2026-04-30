@@ -16,6 +16,10 @@ public class SecurityUtils {
       if (authentication.getPrincipal() instanceof String principalStr) {
         return principalStr; // for mock auth fallback
       }
+      String name = authentication.getName();
+      if (name != null && !name.isBlank() && !"anonymousUser".equalsIgnoreCase(name)) {
+        return name;
+      }
     }
     return "SYSTEM"; // fallback for internal jobs
   }

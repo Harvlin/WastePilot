@@ -50,7 +50,7 @@ const TemplatesPage = () => {
   }, []);
 
   const openEditor = (template?: ProductionTemplate) => {
-    setDraft(template ? template : { ...emptyTemplate, id: `TPL-${Date.now()}` });
+    setDraft(template ? template : { ...emptyTemplate });
     setOpen(true);
   };
 
@@ -84,6 +84,7 @@ const TemplatesPage = () => {
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    const isEditing = Boolean(draft.id);
     if (!draft.name || draft.lines.length === 0) {
       toast.error("Please provide template name and at least one material line.");
       return;
@@ -99,9 +100,24 @@ const TemplatesPage = () => {
       const updated = await internalApi.upsertTemplate(payload);
       setTemplates(updated);
       setOpen(false);
-      toast.success(draft.id ? "Template updated." : "Template created.");
+      toast.success(isEditing ? "Template updated." : "Template created.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save template.");
+    }
+  };
+
+  const removeTemplate = async (template: ProductionTemplate) => {
+    const confirmed = window.confirm(`Delete template "${template.name}"?`);
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const updated = await internalApi.deleteTemplate(template.id);
+      setTemplates(updated);
+      toast.success("Template deleted.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete template.");
     }
   };
 
@@ -143,6 +159,13 @@ const TemplatesPage = () => {
                   </div>
                   <Button variant="ghost" className="rounded-full text-white/80 hover:bg-white/10" onClick={() => openEditor(template)}>
                     Edit
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="rounded-full text-rose-200 hover:bg-rose-500/15"
+                    onClick={() => void removeTemplate(template)}
+                  >
+                    Delete
                   </Button>
                 </div>
 

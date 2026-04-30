@@ -21,7 +21,9 @@ public class CorsConfig {
     cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     cfg.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Correlation-Id"));
     cfg.setExposedHeaders(List.of("X-Correlation-Id"));
-    cfg.setAllowCredentials(false);
+    // Frontend sends requests with credentials mode "include".
+    // CORS must explicitly allow credentials for preflight and actual requests.
+    cfg.setAllowCredentials(true);
     cfg.setMaxAge(3600L);
 
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

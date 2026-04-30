@@ -4,7 +4,8 @@ import { MouseEvent as ReactMouseEvent, useCallback, useEffect, useState } from 
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { internalNav } from "@/features/internal/components/navigation";
 import { resolveSearchDestination } from "@/features/internal/components/search-index";
-import { signOutMockUser } from "@/lib/mock-auth";
+import { useAuth } from "@/features/auth/auth-context";
+import { subscribeInternalApiStatus } from "@/lib/api/internal-api";
 import { toast } from "sonner";
 
 const DESKTOP_BREAKPOINT = 1024;
@@ -110,8 +111,10 @@ const AppShell = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [isOnline, setIsOnline] = useState(() => (typeof navigator === "undefined" ? true : navigator.onLine));
+  const [isFallbackActive, setIsFallbackActive] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const pageLabel = internalNav.find((item) => item.to === location.pathname)?.label ?? "Workspace";
 
   const openMobileNav = useCallback(() => {
@@ -219,6 +222,13 @@ const AppShell = () => {
   }, [closeMobileNav]);
 
   useEffect(() => {
+    const unsubscribe = subscribeInternalApiStatus((status) => {
+      setIsFallbackActive(status.fallbackActive);
+    });
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
     const onOnline = () => setIsOnline(true);
     const onOffline = () => setIsOnline(false);
 
@@ -249,9 +259,9 @@ const AppShell = () => {
     toast.success(`Opened ${match.label}.`);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     closeMobileNav();
-    signOutMockUser();
+    await logout();
     toast.success("You have been logged out.");
     navigate("/");
   };
@@ -358,6 +368,14 @@ const AppShell = () => {
             <div className="px-3 md:px-8 mt-3">
               <div className="rounded-2xl border border-amber-300/25 bg-amber-500/10 px-4 py-3 text-amber-100 text-sm font-body">
                 You are offline. Data updates may fail until the connection is restored.
+              </div>
+            </div>
+          )}
+
+          {isFallbackActive && (
+            <div className="px-3 md:px-8 mt-3">
+              <div className="rounded-2xl border border-sky-300/25 bg-sky-500/10 px-4 py-3 text-sky-100 text-sm font-body">
+                Some sections are currently served from mock fallback due to backend read failures.
               </div>
             </div>
           )}

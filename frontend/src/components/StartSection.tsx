@@ -3,14 +3,15 @@ import { ArrowUpRight } from "lucide-react";
 import { useRef } from "react";
 import { Link } from "react-router-dom";
 import HlsVideo from "./HlsVideo";
-import { isMockAuthenticated } from "@/lib/mock-auth";
+import { useAuth } from "@/features/auth/auth-context";
 
 const StartSection = () => {
   const ref = useRef<HTMLElement>(null);
+  const { isAuthenticated } = useAuth();
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
   const y = useTransform(scrollYProgress, [0, 1], [60, -60]);
   const scale = useTransform(scrollYProgress, [0, 0.5], [0.95, 1]);
-  const ctaPath = isMockAuthenticated() ? "/dashboard" : "/auth";
+  const ctaPath = isAuthenticated ? "/dashboard" : "/auth";
 
   return (
     <section

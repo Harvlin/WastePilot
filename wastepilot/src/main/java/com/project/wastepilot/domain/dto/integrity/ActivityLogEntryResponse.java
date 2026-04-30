@@ -4,10 +4,12 @@ import java.time.Instant;
 
 public record ActivityLogEntryResponse(
   String id,
+  String batchId,
+  String actor,
+  String action,
   String entity,
   String entityId,
-  String action,
-  String actor,
-  String detail,
+  String source,
+  String details,
   Instant timestamp
 ) {}

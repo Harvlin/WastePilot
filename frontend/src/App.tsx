@@ -5,6 +5,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import BootLoadingScreen from "@/components/BootLoadingScreen";
+import { AuthProvider } from "@/features/auth/auth-context";
 
 const Index = lazy(() => import("./pages/Index.tsx"));
 const Auth = lazy(() => import("./pages/Auth.tsx"));
@@ -73,29 +74,31 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
-          <Suspense fallback={<AppRouteFallback />}>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route element={<ProtectedRoute />}>
-                <Route element={<AppShell />}>
-                  <Route path="/dashboard" element={<DashboardPage />} />
-                  <Route path="/operations" element={<OperationsPage />} />
-                  <Route path="/scan" element={<ScanPage />} />
-                  <Route path="/materials" element={<MaterialsPage />} />
-                  <Route path="/templates" element={<TemplatesPage />} />
-                  <Route path="/insights" element={<InsightsPage />} />
-                  <Route path="/analytics" element={<AnalyticsPage />} />
-                  <Route path="/how-to-use" element={<GuidePage />} />
-                  <Route path="/settings" element={<SettingsPage />} />
+        <AuthProvider>
+          <BrowserRouter>
+            <Suspense fallback={<AppRouteFallback />}>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route element={<ProtectedRoute />}>
+                  <Route element={<AppShell />}>
+                    <Route path="/dashboard" element={<DashboardPage />} />
+                    <Route path="/operations" element={<OperationsPage />} />
+                    <Route path="/scan" element={<ScanPage />} />
+                    <Route path="/materials" element={<MaterialsPage />} />
+                    <Route path="/templates" element={<TemplatesPage />} />
+                    <Route path="/insights" element={<InsightsPage />} />
+                    <Route path="/analytics" element={<AnalyticsPage />} />
+                    <Route path="/how-to-use" element={<GuidePage />} />
+                    <Route path="/settings" element={<SettingsPage />} />
+                  </Route>
                 </Route>
-              </Route>
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
+        </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

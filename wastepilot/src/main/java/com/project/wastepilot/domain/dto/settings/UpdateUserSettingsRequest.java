@@ -4,13 +4,14 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Size;
 
 public record UpdateUserSettingsRequest(
-  @NotBlank String company,
-  @Email @NotBlank String email,
-  @NotBlank String role,
-  @Min(1) @Max(100000) Integer dailyTokenBudget,
+  @NotBlank @Size(max = 200) String companyName,
+  @Email @NotBlank @Size(max = 160) String email,
+  @NotBlank @Size(max = 80) String role,
+  @NotBlank @Size(max = 80) String timezone,
+  @Min(0) @Max(100000) Integer dailyTokenBudget,
   boolean notifyAnomalies,
-  boolean notifyRecommendations,
-  boolean notifyOverdueBatches
+  boolean notifyInsights
 ) {}

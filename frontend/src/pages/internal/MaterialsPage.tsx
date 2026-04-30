@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { History, Plus, SquarePen } from "lucide-react";
+import { History, Plus, SquarePen, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -114,6 +114,21 @@ const MaterialsPage = () => {
       toast.success(draft.id ? "Material updated." : "Material created.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save material.");
+    }
+  };
+
+  const removeMaterial = async (material: Material) => {
+    const confirmed = window.confirm(`Delete material "${material.name}"?`);
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const updated = await internalApi.deleteMaterial(material.id);
+      setMaterials(updated);
+      toast.success("Material deleted.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete material.");
     }
   };
 
@@ -426,6 +441,14 @@ const MaterialsPage = () => {
                         >
                           <SquarePen className="w-4 h-4" />
                           Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          className="text-rose-200 hover:bg-rose-500/15 rounded-full"
+                          onClick={() => void removeMaterial(item)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Delete
                         </Button>
                       </div>
                     </TableCell>

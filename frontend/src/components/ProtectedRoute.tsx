@@ -1,10 +1,15 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { isMockAuthenticated } from "@/lib/mock-auth";
+import { useAuth } from "@/features/auth/auth-context";
 
 const ProtectedRoute = () => {
   const location = useLocation();
+  const { isAuthenticated, isBootstrapping } = useAuth();
 
-  if (!isMockAuthenticated()) {
+  if (isBootstrapping) {
+    return null;
+  }
+
+  if (!isAuthenticated) {
     return <Navigate to="/auth" replace state={{ from: location.pathname }} />;
   }
 

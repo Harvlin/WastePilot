@@ -11,7 +11,11 @@ public record WasteLogResponse(
         String materialName,
         BigDecimal quantityKg,
         String destination,
+        String reason,
         String recoveryStatus,
+        String recoveryInventoryLogId,
+        Instant recoveredAt,
         String aiSuggestedAction,
+        Boolean isRepurposed,
         Instant timestamp
 ) {}

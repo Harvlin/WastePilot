@@ -3,7 +3,7 @@ import { ArrowUpRight, Play } from "lucide-react";
 import { useRef, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import BlurText from "./BlurText";
-import { isMockAuthenticated } from "@/lib/mock-auth";
+import { useAuth } from "@/features/auth/auth-context";
 import { toast } from "sonner";
 
 const techStack = ["Spring Boot", "Next.js 15", "Gemini Flash", "Docker", "MySQL", "Oauth2"];
@@ -12,6 +12,7 @@ const Hero = () => {
   const sectionRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [videoLoaded, setVideoLoaded] = useState(false);
+  const { isAuthenticated } = useAuth();
   const { scrollYProgress } = useScroll({
     target: sectionRef,
     offset: ["start start", "end start"],
@@ -20,7 +21,7 @@ const Hero = () => {
   const videoScale = useTransform(scrollYProgress, [0, 1], [1, 1.2]);
   const videoOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
   const contentY = useTransform(scrollYProgress, [0, 0.5], [0, -80]);
-  const ctaPath = isMockAuthenticated() ? "/dashboard" : "/auth";
+  const ctaPath = isAuthenticated ? "/dashboard" : "/auth";
 
   const handleWatchDemo = () => {
     const section = document.getElementById("how-it-works");

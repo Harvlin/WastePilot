@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ArrowUpRight, Menu, X } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
-import { isMockAuthenticated } from "@/lib/mock-auth";
+import { useAuth } from "@/features/auth/auth-context";
 
 const DESKTOP_NAV_BREAKPOINT = 1024;
 
@@ -19,8 +19,8 @@ const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [hoveredLink, setHoveredLink] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<string>("home");
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const location = useLocation();
+  const { isAuthenticated } = useAuth();
 
   const scrollToSection = (sectionId: string) => {
     const section = document.getElementById(sectionId);
@@ -65,15 +65,6 @@ const Navbar = () => {
     }
 
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  useEffect(() => {
-    setIsAuthenticated(isMockAuthenticated());
-
-    const syncAuth = () => setIsAuthenticated(isMockAuthenticated());
-    window.addEventListener("storage", syncAuth);
-
-    return () => window.removeEventListener("storage", syncAuth);
   }, []);
 
   useEffect(() => {

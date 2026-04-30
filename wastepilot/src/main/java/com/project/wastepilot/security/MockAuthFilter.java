@@ -6,7 +6,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -17,7 +16,6 @@ import java.util.List;
  * so that SecurityUtils.getCurrentUserId() works for local development
  * without needing a real OAuth2 JWT setup yet.
  */
-@Component
 public class MockAuthFilter extends OncePerRequestFilter {
 
   @Override

@@ -1,11 +1,12 @@
 import { motion } from "motion/react";
 import { Link } from "react-router-dom";
 import HlsVideo from "./HlsVideo";
-import { isMockAuthenticated } from "@/lib/mock-auth";
+import { useAuth } from "@/features/auth/auth-context";
 import { toast } from "sonner";
 
 const CtaFooter = () => {
-  const ctaPath = isMockAuthenticated() ? "/dashboard" : "/auth";
+  const { isAuthenticated } = useAuth();
+  const ctaPath = isAuthenticated ? "/dashboard" : "/auth";
 
   const handleHowItWorks = () => {
     const section = document.getElementById("how-it-works");

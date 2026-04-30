@@ -1,28 +1,35 @@
 import { FormEvent, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ArrowUpRight, Mail, Lock, User, Eye, EyeOff, ArrowLeft } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import HlsVideo from "@/components/HlsVideo";
-import { isMockAuthenticated, signInMockUser } from "@/lib/mock-auth";
+import { useAuth } from "@/features/auth/auth-context";
 import { isValidEmail } from "@/lib/validation";
 import { toast } from "sonner";
 
 const Auth = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { isAuthenticated, login, signup } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const redirectPath = typeof location.state?.from === "string" ? location.state.from : "/dashboard";
 
   useEffect(() => {
-    if (isMockAuthenticated()) {
+    if (isAuthenticated) {
       navigate("/dashboard", { replace: true });
     }
-  }, [navigate]);
+  }, [isAuthenticated, navigate]);
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (isSubmitting) {
+      return;
+    }
 
     if (!email.trim()) {
       toast.error("Email is required.");
@@ -34,9 +41,36 @@ const Auth = () => {
       return;
     }
 
-    signInMockUser(email.trim(), name.trim() || undefined);
-    toast.success(isLogin ? "Signed in successfully." : "Account created successfully.");
-    navigate("/dashboard", { replace: true });
+    if (!password.trim()) {
+      toast.error("Password is required.");
+      return;
+    }
+
+    if (password.trim().length < 8) {
+      toast.error("Password must be at least 8 characters.");
+      return;
+    }
+
+    if (!isLogin && !name.trim()) {
+      toast.error("Full name is required.");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      if (isLogin) {
+        await login({ email: email.trim(), password });
+      } else {
+        await signup({ fullName: name.trim(), email: email.trim(), password });
+      }
+      toast.success(isLogin ? "Signed in successfully." : "Account created successfully.");
+      navigate(redirectPath, { replace: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Authentication failed.";
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleForgotPassword = () => {
@@ -44,9 +78,7 @@ const Auth = () => {
   };
 
   const handleSocialContinue = (provider: "Google" | "Apple") => {
-    signInMockUser(`${provider.toLowerCase()}@wastepilot.mock`, `${provider} User`);
-    toast.success(`${provider} sign-in mocked successfully.`);
-    navigate("/dashboard", { replace: true });
+    toast.info(`${provider} sign-in is not enabled yet.`);
   };
 
   return (
@@ -124,7 +156,7 @@ const Auth = () => {
               onSubmit={handleSubmit}
             >
               <p className="text-white/45 text-xs font-body">
-                Use your work email. Password is mocked in frontend demo mode.
+                Use your work email to sign in to your workspace.
               </p>
               {!isLogin && (
                 <motion.div
@@ -185,9 +217,10 @@ const Auth = () => {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 type="submit"
+                disabled={isSubmitting}
                 className="w-full bg-white text-black font-body font-medium text-sm py-3 rounded-full flex items-center justify-center gap-2 hover:bg-white/90 transition-colors mt-2"
               >
-                {isLogin ? "Sign In" : "Create Account"} <ArrowUpRight className="w-4 h-4" />
+                {isSubmitting ? "Please wait..." : (isLogin ? "Sign In" : "Create Account")} <ArrowUpRight className="w-4 h-4" />
               </motion.button>
             </motion.form>
           </AnimatePresence>

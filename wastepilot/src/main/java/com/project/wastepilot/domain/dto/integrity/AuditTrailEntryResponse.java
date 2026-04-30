@@ -4,11 +4,11 @@ import java.time.Instant;
 
 public record AuditTrailEntryResponse(
   String id,
-  String entity,
-  String entityId,
+  String batchId,
   String field,
   String oldValue,
   String newValue,
-  String actor,
-  Instant timestamp
+  String editedBy,
+  Instant editedAt,
+  String reason
 ) {}

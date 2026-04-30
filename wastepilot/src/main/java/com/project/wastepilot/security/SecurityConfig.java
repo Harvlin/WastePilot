@@ -6,6 +6,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
@@ -18,7 +20,7 @@ public class SecurityConfig {
 
   private final AuthenticationEntryPoint authEntryPoint;
   private final AccessDeniedHandler accessDeniedHandler;
-  private final MockAuthFilter mockAuthFilter;
+  private final AuthRateLimitFilter authRateLimitFilter;
 
   @Bean
   SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -38,11 +40,17 @@ public class SecurityConfig {
       )
       .authorizeHttpRequests(auth -> auth
         .requestMatchers("/actuator/health", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
-        .requestMatchers("/api/v1/**").permitAll() // TEMPORARY: Allow local frontend development without token
+        .requestMatchers("/api/v1/auth/login", "/api/v1/auth/signup", "/api/v1/auth/register").permitAll()
         .anyRequest().authenticated()
       )
-      .addFilterBefore(mockAuthFilter, UsernamePasswordAuthenticationFilter.class);
+      .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))
+      .addFilterBefore(authRateLimitFilter, UsernamePasswordAuthenticationFilter.class);
 
     return http.build();
+  }
+
+  @Bean
+  PasswordEncoder passwordEncoder() {
+    return new BCryptPasswordEncoder();
   }
 }

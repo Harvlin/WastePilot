@@ -26,6 +26,9 @@ public class UserSettingsEntity {
     @Column(nullable = false, length = 80)
     private String role;
 
+    @Column(nullable = false, length = 80)
+    private String timezone;
+
     @Column(name = "daily_token_budget", nullable = false)
     private Integer dailyTokenBudget;
 

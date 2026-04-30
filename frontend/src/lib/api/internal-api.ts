@@ -18,6 +18,13 @@ import {
   WasteLog,
 } from "@/features/internal/types";
 import * as mock from "@/features/internal/mock-api";
+import {
+  AuthSession,
+  AuthUser,
+  clearStoredAuthSession,
+  getStoredAuthSession,
+} from "@/features/auth/auth-storage";
+import { signInMockUser, signOutMockUser } from "@/lib/mock-auth";
 
 export interface InsightsPayload {
   recommendations: CircularInsight[];
@@ -50,6 +57,34 @@ export interface WasteRecoveryResult {
   inventoryLog: InventoryLog;
 }
 
+export interface LoginInput {
+  email: string;
+  password: string;
+}
+
+export interface SignupInput {
+  fullName: string;
+  email: string;
+  password: string;
+}
+
+type RequestErrorKind = "http" | "network" | "timeout";
+
+class ApiRequestError extends Error {
+  constructor(
+    message: string,
+    readonly kind: RequestErrorKind,
+    readonly status?: number,
+  ) {
+    super(message);
+  }
+}
+
+export interface InternalApiStatus {
+  fallbackActive: boolean;
+  fallbackOperations: string[];
+}
+
 const DEFAULT_SPRING_TIMEOUT_MS = 10_000;
 
 export const SPRING_API_ENDPOINTS = {
@@ -72,6 +107,9 @@ export const SPRING_API_ENDPOINTS = {
   activityLogs: "/api/v1/integrity/activity-logs",
   auditTrail: "/api/v1/integrity/audit-trail",
   integrityOverview: "/api/v1/integrity/overview",
+  authLogin: "/api/v1/auth/login",
+  authSignup: "/api/v1/auth/signup",
+  authMe: "/api/v1/auth/me",
 } as const;
 
 function parseBooleanEnv(value: string | undefined, defaultValue: boolean): boolean {
@@ -105,6 +143,10 @@ function parseTimeoutMs(value: string | undefined, defaultValue: number): number
 }
 
 export interface InternalApi {
+  login(input: LoginInput): Promise<AuthSession>;
+  signup(input: SignupInput): Promise<AuthSession>;
+  fetchCurrentUser(): Promise<AuthUser>;
+  logout(): Promise<void>;
   fetchDashboardPayload(): Promise<DashboardPayload>;
   fetchOperationsPayload(): Promise<OperationsPayload>;
   createBatch(input: CreateBatchInput): Promise<ProductionBatch>;
@@ -118,8 +160,10 @@ export interface InternalApi {
   fetchIntegrityOverview(): Promise<IntegrityOverview>;
   fetchMaterials(): Promise<Material[]>;
   upsertMaterial(input: Material): Promise<Material[]>;
+  deleteMaterial(id: string): Promise<Material[]>;
   fetchTemplates(): Promise<ProductionTemplate[]>;
   upsertTemplate(input: ProductionTemplate): Promise<ProductionTemplate[]>;
+  deleteTemplate(id: string): Promise<ProductionTemplate[]>;
   fetchInsights(): Promise<InsightsPayload>;
   updateInsightStatus(id: string, status: CircularInsight["status"]): Promise<InsightsPayload>;
   updateAnomalyStatus(id: string, status: CircularInsight["status"]): Promise<InsightsPayload["anomalies"]>;
@@ -131,6 +175,44 @@ export interface InternalApi {
 }
 
 class MockInternalApi implements InternalApi {
+  async login(input: LoginInput): Promise<AuthSession> {
+    signInMockUser(input.email, input.email.split("@")[0]);
+    return {
+      accessToken: "mock-token",
+      tokenType: "Bearer",
+      user: {
+        id: "mock-user",
+        fullName: input.email.split("@")[0],
+        email: input.email,
+      },
+    };
+  }
+
+  async signup(input: SignupInput): Promise<AuthSession> {
+    signInMockUser(input.email, input.fullName);
+    return {
+      accessToken: "mock-token",
+      tokenType: "Bearer",
+      user: {
+        id: "mock-user",
+        fullName: input.fullName,
+        email: input.email,
+      },
+    };
+  }
+
+  async fetchCurrentUser(): Promise<AuthUser> {
+    const session = getStoredAuthSession();
+    if (!session?.user) {
+      throw new Error("No active session.");
+    }
+    return session.user;
+  }
+
+  async logout(): Promise<void> {
+    signOutMockUser();
+  }
+
   fetchDashboardPayload = mock.fetchDashboardPayload;
   fetchOperationsPayload = mock.fetchOperationsPayload;
   createBatch = mock.createBatch;
@@ -144,8 +226,10 @@ class MockInternalApi implements InternalApi {
   fetchIntegrityOverview = mock.fetchIntegrityOverview;
   fetchMaterials = mock.fetchMaterials;
   upsertMaterial = mock.upsertMaterial;
+  deleteMaterial = mock.deleteMaterial;
   fetchTemplates = mock.fetchTemplates;
   upsertTemplate = mock.upsertTemplate;
+  deleteTemplate = mock.deleteTemplate;
   fetchInsights = mock.fetchInsights;
   updateInsightStatus = mock.updateInsightStatus;
   updateAnomalyStatus = mock.updateAnomalyStatus;
@@ -159,6 +243,26 @@ class MockInternalApi implements InternalApi {
 interface SpringApiOptions {
   timeoutMs: number;
   fallbackApi?: InternalApi;
+}
+
+const fallbackOperations = new Set<string>();
+const statusListeners = new Set<(status: InternalApiStatus) => void>();
+
+function emitInternalApiStatus() {
+  const status: InternalApiStatus = {
+    fallbackActive: fallbackOperations.size > 0,
+    fallbackOperations: Array.from(fallbackOperations).sort(),
+  };
+  statusListeners.forEach((listener) => listener(status));
+}
+
+export function subscribeInternalApiStatus(listener: (status: InternalApiStatus) => void) {
+  statusListeners.add(listener);
+  listener({
+    fallbackActive: fallbackOperations.size > 0,
+    fallbackOperations: Array.from(fallbackOperations).sort(),
+  });
+  return () => statusListeners.delete(listener);
 }
 
 class SpringBootInternalApi implements InternalApi {
@@ -185,15 +289,36 @@ class SpringBootInternalApi implements InternalApi {
     fallbackCall?: () => Promise<T>,
   ): Promise<T> {
     try {
-      return await primaryCall();
+      const value = await primaryCall();
+      if (fallbackOperations.delete(operation)) {
+        emitInternalApiStatus();
+      }
+      return value;
     } catch (error) {
       if (!fallbackCall) {
         throw error;
       }
 
+      if (!this.shouldFallback(error)) {
+        throw error;
+      }
+
       this.logFallback(operation, error);
-      return fallbackCall();
+      const value = await fallbackCall();
+      fallbackOperations.add(operation);
+      emitInternalApiStatus();
+      return value;
     }
+  }
+
+  private shouldFallback(error: unknown) {
+    if (!(error instanceof ApiRequestError)) {
+      return false;
+    }
+    if (error.kind === "network" || error.kind === "timeout") {
+      return true;
+    }
+    return typeof error.status === "number" && error.status >= 500;
   }
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -202,10 +327,15 @@ class SpringBootInternalApi implements InternalApi {
 
     try {
       const isFormData = init?.body instanceof FormData;
+      const authSession = getStoredAuthSession();
+      const authHeader = authSession?.accessToken
+        ? { Authorization: `Bearer ${authSession.accessToken}` }
+        : {};
       const response = await fetch(`${this.baseUrl}${path}`, {
         credentials: "include",
         headers: {
           ...(isFormData ? {} : { "Content-Type": "application/json" }),
+          ...authHeader,
           ...(init?.headers ?? {}),
         },
         ...init,
@@ -215,7 +345,19 @@ class SpringBootInternalApi implements InternalApi {
       if (!response.ok) {
         const fallback = `Request failed with status ${response.status}`;
         const text = await response.text();
-        throw new Error(text || fallback);
+        let message = text || fallback;
+        try {
+          const parsed = JSON.parse(text) as { message?: string };
+          if (parsed?.message) {
+            message = parsed.message;
+          }
+        } catch {
+          // keep original message
+        }
+        if (response.status === 401 || response.status === 403) {
+          clearStoredAuthSession();
+        }
+        throw new ApiRequestError(message, "http", response.status);
       }
 
       if (response.status === 204) {
@@ -225,7 +367,7 @@ class SpringBootInternalApi implements InternalApi {
       const contentType = response.headers.get("content-type") ?? "";
       if (!contentType.includes("application/json")) {
         const text = await response.text();
-        throw new Error(text || `Expected JSON response from ${path}.`);
+        throw new ApiRequestError(text || `Expected JSON response from ${path}.`, "http", response.status);
       }
 
       const text = await response.text();
@@ -236,11 +378,14 @@ class SpringBootInternalApi implements InternalApi {
       try {
         return JSON.parse(text) as T;
       } catch {
-        throw new Error(`Invalid JSON response from ${path}.`);
+        throw new ApiRequestError(`Invalid JSON response from ${path}.`, "http", response.status);
       }
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
-        throw new Error(`Request timed out after ${this.options.timeoutMs}ms.`);
+        throw new ApiRequestError(`Request timed out after ${this.options.timeoutMs}ms.`, "timeout");
+      }
+      if (error instanceof TypeError) {
+        throw new ApiRequestError("Network error while contacting backend service.", "network");
       }
 
       throw error;
@@ -257,6 +402,28 @@ class SpringBootInternalApi implements InternalApi {
     );
   }
 
+  async login(input: LoginInput) {
+    return this.request<AuthSession>(SPRING_API_ENDPOINTS.authLogin, {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  async signup(input: SignupInput) {
+    return this.request<AuthSession>(SPRING_API_ENDPOINTS.authSignup, {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  async fetchCurrentUser() {
+    return this.request<AuthUser>(SPRING_API_ENDPOINTS.authMe);
+  }
+
+  async logout() {
+    return Promise.resolve();
+  }
+
   async fetchOperationsPayload() {
     return this.withFallback(
       "fetchOperationsPayload",
@@ -266,51 +433,31 @@ class SpringBootInternalApi implements InternalApi {
   }
 
   async createBatch(input: CreateBatchInput) {
-    return this.withFallback(
-      "createBatch",
-      () =>
-        this.request<ProductionBatch>(SPRING_API_ENDPOINTS.operationBatches, {
-          method: "POST",
-          body: JSON.stringify(input),
-        }),
-      this.options.fallbackApi ? () => this.options.fallbackApi!.createBatch(input) : undefined,
-    );
+    return this.request<ProductionBatch>(SPRING_API_ENDPOINTS.operationBatches, {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
   }
 
   async createInventoryLog(input: CreateInventoryInput) {
-    return this.withFallback(
-      "createInventoryLog",
-      () =>
-        this.request<InventoryLog>(SPRING_API_ENDPOINTS.operationInventoryLogs, {
-          method: "POST",
-          body: JSON.stringify(input),
-        }),
-      this.options.fallbackApi ? () => this.options.fallbackApi!.createInventoryLog(input) : undefined,
-    );
+    return this.request<InventoryLog>(SPRING_API_ENDPOINTS.operationInventoryLogs, {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
   }
 
   async createWasteLog(input: CreateWasteInput) {
-    return this.withFallback(
-      "createWasteLog",
-      () =>
-        this.request<WasteLog>(SPRING_API_ENDPOINTS.operationWasteLogs, {
-          method: "POST",
-          body: JSON.stringify(input),
-        }),
-      this.options.fallbackApi ? () => this.options.fallbackApi!.createWasteLog(input) : undefined,
-    );
+    return this.request<WasteLog>(SPRING_API_ENDPOINTS.operationWasteLogs, {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
   }
 
   async recoverWasteToInventory(input: RecoverWasteInput) {
-    return this.withFallback(
-      "recoverWasteToInventory",
-      () =>
-        this.request<WasteRecoveryResult>(SPRING_API_ENDPOINTS.operationWasteRecover, {
-          method: "POST",
-          body: JSON.stringify(input),
-        }),
-      this.options.fallbackApi ? () => this.options.fallbackApi!.recoverWasteToInventory(input) : undefined,
-    );
+    return this.request<WasteRecoveryResult>(SPRING_API_ENDPOINTS.operationWasteRecover, {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
   }
 
   async fetchBatchCloseSummary(batchId: string) {
@@ -322,15 +469,10 @@ class SpringBootInternalApi implements InternalApi {
   }
 
   async closeBatch(input: CloseBatchInput) {
-    return this.withFallback(
-      "closeBatch",
-      () =>
-        this.request<BatchCloseSummary>(SPRING_API_ENDPOINTS.operationBatchClose, {
-          method: "POST",
-          body: JSON.stringify(input),
-        }),
-      this.options.fallbackApi ? () => this.options.fallbackApi!.closeBatch(input) : undefined,
-    );
+    return this.request<BatchCloseSummary>(SPRING_API_ENDPOINTS.operationBatchClose, {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
   }
 
   async fetchActivityLogs(batchId?: string) {
@@ -372,25 +514,26 @@ class SpringBootInternalApi implements InternalApi {
   }
 
   async upsertMaterial(input: Material) {
-    return this.withFallback(
-      "upsertMaterial",
-      async () => {
-        if (input.id) {
-          await this.request<Material>(`${SPRING_API_ENDPOINTS.materials}/${input.id}`, {
-            method: "PUT",
-            body: JSON.stringify(input),
-          });
-          return this.request<Material[]>(SPRING_API_ENDPOINTS.materials);
-        }
+    if (input.id) {
+      await this.request<Material>(`${SPRING_API_ENDPOINTS.materials}/${input.id}`, {
+        method: "PUT",
+        body: JSON.stringify(input),
+      });
+      return this.request<Material[]>(SPRING_API_ENDPOINTS.materials);
+    }
 
-        await this.request<Material>(SPRING_API_ENDPOINTS.materials, {
-          method: "POST",
-          body: JSON.stringify(input),
-        });
-        return this.request<Material[]>(SPRING_API_ENDPOINTS.materials);
-      },
-      this.options.fallbackApi ? () => this.options.fallbackApi!.upsertMaterial(input) : undefined,
-    );
+    await this.request<Material>(SPRING_API_ENDPOINTS.materials, {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+    return this.request<Material[]>(SPRING_API_ENDPOINTS.materials);
+  }
+
+  async deleteMaterial(id: string) {
+    await this.request<void>(`${SPRING_API_ENDPOINTS.materials}/${id}`, {
+      method: "DELETE",
+    });
+    return this.request<Material[]>(SPRING_API_ENDPOINTS.materials);
   }
 
   async fetchTemplates() {
@@ -402,25 +545,26 @@ class SpringBootInternalApi implements InternalApi {
   }
 
   async upsertTemplate(input: ProductionTemplate) {
-    return this.withFallback(
-      "upsertTemplate",
-      async () => {
-        if (input.id) {
-          await this.request<ProductionTemplate>(`${SPRING_API_ENDPOINTS.templates}/${input.id}`, {
-            method: "PUT",
-            body: JSON.stringify(input),
-          });
-          return this.request<ProductionTemplate[]>(SPRING_API_ENDPOINTS.templates);
-        }
+    if (input.id) {
+      await this.request<ProductionTemplate>(`${SPRING_API_ENDPOINTS.templates}/${input.id}`, {
+        method: "PUT",
+        body: JSON.stringify(input),
+      });
+      return this.request<ProductionTemplate[]>(SPRING_API_ENDPOINTS.templates);
+    }
 
-        await this.request<ProductionTemplate>(SPRING_API_ENDPOINTS.templates, {
-          method: "POST",
-          body: JSON.stringify(input),
-        });
-        return this.request<ProductionTemplate[]>(SPRING_API_ENDPOINTS.templates);
-      },
-      this.options.fallbackApi ? () => this.options.fallbackApi!.upsertTemplate(input) : undefined,
-    );
+    await this.request<ProductionTemplate>(SPRING_API_ENDPOINTS.templates, {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+    return this.request<ProductionTemplate[]>(SPRING_API_ENDPOINTS.templates);
+  }
+
+  async deleteTemplate(id: string) {
+    await this.request<void>(`${SPRING_API_ENDPOINTS.templates}/${id}`, {
+      method: "DELETE",
+    });
+    return this.request<ProductionTemplate[]>(SPRING_API_ENDPOINTS.templates);
   }
 
   async fetchInsights() {
@@ -432,27 +576,17 @@ class SpringBootInternalApi implements InternalApi {
   }
 
   async updateInsightStatus(id: string, status: CircularInsight["status"]) {
-    return this.withFallback(
-      "updateInsightStatus",
-      () =>
-        this.request<InsightsPayload>(`${SPRING_API_ENDPOINTS.insights}/${id}/status`, {
-          method: "PATCH",
-          body: JSON.stringify({ status }),
-        }),
-      this.options.fallbackApi ? () => this.options.fallbackApi!.updateInsightStatus(id, status) : undefined,
-    );
+    return this.request<InsightsPayload>(`${SPRING_API_ENDPOINTS.insights}/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
   }
 
   async updateAnomalyStatus(id: string, status: CircularInsight["status"]) {
-    return this.withFallback(
-      "updateAnomalyStatus",
-      () =>
-        this.request<InsightsPayload["anomalies"]>(`${SPRING_API_ENDPOINTS.anomalies}/${id}/status`, {
-          method: "PATCH",
-          body: JSON.stringify({ status }),
-        }),
-      this.options.fallbackApi ? () => this.options.fallbackApi!.updateAnomalyStatus(id, status) : undefined,
-    );
+    return this.request<InsightsPayload["anomalies"]>(`${SPRING_API_ENDPOINTS.anomalies}/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
   }
 
   async fetchAnalytics() {
@@ -479,15 +613,10 @@ class SpringBootInternalApi implements InternalApi {
     const body = new FormData();
     body.append("image", file);
 
-    return this.withFallback(
-      "processOcrImage",
-      () =>
-        this.request<OcrMaterialLine[]>(SPRING_API_ENDPOINTS.ocr, {
-          method: "POST",
-          body,
-        }),
-      this.options.fallbackApi ? () => this.options.fallbackApi!.processOcrImage(file) : undefined,
-    );
+    return this.request<OcrMaterialLine[]>(SPRING_API_ENDPOINTS.ocr, {
+      method: "POST",
+      body,
+    });
   }
 
   async fetchSettings() {
@@ -499,15 +628,10 @@ class SpringBootInternalApi implements InternalApi {
   }
 
   async saveSettings(input: UserSettings) {
-    return this.withFallback(
-      "saveSettings",
-      () =>
-        this.request<UserSettings>(SPRING_API_ENDPOINTS.settings, {
-          method: "PUT",
-          body: JSON.stringify(input),
-        }),
-      this.options.fallbackApi ? () => this.options.fallbackApi!.saveSettings(input) : undefined,
-    );
+    return this.request<UserSettings>(SPRING_API_ENDPOINTS.settings, {
+      method: "PUT",
+      body: JSON.stringify(input),
+    });
   }
 }
 

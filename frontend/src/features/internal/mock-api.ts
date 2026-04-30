@@ -1106,6 +1106,18 @@ export async function upsertMaterial(material: Material) {
   return materialsStore;
 }
 
+export async function deleteMaterial(materialId: string) {
+  await delay(300);
+  const isUsedByTemplate = templatesStore.some((template) =>
+    template.lines.some((line) => line.materialId === materialId),
+  );
+  if (isUsedByTemplate) {
+    throw new Error("Material cannot be deleted because it is still used by templates.");
+  }
+  materialsStore = materialsStore.filter((material) => material.id !== materialId);
+  return materialsStore;
+}
+
 export async function fetchTemplates() {
   await delay();
   return templatesStore;
@@ -1122,6 +1134,12 @@ export async function upsertTemplate(template: ProductionTemplate) {
       ...templatesStore,
     ];
   }
+  return templatesStore;
+}
+
+export async function deleteTemplate(templateId: string) {
+  await delay(300);
+  templatesStore = templatesStore.filter((template) => template.id !== templateId);
   return templatesStore;
 }
 

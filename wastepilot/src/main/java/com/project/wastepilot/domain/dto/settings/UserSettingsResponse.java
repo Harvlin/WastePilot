@@ -1,11 +1,11 @@
 package com.project.wastepilot.domain.dto.settings;
 
 public record UserSettingsResponse(
-  String company,
+  String companyName,
   String email,
   String role,
+  String timezone,
   Integer dailyTokenBudget,
   boolean notifyAnomalies,
-  boolean notifyRecommendations,
-  boolean notifyOverdueBatches
+  boolean notifyInsights
 ) {}
