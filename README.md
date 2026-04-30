@@ -8,7 +8,7 @@ Fokus utama proyek ini adalah membuat sistem yang **langsung bisa dipakai operas
 
 ## Demo & Akses
 
-- **Frontend:** https://waste-pilot.vercel.app/
+- **Link:** https://waste-pilot.vercel.app/
 - **Repository:** https://github.com/Harvlin/WastePilot
 
 > Catatan penting untuk juri/pengguna:  
