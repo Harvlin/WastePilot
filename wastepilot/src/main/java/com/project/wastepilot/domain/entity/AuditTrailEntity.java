@@ -7,7 +7,6 @@ import java.time.Instant;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.type.EntityType;
 
 @Entity
 @Table(name = "audit_trail")

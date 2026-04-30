@@ -3,7 +3,7 @@ package com.project.wastepilot.domain.entity;
 import com.project.wastepilot.domain.enums.*;
 
 import jakarta.persistence.*;
-import jakarta.persistence.metamodel.EntityType;
+
 import lombok.Getter;
 import lombok.Setter;
 

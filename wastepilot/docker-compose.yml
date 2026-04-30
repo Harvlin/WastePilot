@@ -38,7 +38,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-wastepilot}
       SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO:-update}
     ports:
-      - "${APP_EXTERNAL_PORT:-8080}:8080"
+      - "${APP_EXTERNAL_PORT:-8088}:8080"
 
   adminer:
     image: adminer:latest
