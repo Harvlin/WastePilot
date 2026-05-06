@@ -1,5 +1,9 @@
 package com.project.wastepilot.domain.dto.analytics;
 
-import java.math.BigDecimal;
+import java.time.Instant;
 
-public record ReportTopContributor(String name, BigDecimal value) {}
+public record ReportTopContributor(
+	String actor,
+	Integer activities,
+	Instant lastSeen
+) {}

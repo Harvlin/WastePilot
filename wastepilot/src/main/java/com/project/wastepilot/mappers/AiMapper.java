@@ -5,9 +5,11 @@ import com.project.wastepilot.domain.dto.insight.CircularInsightResponse;
 import com.project.wastepilot.domain.entity.AnomalyEntity;
 import com.project.wastepilot.domain.entity.InsightEntity;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = org.mapstruct.ReportingPolicy.IGNORE)
 public interface AiMapper {
     AnomalyResponse toResponse(AnomalyEntity entity);
+    @Mapping(source = "timestamp", target = "createdAt")
     CircularInsightResponse toResponse(InsightEntity entity);
 }

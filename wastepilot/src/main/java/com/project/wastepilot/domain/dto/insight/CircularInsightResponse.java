@@ -8,5 +8,5 @@ public record CircularInsightResponse(
   String content,
   String impactCategory,
   String status,
-  Instant timestamp
+  Instant createdAt
 ) {}

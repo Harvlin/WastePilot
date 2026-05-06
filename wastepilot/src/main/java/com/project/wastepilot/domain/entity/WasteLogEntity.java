@@ -33,9 +33,21 @@ public class WasteLogEntity {
     @Column(nullable = false, length = 16)
     private WasteDestination destination;
 
+    @Column(length = 500)
+    private String reason;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "recovery_status", nullable = false, length = 24)
     private RecoveryStatus recoveryStatus;
+
+    @Column(name = "is_repurposed", nullable = false)
+    private boolean isRepurposed;
+
+    @Column(name = "recovery_inventory_log_id")
+    private UUID recoveryInventoryLogId;
+
+    @Column(name = "recovered_at")
+    private Instant recoveredAt;
 
     @Column(name = "ai_suggested_action", length = 500)
     private String aiSuggestedAction;

@@ -4,6 +4,7 @@ import java.util.List;
 
 public record ReportsPayloadResponse(
   String period,
+  String generatedAt,
   String windowLabel,
   ReportSummaryResponse summary,
   List<ReportTrendPoint> trend,
