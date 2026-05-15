@@ -1,10 +1,10 @@
 package com.project.wastepilot.repository;
 
 import com.project.wastepilot.domain.enums.*;
-
 import com.project.wastepilot.domain.entity.*;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import java.time.Instant;
 import java.util.UUID;
 import java.util.Optional;
 import java.util.List;
@@ -16,6 +16,8 @@ import jakarta.persistence.LockModeType;
 @Repository
 public interface BatchRepository extends JpaRepository<BatchEntity, UUID> {
   List<BatchEntity> findByStatusOrderByStartedAtDesc(BatchStatus status);
+  List<BatchEntity> findByStartedAtBetweenOrderByStartedAtAsc(Instant from, Instant to);
+  List<BatchEntity> findByClosedAtBetweenOrderByClosedAtAsc(Instant from, Instant to);
 
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("select b from BatchEntity b where b.id = :id")
