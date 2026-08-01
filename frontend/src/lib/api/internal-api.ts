@@ -99,7 +99,7 @@ export const SPRING_API_ENDPOINTS = {
   materials: "/api/v1/materials",
   templates: "/api/v1/templates",
   insights: "/api/v1/ai/insights",
-  anomalies: "/api/v1/ai/anomaly",
+  anomalies: "/api/v1/ai/anomalies",
   analytics: "/api/v1/analytics",
   reports: "/api/v1/reports",
   ocr: "/api/v1/ai/ocr",
@@ -110,6 +110,8 @@ export const SPRING_API_ENDPOINTS = {
   authLogin: "/api/v1/auth/login",
   authSignup: "/api/v1/auth/signup",
   authMe: "/api/v1/auth/me",
+  authForgotPassword: "/api/v1/auth/forgot-password",
+  authResetPassword: "/api/v1/auth/reset-password",
 } as const;
 
 function parseBooleanEnv(value: string | undefined, defaultValue: boolean): boolean {
@@ -142,11 +144,22 @@ function parseTimeoutMs(value: string | undefined, defaultValue: number): number
   return parsed;
 }
 
+export interface ForgotPasswordInput {
+  email: string;
+}
+
+export interface ResetPasswordInput {
+  token: string;
+  newPassword: string;
+}
+
 export interface InternalApi {
   login(input: LoginInput): Promise<AuthSession>;
   signup(input: SignupInput): Promise<AuthSession>;
   fetchCurrentUser(): Promise<AuthUser>;
   logout(): Promise<void>;
+  forgotPassword(input: ForgotPasswordInput): Promise<void>;
+  resetPassword(input: ResetPasswordInput): Promise<void>;
   fetchDashboardPayload(): Promise<DashboardPayload>;
   fetchOperationsPayload(): Promise<OperationsPayload>;
   createBatch(input: CreateBatchInput): Promise<ProductionBatch>;
@@ -211,6 +224,16 @@ class MockInternalApi implements InternalApi {
 
   async logout(): Promise<void> {
     signOutMockUser();
+  }
+
+  async forgotPassword(_input: ForgotPasswordInput): Promise<void> {
+    // Mock: silently succeeds
+    await new Promise((r) => setTimeout(r, 400));
+  }
+
+  async resetPassword(_input: ResetPasswordInput): Promise<void> {
+    // Mock: silently succeeds
+    await new Promise((r) => setTimeout(r, 400));
   }
 
   fetchDashboardPayload = mock.fetchDashboardPayload;
@@ -570,23 +593,31 @@ class SpringBootInternalApi implements InternalApi {
   async fetchInsights() {
     return this.withFallback(
       "fetchInsights",
-      () => this.request<InsightsPayload>(SPRING_API_ENDPOINTS.insights),
+      async () => {
+        const [recommendations, anomalies] = await Promise.all([
+          this.request<CircularInsight[]>(SPRING_API_ENDPOINTS.insights),
+          this.request<InsightsPayload["anomalies"]>(SPRING_API_ENDPOINTS.anomalies)
+        ]);
+        return { recommendations, anomalies };
+      },
       this.options.fallbackApi ? () => this.options.fallbackApi!.fetchInsights() : undefined,
     );
   }
 
   async updateInsightStatus(id: string, status: CircularInsight["status"]) {
-    return this.request<InsightsPayload>(`${SPRING_API_ENDPOINTS.insights}/${id}/status`, {
+    await this.request<void>(`${SPRING_API_ENDPOINTS.insights}/${id}/status`, {
       method: "PATCH",
       body: JSON.stringify({ status }),
     });
+    return this.fetchInsights();
   }
 
   async updateAnomalyStatus(id: string, status: CircularInsight["status"]) {
-    return this.request<InsightsPayload["anomalies"]>(`${SPRING_API_ENDPOINTS.anomalies}/${id}/status`, {
+    await this.request<void>(`${SPRING_API_ENDPOINTS.anomalies}/${id}/status`, {
       method: "PATCH",
       body: JSON.stringify({ status }),
     });
+    return this.request<InsightsPayload["anomalies"]>(SPRING_API_ENDPOINTS.anomalies);
   }
 
   async fetchAnalytics() {
@@ -605,13 +636,27 @@ class SpringBootInternalApi implements InternalApi {
     );
   }
 
+  async forgotPassword(input: ForgotPasswordInput): Promise<void> {
+    await this.request<{ message: string }>(SPRING_API_ENDPOINTS.authForgotPassword, {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  async resetPassword(input: ResetPasswordInput): Promise<void> {
+    await this.request<{ message: string }>(SPRING_API_ENDPOINTS.authResetPassword, {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
   async processOcrImage(file?: File) {
     if (!file) {
       throw new Error("Please upload an invoice image first.");
     }
 
     const body = new FormData();
-    body.append("image", file);
+    body.append("file", file); // backend @RequestParam("file")
 
     return this.request<OcrMaterialLine[]>(SPRING_API_ENDPOINTS.ocr, {
       method: "POST",
@@ -643,7 +688,7 @@ const springTimeoutMs = parseTimeoutMs(
 );
 const springFallbackToMock = parseBooleanEnv(
   import.meta.env.VITE_SPRING_FALLBACK_TO_MOCK as string | undefined,
-  true,
+  false,
 );
 
 const mockApi = new MockInternalApi();

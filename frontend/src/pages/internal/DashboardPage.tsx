@@ -82,7 +82,7 @@ const DashboardPage = () => {
       });
     }
 
-    if (data.topAnomaly.status === "new") {
+    if (data.topAnomaly?.status === "new") {
       queue.push({
         id: "mission-anomaly",
         title: `Investigate anomaly in ${data.topAnomaly.process}`,
@@ -237,6 +237,7 @@ const DashboardPage = () => {
             </div>
 
             <div className="space-y-4">
+              {data.topAnomaly && (
               <div className="liquid-glass rounded-3xl p-6 shadow-[0_0_0_1px_hsl(var(--palette-house-green)_/_0.5)]">
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -251,6 +252,8 @@ const DashboardPage = () => {
                   {data.topAnomaly.wasteKg}kg spike detected on {data.topAnomaly.date}
                 </div>
               </div>
+              )}
+
 
               <div className="liquid-glass rounded-3xl p-6 shadow-[0_0_0_1px_hsl(var(--palette-house-green)_/_0.5)]">
                 <div className="flex items-center gap-2">

@@ -40,7 +40,8 @@ public class SecurityConfig {
       )
       .authorizeHttpRequests(auth -> auth
         .requestMatchers("/actuator/health", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
-        .requestMatchers("/api/v1/auth/login", "/api/v1/auth/signup", "/api/v1/auth/register").permitAll()
+        .requestMatchers("/api/v1/auth/login", "/api/v1/auth/signup", "/api/v1/auth/register",
+            "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password").permitAll()
         .anyRequest().authenticated()
       )
       .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))

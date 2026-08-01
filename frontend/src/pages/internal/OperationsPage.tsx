@@ -740,8 +740,8 @@ const OperationsPage = () => {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {data.batches.map((batch) => (
-                            <TableRow key={batch.id} className="border-white/10 hover:bg-white/[0.03]">
+                          {data.batches.map((batch, idx) => (
+                            <TableRow key={batch.id || `batch-${idx}`} className="border-white/10 hover:bg-white/[0.03]">
                               <TableCell>{batch.id}</TableCell>
                               <TableCell>{batch.templateName}</TableCell>
                               <TableCell>{batch.outputUnits}</TableCell>
@@ -785,8 +785,8 @@ const OperationsPage = () => {
                               No running batches
                             </SelectItem>
                           ) : (
-                            runningBatches.map((batch) => (
-                              <SelectItem key={batch.id} value={batch.id}>
+                            runningBatches.map((batch, idx) => (
+                              <SelectItem key={batch.id || `sel-batch-${idx}`} value={batch.id}>
                                 {batch.id} - {batch.templateName}
                               </SelectItem>
                             ))
@@ -837,8 +837,8 @@ const OperationsPage = () => {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {data.inventoryLogs.map((item) => (
-                            <TableRow key={item.id} className="border-white/10 hover:bg-white/[0.03]">
+                          {data.inventoryLogs.map((item, idx) => (
+                            <TableRow key={item.id || `inv-${idx}`} className="border-white/10 hover:bg-white/[0.03]">
                               <TableCell>{item.batchId ?? "Global"}</TableCell>
                               <TableCell>{item.materialName}</TableCell>
                               <TableCell>
@@ -886,8 +886,8 @@ const OperationsPage = () => {
                               No running batches
                             </SelectItem>
                           ) : (
-                            runningBatches.map((batch) => (
-                              <SelectItem key={batch.id} value={batch.id}>
+                            runningBatches.map((batch, idx) => (
+                              <SelectItem key={batch.id || `sel-w-batch-${idx}`} value={batch.id}>
                                 {batch.id} - {batch.templateName}
                               </SelectItem>
                             ))
@@ -959,8 +959,8 @@ const OperationsPage = () => {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {data.wasteLogs.map((item) => (
-                            <TableRow key={item.id} className="border-white/10 hover:bg-white/[0.03]">
+                          {data.wasteLogs.map((item, idx) => (
+                            <TableRow key={item.id || `waste-${idx}`} className="border-white/10 hover:bg-white/[0.03]">
                               <TableCell>{item.batchId}</TableCell>
                               <TableCell>{item.materialName}</TableCell>
                               <TableCell>{item.quantityKg} kg</TableCell>
@@ -1030,8 +1030,8 @@ const OperationsPage = () => {
                               No running batches
                             </SelectItem>
                           ) : (
-                            runningBatches.map((batch) => (
-                              <SelectItem key={batch.id} value={batch.id}>
+                            runningBatches.map((batch, idx) => (
+                              <SelectItem key={batch.id || `sel-cb-${idx}`} value={batch.id}>
                                 {batch.id} - {batch.templateName}
                               </SelectItem>
                             ))
@@ -1246,7 +1246,7 @@ const OperationsPage = () => {
                       <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
                         {filteredActivityLogs.slice(0, 20).map((log, index) => (
                           <motion.div
-                            key={log.id}
+                            key={log.id || `log-${index}`}
                             initial={{ opacity: 0, x: -8 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: Math.min(index * 0.03, 0.3) }}
@@ -1301,7 +1301,7 @@ const OperationsPage = () => {
                       <div className="space-y-2.5 max-h-[480px] overflow-y-auto pr-1">
                         {auditTrail.slice(0, 14).map((entry, index) => (
                           <motion.div
-                            key={entry.id}
+                            key={entry.id || `audit-${index}`}
                             initial={{ opacity: 0, x: -6 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: Math.min(index * 0.04, 0.3) }}

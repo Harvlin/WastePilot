@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { internalApi } from "@/lib/api/internal-api";
+import type { ForgotPasswordInput, ResetPasswordInput } from "@/lib/api/internal-api";
 import {
   AuthSession,
   AuthUser,
@@ -15,6 +16,8 @@ interface AuthContextValue {
   login: (input: { email: string; password: string }) => Promise<void>;
   signup: (input: { fullName: string; email: string; password: string }) => Promise<void>;
   logout: () => Promise<void>;
+  forgotPassword: (input: ForgotPasswordInput) => Promise<void>;
+  resetPassword: (input: ResetPasswordInput) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -25,6 +28,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const bootstrap = async () => {
+      // Bypass auth in development mode
+      if (import.meta.env.DEV) {
+        const dummySession: AuthSession = {
+          accessToken: "dummy-dev-token",
+          tokenType: "Bearer",
+          user: {
+            id: "usr-dev",
+            fullName: "Dev User",
+            email: "dev@wastepilot.io",
+          },
+        };
+        setStoredAuthSession(dummySession);
+        setSession(dummySession);
+        setIsBootstrapping(false);
+        return;
+      }
+
       const stored = getStoredAuthSession();
       if (!stored?.accessToken) {
         setIsBootstrapping(false);
@@ -76,6 +96,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const forgotPassword = useCallback(async (input: ForgotPasswordInput) => {
+    await internalApi.forgotPassword(input);
+  }, []);
+
+  const resetPassword = useCallback(async (input: ResetPasswordInput) => {
+    await internalApi.resetPassword(input);
+  }, []);
+
   const value = useMemo<AuthContextValue>(() => ({
     user: session?.user ?? null,
     isAuthenticated: Boolean(session?.accessToken),
@@ -83,7 +111,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     login,
     signup,
     logout,
-  }), [session, isBootstrapping, login, signup, logout]);
+    forgotPassword,
+    resetPassword,
+  }), [session, isBootstrapping, login, signup, logout, forgotPassword, resetPassword]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

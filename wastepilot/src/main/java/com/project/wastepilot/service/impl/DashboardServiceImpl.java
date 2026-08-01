@@ -84,13 +84,10 @@ public class DashboardServiceImpl implements DashboardService {
         .mapToDouble(w -> w.getQuantityKg().doubleValue())
         .sum();
 
-    double materialInput = Math.max(
-        150.0,
-        inventory.stream()
+    double materialInput = inventory.stream()
             .filter(i -> i.getType() == InventoryType.IN)
             .mapToDouble(i -> i.getQuantity().doubleValue())
-            .sum()
-    );
+            .sum();
 
     double recoveryRate = clamp(reuseKg / safeWaste, 0, 1);
     double wasteEfficiency = clamp(1 - totalWaste / Math.max(materialInput, 0.0001), 0, 1);
@@ -114,9 +111,9 @@ public class DashboardServiceImpl implements DashboardService {
 
   private List<CircularMetricResponse> buildMetrics(CircularScore score, List<InventoryLogEntity> inventory, List<WasteLogEntity> waste) {
     return List.of(
-        new CircularMetricResponse("m1", "Material Input", score.materialInput(), "kg", 4.3),
-        new CircularMetricResponse("m2", "Waste Output", score.totalWaste(), "kg", -3.2),
-        new CircularMetricResponse("m3", "Recovery Rate", score.reuseRatePercent(), "%", 5.4)
+        new CircularMetricResponse("m1", "Material Input", score.materialInput(), "kg", 0.0),
+        new CircularMetricResponse("m2", "Waste Output", score.totalWaste(), "kg", 0.0),
+        new CircularMetricResponse("m3", "Recovery Rate", score.reuseRatePercent(), "%", 0.0)
     );
   }
 
