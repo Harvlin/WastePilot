@@ -8,6 +8,7 @@ import {
   QrCode,
   Settings,
   Shapes,
+  Activity,
 } from "lucide-react";
 
 export const internalNav = [
@@ -16,6 +17,7 @@ export const internalNav = [
   { label: "Materials", to: "/materials", icon: Boxes },
   { label: "Templates", to: "/templates", icon: Shapes },
   { label: "Operations", to: "/operations", icon: ClipboardList },
+  { label: "Floor View", to: "/floor-view", icon: Activity },
   { label: "Insights", to: "/insights", icon: Lightbulb },
   { label: "Analytics", to: "/analytics", icon: BarChart3 },
   { label: "How To Use", to: "/how-to-use", icon: BookOpenText },

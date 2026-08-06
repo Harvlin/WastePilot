@@ -4,6 +4,7 @@ import com.project.wastepilot.domain.dto.integrity.ActivityLogEntryResponse;
 import com.project.wastepilot.domain.dto.integrity.AuditTrailEntryResponse;
 import com.project.wastepilot.domain.dto.integrity.IntegrityOverviewResponse;
 import com.project.wastepilot.domain.dto.integrity.PatternReviewEntry;
+import com.project.wastepilot.domain.dto.integrity.CrossValidationDiscrepancy;
 import com.project.wastepilot.domain.entity.ActivityLogEntity;
 import com.project.wastepilot.domain.entity.AuditTrailEntity;
 import com.project.wastepilot.domain.entity.BatchEntity;
@@ -39,9 +40,12 @@ public class IntegrityServiceImpl implements IntegrityService {
   private final com.project.wastepilot.service.OperationsService operationsService;
 
   private static final int PATTERN_REVIEW_MIN_SAMPLE = 5;
+  // 20 is a reasonable window given our system expects roughly 2-3 closes per operator per shift, providing ~2 weeks of history.
+  private static final int PATTERN_REVIEW_WINDOW = 20;
   private static final BigDecimal PATTERN_REVIEW_SUSPICION_THRESHOLD = new BigDecimal("0.60");
   private static final BigDecimal CLOSE_VARIANCE_THRESHOLD = new BigDecimal("5");
   private static final BigDecimal PATTERN_REVIEW_BAND_POINTS = new BigDecimal("0.5");
+  private static final BigDecimal CROSS_VALIDATION_TOLERANCE = new BigDecimal("15");
 
   @Override
   @Transactional(readOnly = true)
@@ -87,7 +91,7 @@ public class IntegrityServiceImpl implements IntegrityService {
     for (Map.Entry<String, List<BatchEntity>> entry : batchesByUser.entrySet()) {
       // Limit to the configured sample window (most recent first).
       List<BatchEntity> userBatches = entry.getValue().stream()
-          .limit(PATTERN_REVIEW_MIN_SAMPLE)
+          .limit(PATTERN_REVIEW_WINDOW)
           .toList();
 
       // Require a full sample before flagging to avoid false positives on new users.
@@ -95,7 +99,7 @@ public class IntegrityServiceImpl implements IntegrityService {
 
       int suspiciousCount = 0;
       for (BatchEntity batch : userBatches) {
-        BigDecimal variance = operationsService.getBatchCloseSummary(batch.getId().toString()).variancePercent();
+        BigDecimal variance = operationsService.getBatchVariancePercent(batch.getId().toString());
 
         // Use absolute value: flag both over- and under-reporting just below the threshold.
         BigDecimal absVariance = variance.abs();
@@ -112,13 +116,84 @@ public class IntegrityServiceImpl implements IntegrityService {
 
       if (suspicionPercent.compareTo(PATTERN_REVIEW_SUSPICION_THRESHOLD) >= 0) {
         String note = String.format(
-            "%d of %d recent batch closes fall within 0.5%% below the variance threshold — pattern warrants review",
-            suspiciousCount, userBatches.size());
+            "%d of %d recent batch closes fall within %s%% below the variance threshold — pattern warrants review",
+            suspiciousCount, userBatches.size(), PATTERN_REVIEW_BAND_POINTS.stripTrailingZeros().toPlainString());
         results.add(new PatternReviewEntry(entry.getKey(), suspiciousCount, userBatches.size(), suspicionPercent, note));
       }
     }
 
     return results;
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<CrossValidationDiscrepancy> getCrossValidationDiscrepancies() {
+    List<BatchEntity> completedBatches = batchRepository.findByStatusOrderByStartedAtDesc(BatchStatus.completed);
+    if (completedBatches.isEmpty()) return List.of();
+
+    List<UUID> batchIds = completedBatches.stream().map(BatchEntity::getId).toList();
+    List<InventoryLogEntity> allInLogs = inventoryLogRepository.findByBatch_IdInAndType(batchIds, com.project.wastepilot.domain.enums.InventoryType.IN);
+
+    // Group by batchId, then by materialName
+    Map<UUID, Map<String, List<InventoryLogEntity>>> groupedLogs = allInLogs.stream()
+        .collect(Collectors.groupingBy(
+            log -> log.getBatch().getId(),
+            Collectors.groupingBy(InventoryLogEntity::getMaterialName)
+        ));
+
+    List<CrossValidationDiscrepancy> discrepancies = new ArrayList<>();
+
+    for (Map.Entry<UUID, Map<String, List<InventoryLogEntity>>> batchEntry : groupedLogs.entrySet()) {
+      UUID batchId = batchEntry.getKey();
+      
+      for (Map.Entry<String, List<InventoryLogEntity>> materialEntry : batchEntry.getValue().entrySet()) {
+        String materialName = materialEntry.getKey();
+        List<InventoryLogEntity> logs = materialEntry.getValue();
+
+        BigDecimal manualKg = BigDecimal.ZERO;
+        BigDecimal sensorKg = BigDecimal.ZERO;
+        boolean hasManual = false;
+        boolean hasSensor = false;
+
+        for (InventoryLogEntity log : logs) {
+          String source = log.getSource() == null ? "" : log.getSource().toLowerCase();
+          if (source.equals("sensor")) {
+            sensorKg = sensorKg.add(log.getQuantity());
+            hasSensor = true;
+          } else if (source.equals("manual") || source.equals("ocr")) {
+            manualKg = manualKg.add(log.getQuantity());
+            hasManual = true;
+          }
+        }
+
+        if (hasManual && hasSensor) {
+          BigDecimal diff = manualKg.subtract(sensorKg).abs();
+          BigDecimal max = manualKg.max(sensorKg);
+          
+          if (max.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal relativeDiff = diff.divide(max, 4, RoundingMode.HALF_UP).multiply(new BigDecimal("100"));
+            
+            if (relativeDiff.compareTo(CROSS_VALIDATION_TOLERANCE) > 0) {
+              String note = String.format("A discrepancy of %s%% detected between manual/OCR entry (%s kg) and sensor reading (%s kg).",
+                  relativeDiff.setScale(1, RoundingMode.HALF_UP).toPlainString(),
+                  manualKg.setScale(1, RoundingMode.HALF_UP).toPlainString(),
+                  sensorKg.setScale(1, RoundingMode.HALF_UP).toPlainString());
+              
+              discrepancies.add(new CrossValidationDiscrepancy(
+                  batchId.toString(),
+                  materialName,
+                  manualKg,
+                  sensorKg,
+                  relativeDiff,
+                  note
+              ));
+            }
+          }
+        }
+      }
+    }
+
+    return discrepancies;
   }
 
   private ActivityLogEntryResponse toActivityResponse(ActivityLogEntity entity) {

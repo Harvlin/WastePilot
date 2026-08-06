@@ -80,40 +80,19 @@ interface AuthUser {
 ```
 
 ## 4. Live Factory Floor View
-- **Endpoint:** `GET /operations/live-floor`
-- **Query Params:** None (designed for fast polling initially, easily convertible to SSE).
+- **Endpoint:** `GET /operations/floor-view` (Minggu 3)
+- **Query Params:** None
 - **Response:**
 ```typescript
-interface LiveFloorPayload {
-  activeBatches: Array<{
-    batchId: string;
-    templateName: string;
-    lineId: string;
-    status: "running" | "paused" | "anomalous";
-    runningTimeMinutes: number;
-    varianceSoFarPercent: number;
-    healthIndicator: "green" | "amber" | "red";
-  }>;
-  totalActiveLines: number;
-  lastUpdated: string; // ISO
+interface FloorViewBatchResponse {
+  batchId: string;
+  templateName: string;
+  startedAt: string;
+  runningTimeMinutes: number;
+  variancePercent: number;
+  healthIndicator: "green" | "amber" | "red";
 }
-```
-```json
-{
-  "activeBatches": [
-    {
-      "batchId": "B-105",
-      "templateName": "Cotton Tee v3",
-      "lineId": "LINE-A",
-      "status": "running",
-      "runningTimeMinutes": 125,
-      "varianceSoFarPercent": 2.4,
-      "healthIndicator": "green"
-    }
-  ],
-  "totalActiveLines": 1,
-  "lastUpdated": "2026-08-01T12:05:00Z"
-}
+// Returns FloorViewBatchResponse[] directly.
 ```
 
 ## 5. Notification / Alert Center
@@ -171,17 +150,10 @@ interface SustainabilityImpact {
 ```
 
 ## 8. Export (CSV/PDF)
-- **Endpoint:** `POST /reports/export`
-- **Request Body:**
-```typescript
-interface ExportRequest {
-  format: "csv" | "pdf";
-  type: "batch_summary" | "audit_trail";
-  dateRange?: { start: string; end: string };
-  batchId?: string;
-}
-```
-- **Response:** `200 OK` returning standard file blobs (e.g., `application/pdf` or `text/csv`). The JSON fallback error follows the standard `ApiErrorResponse`.
+- **Endpoint:** `GET /reports/export` (Minggu 3)
+- **Query Params:** `?format={csv|pdf}&period={weekly|monthly}`
+- **Auth:** `Authenticated`
+- **Response:** `200 OK` returning standard file blobs (e.g., `application/pdf` or `text/csv`).
 
 ## 9. Comparison/Trend Analytics
 - **Endpoint:** `GET /analytics/comparison`
@@ -197,6 +169,32 @@ interface ComparisonPayload {
       value: number; // circular score or waste variance
     }>;
   }>;
+}
+```
+
+## 10. Batch Output Correction (Supervisor Only)
+- **Endpoint:** `PATCH /operations/batches/{batchId}/output-units`
+- **Request Body:**
+```typescript
+interface UpdateOutputUnitsRequest {
+  outputUnits: number;
+  reason: string;
+}
+```
+- **Response:** `200 OK` returning the updated `BatchResponse`.
+
+## 11. Cross-Validation (Minggu 3)
+- **Endpoint:** `GET /api/v1/integrity/cross-validation`
+- **Role:** `SUPERVISOR`
+- **Response:**
+```typescript
+interface CrossValidationDiscrepancy {
+  batchId: string;
+  materialName: string;
+  manualTotalKg: number;
+  sensorTotalKg: number;
+  relativeDiscrepancyPercent: number;
+  note: string;
 }
 ```
 

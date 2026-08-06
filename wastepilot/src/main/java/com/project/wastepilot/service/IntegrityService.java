@@ -11,4 +11,5 @@ public interface IntegrityService {
     List<AuditTrailEntryResponse> getAuditTrail(String batchId);
     IntegrityOverviewResponse getOverview();
     List<PatternReviewEntry> getPatternReview();
+    List<com.project.wastepilot.domain.dto.integrity.CrossValidationDiscrepancy> getCrossValidationDiscrepancies();
 }

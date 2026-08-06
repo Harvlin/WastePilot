@@ -6,6 +6,7 @@ import com.project.wastepilot.domain.dto.operations.CloseBatchRequest;
 import com.project.wastepilot.domain.dto.operations.CreateBatchRequest;
 import com.project.wastepilot.domain.dto.operations.CreateInventoryLogRequest;
 import com.project.wastepilot.domain.dto.operations.CreateWasteLogRequest;
+import com.project.wastepilot.domain.dto.operations.FloorViewBatchResponse;
 import com.project.wastepilot.domain.dto.operations.InventoryLogResponse;
 import com.project.wastepilot.domain.dto.operations.OperationsPayloadResponse;
 import com.project.wastepilot.domain.dto.operations.RecoverWasteRequest;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/operations")
@@ -30,6 +32,11 @@ public class OperationsController {
   @GetMapping
   public OperationsPayloadResponse getPayload() {
     return operationsService.getOperationsPayload();
+  }
+
+  @GetMapping("/floor-view")
+  public List<FloorViewBatchResponse> getFloorView() {
+    return operationsService.getFloorView();
   }
 
   @PostMapping("/batches")
@@ -60,6 +67,14 @@ public class OperationsController {
   @PostMapping("/batch-close")
   public BatchCloseSummaryResponse closeBatch(@Valid @RequestBody CloseBatchRequest request) {
     return operationsService.closeBatch(request);
+  }
+
+  @org.springframework.web.bind.annotation.PatchMapping("/batches/{batchId}/output-units")
+  public BatchResponse updateBatchOutputUnits(
+      @PathVariable String batchId,
+      @Valid @RequestBody com.project.wastepilot.domain.dto.operations.UpdateOutputUnitsRequest request
+  ) {
+    return operationsService.updateBatchOutputUnits(batchId, request);
   }
 }
 

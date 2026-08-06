@@ -36,6 +36,26 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * REPORTS AUDIT NOTES (Minggu 3 Hardening Review)
+ *
+ * Classification of all calculations:
+ *   (a) REAL — genuine aggregation from database records within the time window
+ *   (b) DERIVED — computed metric from real data; formula documented inline
+ *
+ * buildTrend: (a) Real — all bucket values (inventory, waste, recovered, landfill) aggregated
+ *   from actual database records within each time bucket.
+ * buildSummary.batch counts: (a) Real — counted from BatchEntity records.
+ * buildSummary.inventory/waste totals: (a) Real — summed from InventoryLog/WasteLog records.
+ * buildSummary.onTimeCloseRate: (b) Derived — closedWithin24h / totalClosed.
+ *   FIXED (Minggu 3): When closedBatches is empty, rate returns 100% with onTimeCloseRateIsEstimated=true
+ *   to signal to clients that this is a fallback value, not a measured result.
+ * buildSummary.circularScoreAvg: (b) Derived — average of per-bucket scores (real data-derived).
+ *   Formula weights: see computeTrendScore — 30% recovery, 25% waste efficiency, 45% landfill avoidance
+ *   (policy-defined, not empirically measured).
+ * buildTopActions/buildTopContributors: (a) Real — aggregated from ActivityLog records.
+ * buildHighlights: (b) Derived — generated narrative from real calculated values above.
+ */
 @Service
 @RequiredArgsConstructor
 public class ReportsServiceImpl implements ReportsService {
@@ -205,7 +225,8 @@ public class ReportsServiceImpl implements ReportsService {
             && ChronoUnit.HOURS.between(b.getStartedAt(), b.getClosedAt()) <= OVERDUE_HOURS)
         .count();
 
-    BigDecimal onTimeCloseRate = closedBatches.isEmpty()
+    boolean onTimeEstimated = closedBatches.isEmpty();
+    BigDecimal onTimeCloseRate = onTimeEstimated
         ? BigDecimal.valueOf(100)
         : scale((double) onTimeClosedCount / closedBatches.size() * 100, 1);
 
@@ -225,7 +246,7 @@ public class ReportsServiceImpl implements ReportsService {
         .filter(i -> i.getType() == InventoryType.OUT)
         .mapToDouble(i -> i.getQuantity().doubleValue()).sum();
 
-    // circularScoreAvg: average of non-zero trend scores
+    // circularScoreAvg: average of non-zero trend scores (real per-bucket data)
     List<Double> nonZeroScores = trend.stream()
         .map(t -> t.circularScore().doubleValue())
         .filter(s -> s > 0)
@@ -239,6 +260,7 @@ public class ReportsServiceImpl implements ReportsService {
         startedBatches.size(),
         closedBatches.size(),
         onTimeCloseRate,
+        onTimeEstimated,
         scale(totalInvIn, 2),
         scale(totalInvOut, 2),
         scale(totalWasteKg, 2),

@@ -4,6 +4,7 @@ import com.project.wastepilot.domain.dto.integrity.ActivityLogEntryResponse;
 import com.project.wastepilot.domain.dto.integrity.AuditTrailEntryResponse;
 import com.project.wastepilot.domain.dto.integrity.IntegrityOverviewResponse;
 import com.project.wastepilot.domain.dto.integrity.PatternReviewEntry;
+import com.project.wastepilot.domain.dto.integrity.CrossValidationDiscrepancy;
 import com.project.wastepilot.service.IntegrityService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,11 @@ public class IntegrityController {
   @GetMapping("/pattern-review")
   public List<PatternReviewEntry> getPatternReview() {
     return integrityService.getPatternReview();
+  }
+
+  @GetMapping("/cross-validation")
+  public List<CrossValidationDiscrepancy> getCrossValidationDiscrepancies() {
+    return integrityService.getCrossValidationDiscrepancies();
   }
 }
 

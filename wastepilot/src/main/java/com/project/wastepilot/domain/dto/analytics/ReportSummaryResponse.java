@@ -7,6 +7,7 @@ public record ReportSummaryResponse(
   Integer totalBatches,
   Integer completedBatches,
   BigDecimal onTimeCloseRate,
+  boolean onTimeCloseRateIsEstimated,
   BigDecimal totalInventoryIn,
   BigDecimal totalInventoryOut,
   BigDecimal totalWasteKg,

@@ -45,9 +45,12 @@ public class SecurityConfig {
             "/api/v1/auth/refresh",
             "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password").permitAll()
         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/operations/batch-close").hasRole("SUPERVISOR")
+        .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/v1/operations/batches/*/output-units").hasRole("SUPERVISOR")
         .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/v1/ai/anomalies/*/status").hasRole("SUPERVISOR")
         .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/v1/ai/insights/*/status").hasRole("SUPERVISOR")
         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/integrity/pattern-review").hasRole("SUPERVISOR")
+        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/integrity/cross-validation").hasRole("SUPERVISOR")
+        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/operations/floor-view").authenticated()
         .anyRequest().authenticated()
       )
       .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(roleClaimConverter)))

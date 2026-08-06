@@ -58,6 +58,15 @@ export interface WasteRecoveryResult {
   inventoryLog: InventoryLog;
 }
 
+export interface FloorViewBatchResponse {
+  batchId: string;
+  templateName: string;
+  startedAt: string;
+  runningTimeMinutes: number;
+  variancePercent: number;
+  healthIndicator: "green" | "amber" | "red";
+}
+
 export interface LoginInput {
   email: string;
   password: string;
@@ -97,6 +106,7 @@ export const SPRING_API_ENDPOINTS = {
   operationWasteRecover: "/api/v1/operations/waste-logs/recover",
   operationBatchCloseSummary: "/api/v1/operations/batch-close/summary",
   operationBatchClose: "/api/v1/operations/batch-close",
+  operationFloorView: "/api/v1/operations/floor-view",
   materials: "/api/v1/materials",
   templates: "/api/v1/templates",
   insights: "/api/v1/ai/insights",
@@ -170,6 +180,7 @@ export interface InternalApi {
   recoverWasteToInventory(input: RecoverWasteInput): Promise<WasteRecoveryResult>;
   fetchBatchCloseSummary(batchId: string): Promise<BatchCloseSummary>;
   closeBatch(input: CloseBatchInput): Promise<BatchCloseSummary>;
+  fetchFloorViewBatches(): Promise<FloorViewBatchResponse[]>;
   fetchActivityLogs(batchId?: string): Promise<ActivityLogEntry[]>;
   fetchAuditTrail(batchId?: string): Promise<AuditTrailEntry[]>;
   fetchIntegrityOverview(): Promise<IntegrityOverview>;
@@ -249,6 +260,7 @@ class MockInternalApi implements InternalApi {
   recoverWasteToInventory = mock.recoverWasteToInventory;
   fetchBatchCloseSummary = mock.fetchBatchCloseSummary;
   closeBatch = mock.closeBatch;
+  fetchFloorViewBatches = async () => []; // Mock returns empty array for now
   fetchActivityLogs = mock.fetchActivityLogs;
   fetchAuditTrail = mock.fetchAuditTrail;
   fetchIntegrityOverview = mock.fetchIntegrityOverview;
@@ -502,6 +514,10 @@ class SpringBootInternalApi implements InternalApi {
       method: "POST",
       body: JSON.stringify(input),
     });
+  }
+
+  async fetchFloorViewBatches() {
+    return this.request<FloorViewBatchResponse[]>(SPRING_API_ENDPOINTS.operationFloorView);
   }
 
   async fetchActivityLogs(batchId?: string) {

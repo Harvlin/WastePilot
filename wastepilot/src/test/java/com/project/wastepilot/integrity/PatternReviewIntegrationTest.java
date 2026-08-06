@@ -21,12 +21,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.mockito.Mockito;
+import org.mockito.ArgumentMatchers;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("test")
+@org.springframework.test.context.ActiveProfiles("test")
 class PatternReviewIntegrationTest {
 
   @Autowired
@@ -40,6 +42,9 @@ class PatternReviewIntegrationTest {
 
   @Autowired
   private BatchRepository batchRepository;
+
+  @MockBean
+  private com.project.wastepilot.service.OperationsService operationsService;
 
   @Autowired
   private JwtService jwtService;
@@ -104,5 +109,51 @@ class PatternReviewIntegrationTest {
             .header("Authorization", "Bearer " + token))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$").isArray());
+  }
+
+  @Test
+  void patternReviewCapsSampleSizeToWindowLimit() throws Exception {
+    AuthUserEntity supervisor = new AuthUserEntity();
+    supervisor.setFullName("Supervisor Limit Test");
+    supervisor.setEmail("sup.limit@wastepilot.dev");
+    supervisor.setPasswordHash("hashedpass");
+    supervisor = authUserRepository.save(supervisor);
+
+    UserSettingsEntity settings = new UserSettingsEntity();
+    settings.setUserId(supervisor.getId().toString());
+    settings.setCompany("Test Corp");
+    settings.setEmail(supervisor.getEmail());
+    settings.setRole(UserRole.SUPERVISOR);
+    settings.setTimezone("UTC");
+    settings.setDailyTokenBudget(1000);
+    settings.setNotifyAnomalies(true);
+    settings.setNotifyRecommendations(true);
+    settings.setNotifyOverdueBatches(true);
+    userSettingsRepository.save(settings);
+
+    // Create 25 completed batches closed by this supervisor
+    for (int i = 0; i < 25; i++) {
+      BatchEntity batch = new BatchEntity();
+      batch.setTemplateName("Template A");
+      batch.setStartedAt(Instant.now().minusSeconds(3600 * 48 + i * 3600));
+      batch.setOutputUnits(new BigDecimal("100.000"));
+      batch.setWasteKg(BigDecimal.ZERO);
+      batch.setStatus(BatchStatus.completed);
+      batch.setClosedBy(supervisor.getId().toString());
+      batch.setClosedAt(Instant.now().minusSeconds(3600 * 24 + i * 3600));
+      batchRepository.save(batch);
+    }
+
+    String token = jwtService.generateToken(supervisor.getId().toString(), UserRole.SUPERVISOR);
+
+    Mockito.when(operationsService.getBatchVariancePercent(ArgumentMatchers.anyString()))
+        .thenReturn(new BigDecimal("4.8"));
+
+    // Act
+    mockMvc.perform(get("/api/v1/integrity/pattern-review")
+            .header("Authorization", "Bearer " + token))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$").isArray())
+        .andExpect(jsonPath("$[0].totalCloseCount").value(20)); // Capped at PATTERN_REVIEW_WINDOW (20)
   }
 }

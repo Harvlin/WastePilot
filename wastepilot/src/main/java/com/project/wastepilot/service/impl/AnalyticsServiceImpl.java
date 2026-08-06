@@ -31,6 +31,26 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+/**
+ * ANALYTICS AUDIT NOTES (Minggu 3 Hardening Review)
+ *
+ * Classification of all calculations:
+ *   (a) REAL — genuine aggregation from database records
+ *   (b) DERIVED — computed metric from real data; formula documented inline
+ *   (c) PLACEHOLDER — removed in this audit
+ *
+ * buildWasteBreakdown: (a) Real — sums actual WasteLog records by destination.
+ * buildEfficiencyByMaterial: (b) Derived — efficiency = (1 - landfillShare) * 100. Reasonable proxy.
+ * buildCircularityTrend (per-batch): (b) Derived — weighted formula, see computeBatchCircularScore.
+ *   Formula weights: 40% recovery rate (reuse+repair / total waste), 60% landfill avoidance.
+ *   These are policy-defined weights, not empirically measured; documented here for traceability.
+ * buildLandfillShareTrend: (a) Real — per-batch landfill fraction from actual WasteLog records.
+ * buildLandfillIntensityTrend: (b) Derived — kg-landfill per output-unit, from actual records.
+ *
+ * FIXED (Minggu 3): Removed all empty-state fallback stubs that returned a single synthetic
+ * "W1" data point (including one with a hardcoded 0.030 value) when no completed batches existed.
+ * Empty lists are now returned; the frontend should render an appropriate no-data state.
+ */
 public class AnalyticsServiceImpl implements AnalyticsService {
 
   private static final int WEEK_COUNT = 5;
@@ -75,7 +95,8 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         .toList();
 
     if (samples.isEmpty()) {
-      return List.of(new CircularityPoint("W1", scale(computeGlobalCircularScore(allWaste, allInventory), 1)));
+      // No completed batches — return empty list; frontend renders no-data state.
+      return List.of();
     }
 
     List<CircularityPoint> points = new ArrayList<>();
@@ -162,7 +183,8 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         .toList();
 
     if (samples.isEmpty()) {
-      return List.of(new LandfillSharePoint("W1", scale(computeGlobalLandfillShare(allWaste) * 100, 1)));
+      // No completed batches — return empty list; frontend renders no-data state.
+      return List.of();
     }
 
     List<LandfillSharePoint> points = new ArrayList<>();
@@ -189,7 +211,9 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         .toList();
 
     if (samples.isEmpty()) {
-      return List.of(new LandfillIntensityPoint("W1", scale(0.03, 3)));
+      // No completed batches — return empty list; frontend renders no-data state.
+      // Previously returned a hardcoded 0.030 stub value, removed in Minggu 3 audit.
+      return List.of();
     }
 
     List<LandfillIntensityPoint> points = new ArrayList<>();
@@ -220,6 +244,9 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     double landfillShare = clamp(disposeKg / total, 0, 1);
     double landfillAvoidance = 1 - landfillShare;
 
+    // Formula weights (policy-defined, not empirically measured):
+    //   40% recovery rate (reuse+repair as fraction of total waste)
+    //   60% landfill avoidance (1 - landfill fraction)
     double base = 100 * (0.4 * recoveryRate + 0.6 * landfillAvoidance);
     double cap = resolveLandfillCap(landfillShare);
     return clamp(Math.min(base, cap), 0, 100);

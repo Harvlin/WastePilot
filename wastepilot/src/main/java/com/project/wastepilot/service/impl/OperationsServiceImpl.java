@@ -9,6 +9,8 @@ import com.project.wastepilot.domain.dto.operations.CreateWasteLogRequest;
 import com.project.wastepilot.domain.dto.operations.InventoryLogResponse;
 import com.project.wastepilot.domain.dto.operations.OperationsPayloadResponse;
 import com.project.wastepilot.domain.dto.operations.RecoverWasteRequest;
+import com.project.wastepilot.domain.dto.operations.FloorViewBatchResponse;
+import com.project.wastepilot.domain.dto.operations.InventoryLogResponse;
 import com.project.wastepilot.domain.dto.operations.WasteLogResponse;
 import com.project.wastepilot.domain.dto.operations.WasteRecoveryResponse;
 import com.project.wastepilot.domain.entity.ActivityLogEntity;
@@ -268,6 +270,47 @@ public class OperationsServiceImpl implements OperationsService {
     return buildBatchCloseSummary(batch, batch.getOutputUnits());
   }
 
+  // Extracted to avoid N+1 query overhead in PatternReview logic.
+  @Override
+  @Transactional(readOnly = true)
+  public BigDecimal getBatchVariancePercent(String batchId) {
+    BatchEntity batch = resolveBatch(batchId);
+    return calculateVariancePercent(batch, batch.getOutputUnits());
+  }
+
+  @Override
+  @Transactional
+  public BatchResponse updateBatchOutputUnits(String batchId, com.project.wastepilot.domain.dto.operations.UpdateOutputUnitsRequest request) {
+    UUID id = parseUuid(batchId, "batchId");
+    BatchEntity batch = batchRepository.lockById(id)
+        .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "BATCH_NOT_FOUND", "Batch not found."));
+
+    if (batch.getStatus() != BatchStatus.completed) {
+      throw new ApiException(HttpStatus.CONFLICT, "BATCH_NOT_COMPLETED", "Only completed batches can be corrected.");
+    }
+    if (request.reason() == null || request.reason().trim().length() < 10) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "CORRECTION_REASON_REQUIRED", "A correction reason of at least 10 characters is required.");
+    }
+
+    BigDecimal previousOutput = batch.getOutputUnits();
+    batch.setOutputUnits(request.outputUnits());
+    batchRepository.save(batch);
+
+    if (previousOutput.compareTo(request.outputUnits()) != 0) {
+      logAudit(
+          EntityType.batch,
+          batch.getId().toString(),
+          "outputUnits",
+          previousOutput.stripTrailingZeros().toPlainString(),
+          request.outputUnits().stripTrailingZeros().toPlainString(),
+          request.reason().trim()
+      );
+      logActivity(EntityType.batch, batch.getId().toString(), "batch_corrected", batch.getId().toString(), "manual", request.reason().trim());
+    }
+
+    return toBatchResponse(batch);
+  }
+
   @Override
   @Transactional(readOnly = true)
   public int getOverdueBatchClosuresCount() {
@@ -298,12 +341,8 @@ public class OperationsServiceImpl implements OperationsService {
 
   private BatchCloseSummaryResponse buildBatchCloseSummary(BatchEntity batch, BigDecimal outputUnitsOverride) {
     BigDecimal outputUnits = outputUnitsOverride == null ? batch.getOutputUnits() : outputUnitsOverride;
-    TemplateEntity template = templateRepository.findByNameIgnoreCase(batch.getTemplateName()).orElse(null);
-    BigDecimal plannedInputKg = template == null
-        ? outputUnits.multiply(new BigDecimal("0.08")).max(new BigDecimal("12"))
-        : template.getLines().stream()
-            .map(line -> line.getQuantity())
-            .reduce(ZERO, BigDecimal::add);
+
+    BigDecimal variancePercent = calculateVariancePercent(batch, outputUnits);
 
     List<WasteLogEntity> wasteLogs = wasteLogRepository.findByBatchIdOrderByTimestampDesc(batch.getId());
     BigDecimal wasteTotalKg = wasteLogs.isEmpty()
@@ -315,6 +354,15 @@ public class OperationsServiceImpl implements OperationsService {
     BigDecimal landfillShare = wasteTotalKg.compareTo(ZERO) > 0
         ? scale(disposeKg.divide(wasteTotalKg, 6, RoundingMode.HALF_UP), 4)
         : ZERO;
+        
+    // Calculate input values for display in the summary
+    TemplateEntity template = templateRepository.findByNameIgnoreCase(batch.getTemplateName()).orElse(null);
+    BigDecimal plannedInputKg = template == null
+        ? outputUnits.multiply(new BigDecimal("0.08")).max(new BigDecimal("12"))
+        : template.getLines().stream()
+            .map(line -> line.getQuantity())
+            .reduce(ZERO, BigDecimal::add);
+            
     List<InventoryLogEntity> inLogs = inventoryLogRepository.findByBatchIdOrderByTimestampDesc(batch.getId())
         .stream().filter(log -> log.getType() == InventoryType.IN).toList();
     BigDecimal measuredInputKg = inLogs.stream()
@@ -323,12 +371,10 @@ public class OperationsServiceImpl implements OperationsService {
     boolean hasRealInput = !inLogs.isEmpty() && measuredInputKg.compareTo(BigDecimal.ZERO) > 0;
     String actualInputSource = hasRealInput ? "measured" : "estimated";
     BigDecimal actualInputKg = hasRealInput ? measuredInputKg : plannedInputKg;
+
     BigDecimal landfillIntensity = outputUnits.compareTo(ZERO) > 0
         ? scale(disposeKg.divide(outputUnits, 6, RoundingMode.HALF_UP), 4)
         : scale(disposeKg, 4);
-    BigDecimal variancePercent = plannedInputKg.compareTo(ZERO) > 0
-        ? scale(actualInputKg.subtract(plannedInputKg).multiply(new BigDecimal("100")).divide(plannedInputKg, 6, RoundingMode.HALF_UP), 2)
-        : ZERO;
 
     boolean overdue = batch.getStatus() == BatchStatus.running
         && Duration.between(batch.getStartedAt(), Instant.now()).compareTo(OVERDUE_HOURS) > 0;
@@ -385,6 +431,27 @@ public class OperationsServiceImpl implements OperationsService {
         redFlags,
         landfillShare
     );
+  }
+
+  private BigDecimal calculateVariancePercent(BatchEntity batch, BigDecimal outputUnits) {
+    TemplateEntity template = templateRepository.findByNameIgnoreCase(batch.getTemplateName()).orElse(null);
+    BigDecimal plannedInputKg = template == null
+        ? outputUnits.multiply(new BigDecimal("0.08")).max(new BigDecimal("12"))
+        : template.getLines().stream()
+            .map(line -> line.getQuantity())
+            .reduce(ZERO, BigDecimal::add);
+
+    List<InventoryLogEntity> inLogs = inventoryLogRepository.findByBatchIdOrderByTimestampDesc(batch.getId())
+        .stream().filter(log -> log.getType() == InventoryType.IN).toList();
+    BigDecimal measuredInputKg = inLogs.stream()
+        .map(InventoryLogEntity::getQuantity)
+        .reduce(BigDecimal.ZERO, BigDecimal::add);
+    boolean hasRealInput = !inLogs.isEmpty() && measuredInputKg.compareTo(BigDecimal.ZERO) > 0;
+    BigDecimal actualInputKg = hasRealInput ? measuredInputKg : plannedInputKg;
+
+    return plannedInputKg.compareTo(ZERO) > 0
+        ? scale(actualInputKg.subtract(plannedInputKg).multiply(new BigDecimal("100")).divide(plannedInputKg, 6, RoundingMode.HALF_UP), 2)
+        : ZERO;
   }
 
   private List<BatchCloseSummaryResponse.BatchRedFlagResponse> buildSummaryFlags(
@@ -522,6 +589,38 @@ public class OperationsServiceImpl implements OperationsService {
     };
   }
 
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<FloorViewBatchResponse> getFloorView() {
+    return batchRepository.findByStatusOrderByStartedAtDesc(BatchStatus.running).stream()
+        .map(batch -> {
+          long runningMinutes = Duration.between(batch.getStartedAt(), Instant.now()).toMinutes();
+          // Variance calculation logic is private calculateVariancePercent(BatchEntity, BigDecimal outputUnits)
+          // Since it's running, outputUnits might be 0, so we pass ZERO
+          BigDecimal variance = calculateVariancePercent(batch, ZERO);
+          BigDecimal absVariance = variance.abs();
+          
+          String health;
+          if (absVariance.compareTo(new BigDecimal("3")) < 0) {
+            health = "green";
+          } else if (absVariance.compareTo(new BigDecimal("5")) < 0) {
+            health = "amber";
+          } else {
+            health = "red";
+          }
+          
+          return new FloorViewBatchResponse(
+              batch.getId().toString(),
+              batch.getTemplateName(),
+              batch.getStartedAt(),
+              runningMinutes,
+              variance,
+              health
+          );
+        })
+        .toList();
+  }
 
   @Override
   public BatchEntity resolveRunningBatch(String batchId) {

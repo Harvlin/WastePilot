@@ -21,6 +21,7 @@ const InsightsPage = lazy(() => import("@/pages/internal/InsightsPage"));
 const AnalyticsPage = lazy(() => import("@/pages/internal/AnalyticsPage"));
 const GuidePage = lazy(() => import("@/pages/internal/GuidePage"));
 const SettingsPage = lazy(() => import("@/pages/internal/SettingsPage"));
+const FloorViewPage = lazy(() => import("@/pages/internal/FloorViewPage"));
 
 const queryClient = new QueryClient();
 
@@ -89,6 +90,7 @@ const App = () => {
                     <Route path="/templates" element={<TemplatesPage />} />
                     <Route path="/insights" element={<InsightsPage />} />
                     <Route path="/analytics" element={<AnalyticsPage />} />
+                    <Route path="/floor-view" element={<FloorViewPage />} />
                     <Route path="/how-to-use" element={<GuidePage />} />
                     <Route path="/settings" element={<SettingsPage />} />
                   </Route>

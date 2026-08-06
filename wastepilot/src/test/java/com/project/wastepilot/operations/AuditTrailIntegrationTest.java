@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.wastepilot.domain.dto.operations.CloseBatchRequest;
+import com.project.wastepilot.domain.dto.operations.UpdateOutputUnitsRequest;
 import com.project.wastepilot.domain.entity.AuditTrailEntity;
 import com.project.wastepilot.domain.entity.AuthUserEntity;
 import com.project.wastepilot.domain.entity.BatchEntity;
@@ -99,5 +100,122 @@ class AuditTrailIntegrationTest {
     assertThat(log.getActor()).doesNotContain("|reason=");
     assertThat(log.getActor()).isEqualTo(supervisor.getId().toString());
     assertThat(log.getReason()).isEqualTo("Final count on batch closure.");
+  }
+
+  @Test
+  void supervisorCanCorrectOutputUnitsWithValidReason() throws Exception {
+    AuthUserEntity supervisor = new AuthUserEntity();
+    supervisor.setFullName("Supervisor Bob");
+    supervisor.setEmail("bob@wastepilot.dev");
+    supervisor.setPasswordHash("hashedpass");
+    supervisor = authUserRepository.save(supervisor);
+
+    String token = jwtService.generateToken(supervisor.getId().toString(), UserRole.SUPERVISOR);
+
+    BatchEntity batch = new BatchEntity();
+    batch.setTemplateName("Template A");
+    batch.setStartedAt(Instant.now().minusSeconds(3600));
+    batch.setOutputUnits(new BigDecimal("100.000"));
+    batch.setWasteKg(BigDecimal.ZERO);
+    batch.setStatus(BatchStatus.completed);
+    batch = batchRepository.save(batch);
+
+    UpdateOutputUnitsRequest request = new UpdateOutputUnitsRequest(new BigDecimal("120.000"), "Typo in original log");
+
+    mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/v1/operations/batches/" + batch.getId() + "/output-units")
+            .header("Authorization", "Bearer " + token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isOk());
+
+    BatchEntity updated = batchRepository.findById(batch.getId()).get();
+    assertThat(updated.getOutputUnits()).isEqualByComparingTo("120.000");
+
+    List<AuditTrailEntity> logs = auditTrailRepository.findAll();
+    assertThat(logs).hasSize(1);
+    assertThat(logs.get(0).getReason()).isEqualTo("Typo in original log");
+  }
+
+  @Test
+  void supervisorCorrectionFailsIfReasonTooShort() throws Exception {
+    AuthUserEntity supervisor = new AuthUserEntity();
+    supervisor.setFullName("Supervisor Charlie");
+    supervisor.setEmail("charlie@wastepilot.dev");
+    supervisor.setPasswordHash("hashedpass");
+    supervisor = authUserRepository.save(supervisor);
+
+    String token = jwtService.generateToken(supervisor.getId().toString(), UserRole.SUPERVISOR);
+
+    BatchEntity batch = new BatchEntity();
+    batch.setTemplateName("Template A");
+    batch.setStartedAt(Instant.now().minusSeconds(3600));
+    batch.setOutputUnits(new BigDecimal("100.000"));
+    batch.setWasteKg(BigDecimal.ZERO);
+    batch.setStatus(BatchStatus.completed);
+    batch = batchRepository.save(batch);
+
+    UpdateOutputUnitsRequest request = new UpdateOutputUnitsRequest(new BigDecimal("120.000"), "typo");
+
+    mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/v1/operations/batches/" + batch.getId() + "/output-units")
+            .header("Authorization", "Bearer " + token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isBadRequest())
+        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.code").value("CORRECTION_REASON_REQUIRED"));
+  }
+
+  @Test
+  void operatorCannotCorrectOutputUnits() throws Exception {
+    AuthUserEntity operator = new AuthUserEntity();
+    operator.setFullName("Operator Dan");
+    operator.setEmail("dan@wastepilot.dev");
+    operator.setPasswordHash("hashedpass");
+    operator = authUserRepository.save(operator);
+
+    String token = jwtService.generateToken(operator.getId().toString(), UserRole.OPERATOR);
+
+    BatchEntity batch = new BatchEntity();
+    batch.setTemplateName("Template A");
+    batch.setStartedAt(Instant.now().minusSeconds(3600));
+    batch.setOutputUnits(new BigDecimal("100.000"));
+    batch.setWasteKg(BigDecimal.ZERO);
+    batch.setStatus(BatchStatus.completed);
+    batch = batchRepository.save(batch);
+
+    UpdateOutputUnitsRequest request = new UpdateOutputUnitsRequest(new BigDecimal("120.000"), "Typo in original log");
+
+    mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/v1/operations/batches/" + batch.getId() + "/output-units")
+            .header("Authorization", "Bearer " + token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void cannotCorrectOutputUnitsForRunningBatch() throws Exception {
+    AuthUserEntity supervisor = new AuthUserEntity();
+    supervisor.setFullName("Supervisor Eve");
+    supervisor.setEmail("eve@wastepilot.dev");
+    supervisor.setPasswordHash("hashedpass");
+    supervisor = authUserRepository.save(supervisor);
+
+    String token = jwtService.generateToken(supervisor.getId().toString(), UserRole.SUPERVISOR);
+
+    BatchEntity batch = new BatchEntity();
+    batch.setTemplateName("Template A");
+    batch.setStartedAt(Instant.now().minusSeconds(3600));
+    batch.setOutputUnits(new BigDecimal("100.000"));
+    batch.setWasteKg(BigDecimal.ZERO);
+    batch.setStatus(BatchStatus.running);
+    batch = batchRepository.save(batch);
+
+    UpdateOutputUnitsRequest request = new UpdateOutputUnitsRequest(new BigDecimal("120.000"), "Typo in original log");
+
+    mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/v1/operations/batches/" + batch.getId() + "/output-units")
+            .header("Authorization", "Bearer " + token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isConflict())
+        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.code").value("BATCH_NOT_COMPLETED"));
   }
 }
