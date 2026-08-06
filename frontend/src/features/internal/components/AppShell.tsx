@@ -114,7 +114,7 @@ const AppShell = () => {
   const [isFallbackActive, setIsFallbackActive] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const pageLabel = internalNav.find((item) => item.to === location.pathname)?.label ?? "Workspace";
 
   const openMobileNav = useCallback(() => {
@@ -329,14 +329,26 @@ const AppShell = () => {
                 />
               </div>
 
-              <button
-                type="button"
-                onClick={handleLogout}
+              <div className="flex items-center gap-3">
+                {user && (
+                  <div className="hidden sm:flex flex-col items-end mr-1">
+                    <span className="text-sm font-medium text-white/90">{user.fullName}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider mt-0.5 ${
+                      user.role === 'SUPERVISOR' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-sky-500/15 text-sky-100'
+                    }`}>
+                      {user.role || 'OPERATOR'}
+                    </span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={handleLogout}
                 className="inline-flex items-center gap-2 rounded-full px-3 sm:px-4 py-2 text-sm font-body text-[hsl(var(--palette-light-green))]/90 liquid-glass hover:bg-[hsl(var(--palette-house-green))]/45 transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span className="hidden sm:inline">Log out</span>
               </button>
+              </div>
             </div>
 
               <div className="md:hidden mt-3 flex items-center gap-2 liquid-glass rounded-full px-3 py-2">

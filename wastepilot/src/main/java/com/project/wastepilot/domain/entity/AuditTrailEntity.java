@@ -38,4 +38,7 @@ public class AuditTrailEntity {
 
     @Column(nullable = false)
     private Instant timestamp;
+
+    @Column(length = 500)
+    private String reason;
 }

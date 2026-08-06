@@ -19,6 +19,8 @@ public interface SettingsMapper {
     @Mapping(target = "company", source = "companyName")
     @Mapping(target = "notifyRecommendations", source = "notifyInsights")
     @Mapping(target = "notifyOverdueBatches", ignore = true)
+    @Mapping(target = "role", ignore = true)
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "userId", ignore = true)
     void update(@MappingTarget UserSettingsEntity target, UpdateUserSettingsRequest source);
 }

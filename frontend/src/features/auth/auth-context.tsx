@@ -37,6 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             id: "usr-dev",
             fullName: "Dev User",
             email: "dev@wastepilot.io",
+            role: "SUPERVISOR",
           },
         };
         setStoredAuthSession(dummySession);

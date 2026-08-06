@@ -24,12 +24,14 @@ import {
   IntegrityOverview,
   OperationsPayload,
   WasteDestination,
+  PatternReviewEntry,
 } from "@/features/internal/types";
 import { CLOSE_VARIANCE_THRESHOLD } from "@/features/internal/constants";
 import { PageHeader } from "@/features/internal/components/PageHeader";
 import { DataEmpty, DataError, DataLoading } from "@/features/internal/components/StateViews";
 import { internalApi } from "@/lib/api/internal-api";
 import { toast } from "sonner";
+import { useAuth } from "@/features/auth/auth-context";
 
 type OperationTab = "batches" | "inventory" | "waste" | "batch-close" | "integrity";
 
@@ -141,6 +143,7 @@ function relativeTime(iso: string) {
 }
 
 const OperationsPage = () => {
+  const { user } = useAuth();
   const [data, setData] = useState<OperationsPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -172,22 +175,25 @@ const OperationsPage = () => {
   const [activityLogs, setActivityLogs] = useState<ActivityLogEntry[]>([]);
   const [auditTrail, setAuditTrail] = useState<AuditTrailEntry[]>([]);
   const [integrityOverview, setIntegrityOverview] = useState<IntegrityOverview | null>(null);
+  const [patternReviews, setPatternReviews] = useState<PatternReviewEntry[]>([]);
   const [activityFilter, setActivityFilter] = useState<ActivityFilterKey>("all");
 
   const load = async () => {
     try {
       setLoading(true);
       setError(null);
-      const [payload, logs, audits, intOverview] = await Promise.all([
+      const [payload, logs, audits, intOverview, pReviews] = await Promise.all([
         internalApi.fetchOperationsPayload(),
         internalApi.fetchActivityLogs(),
         internalApi.fetchAuditTrail(),
         internalApi.fetchIntegrityOverview(),
+        user?.role === "SUPERVISOR" ? internalApi.fetchPatternReview() : Promise.resolve([]),
       ]);
       setData(payload);
       setActivityLogs(logs);
       setAuditTrail(audits);
       setIntegrityOverview(intOverview);
+      setPatternReviews(pReviews);
 
       const runningBatch = payload.batches.find((item) => item.status === "running");
       if (runningBatch) {
@@ -207,14 +213,16 @@ const OperationsPage = () => {
   };
 
   const refreshIntegrity = async () => {
-    const [logs, audits, intOverview] = await Promise.all([
+    const [logs, audits, intOverview, pReviews] = await Promise.all([
       internalApi.fetchActivityLogs(),
       internalApi.fetchAuditTrail(),
       internalApi.fetchIntegrityOverview(),
+      user?.role === "SUPERVISOR" ? internalApi.fetchPatternReview() : Promise.resolve([]),
     ]);
     setActivityLogs(logs);
     setAuditTrail(audits);
     setIntegrityOverview(intOverview);
+    setPatternReviews(pReviews);
   };
 
   useEffect(() => {
@@ -1345,7 +1353,41 @@ const OperationsPage = () => {
                       </div>
                     )}
                   </div>
+                  </div>
                 </div>
+
+                {/* ── Pattern Review (Supervisor Only) ── */}
+                {user?.role === "SUPERVISOR" && patternReviews.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+                    className="liquid-glass rounded-3xl p-5 overflow-hidden border border-rose-500/20 mt-4"
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <AlertTriangle className="w-4 h-4 text-rose-400" />
+                      <h3 className="text-white text-xl font-heading italic">Pattern Review</h3>
+                    </div>
+                    <p className="text-white/50 text-xs font-body mb-4">Anomalous behavior patterns flagged for supervisor review.</p>
+                    <div className="space-y-3">
+                      {patternReviews.map((pr, idx) => (
+                        <div key={idx} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 flex flex-col gap-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <User className="w-4 h-4 text-white/50" />
+                              <span className="text-white font-medium">{pr.closedBy}</span>
+                            </div>
+                            <span className="px-2 py-1 rounded-md text-xs bg-rose-500/20 text-rose-300 font-mono">
+                              {(pr.suspicionPercent * 100).toFixed(1)}% Suspicion
+                            </span>
+                          </div>
+                          <p className="text-white/70 text-sm font-body">{pr.note}</p>
+                          <p className="text-white/40 text-xs font-body">
+                            {pr.suspiciousCloseCount} out of {pr.totalCloseCount} recent closures flagged.
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
               </motion.div>
             </TabsContent>
           </AnimatePresence>

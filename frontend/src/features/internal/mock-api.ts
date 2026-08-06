@@ -14,6 +14,7 @@ import {
   OperationsPayload,
   ProductionBatch,
   ProductionTemplate,
+  PatternReviewEntry,
   ReportPeriod,
   ReportsPayload,
   UserSettings,
@@ -1090,7 +1091,20 @@ export async function fetchIntegrityOverview(): Promise<IntegrityOverview> {
   return computeIntegrityOverviewInternal();
 }
 
-export async function fetchMaterials() {
+export async function fetchPatternReview(): Promise<PatternReviewEntry[]> {
+  await delay(300);
+  return [
+    {
+      closedBy: "supervisor.ari",
+      suspiciousCloseCount: 4,
+      totalCloseCount: 5,
+      suspicionPercent: 0.8,
+      note: "4 of 5 recent batch closes fall within 0.5% below the variance threshold — pattern warrants review"
+    }
+  ];
+}
+
+export async function fetchMaterials(): Promise<Material[]> {
   await delay();
   return materialsStore;
 }

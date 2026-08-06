@@ -4,6 +4,7 @@ import com.project.wastepilot.domain.dto.settings.UpdateUserSettingsRequest;
 import com.project.wastepilot.domain.dto.settings.UserSettingsResponse;
 import com.project.wastepilot.domain.entity.AuthUserEntity;
 import com.project.wastepilot.domain.entity.UserSettingsEntity;
+import com.project.wastepilot.domain.enums.UserRole;
 import com.project.wastepilot.exception.ApiException;
 import com.project.wastepilot.mappers.SettingsMapper;
 import com.project.wastepilot.repository.AuthUserRepository;
@@ -45,15 +46,19 @@ public class SettingsServiceImpl implements SettingsService {
     UserSettingsEntity settings = userSettingsRepository.findByUserId(userId)
         .orElseGet(() -> userSettingsRepository.save(createDefaultSettings(userId)));
 
-    String previousRole = settings.getRole();
+    UserRole previousRole = settings.getRole();
     settingsMapper.update(settings, request);
     settings.setCompany(settings.getCompany().trim());
     settings.setEmail(settings.getEmail().trim().toLowerCase());
-    String updatedRole = settings.getRole();
-    if (updatedRole == null || updatedRole.isBlank()) {
-      settings.setRole(previousRole == null ? "Operator" : previousRole.trim());
+    String updatedRoleStr = request.role();
+    if (updatedRoleStr == null || updatedRoleStr.isBlank()) {
+      settings.setRole(previousRole == null ? UserRole.OPERATOR : previousRole);
     } else {
-      settings.setRole(updatedRole.trim());
+      try {
+        settings.setRole(UserRole.valueOf(updatedRoleStr.trim().toUpperCase()));
+      } catch (IllegalArgumentException e) {
+        settings.setRole(UserRole.OPERATOR);
+      }
     }
     settings.setTimezone(validateTimezone(settings.getTimezone()));
     UserSettingsEntity saved = userSettingsRepository.save(settings);
@@ -71,7 +76,7 @@ public class SettingsServiceImpl implements SettingsService {
     settings.setUserId(user.getId().toString());
     settings.setCompany("WastePilot Workspace");
     settings.setEmail(user.getEmail());
-    settings.setRole("Operator");
+    settings.setRole(UserRole.OPERATOR);
     settings.setTimezone(DEFAULT_TIMEZONE);
     settings.setDailyTokenBudget(DEFAULT_DAILY_TOKEN_BUDGET);
     settings.setNotifyAnomalies(true);
@@ -89,7 +94,7 @@ public class SettingsServiceImpl implements SettingsService {
     settings.setUserId(userId);
     settings.setCompany("WastePilot Workspace");
     settings.setEmail(user.getEmail());
-    settings.setRole("Operator");
+    settings.setRole(UserRole.OPERATOR);
     settings.setTimezone(DEFAULT_TIMEZONE);
     settings.setDailyTokenBudget(DEFAULT_DAILY_TOKEN_BUDGET);
     settings.setNotifyAnomalies(true);

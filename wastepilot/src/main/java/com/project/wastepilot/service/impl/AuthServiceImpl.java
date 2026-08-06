@@ -10,6 +10,8 @@ import com.project.wastepilot.domain.entity.PasswordResetTokenEntity;
 import com.project.wastepilot.exception.ApiException;
 import com.project.wastepilot.repository.AuthUserRepository;
 import com.project.wastepilot.repository.PasswordResetTokenRepository;
+import com.project.wastepilot.domain.enums.UserRole;
+import com.project.wastepilot.repository.UserSettingsRepository;
 import com.project.wastepilot.security.JwtService;
 import com.project.wastepilot.service.AuthService;
 import com.project.wastepilot.service.SettingsService;
@@ -45,6 +47,7 @@ public class AuthServiceImpl implements AuthService {
 
   private final AuthUserRepository authUserRepository;
   private final PasswordResetTokenRepository passwordResetTokenRepository;
+  private final UserSettingsRepository userSettingsRepository;
   private final PasswordEncoder passwordEncoder;
   private final JwtService jwtService;
   private final SettingsService settingsService;
@@ -134,17 +137,23 @@ public class AuthServiceImpl implements AuthService {
 
     AuthUserEntity user = authUserRepository.findById(userId)
         .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "User not found."));
-    return new AuthResponse.UserSession(user.getId().toString(), user.getFullName(), user.getEmail());
+    UserRole role = userSettingsRepository.findByUserId(user.getId().toString())
+        .map(settings -> settings.getRole())
+        .orElse(UserRole.OPERATOR);
+    return new AuthResponse.UserSession(user.getId().toString(), user.getFullName(), user.getEmail(), role.name());
   }
 
   private AuthResponse toResponse(AuthUserEntity user) {
-    String token = jwtService.generateToken(user.getId().toString());
-    String refreshToken = jwtService.generateRefreshToken(user.getId().toString());
+    UserRole role = userSettingsRepository.findByUserId(user.getId().toString())
+        .map(settings -> settings.getRole())
+        .orElse(UserRole.OPERATOR);
+    String token = jwtService.generateToken(user.getId().toString(), role);
+    String refreshToken = jwtService.generateRefreshToken(user.getId().toString(), role);
     return new AuthResponse(
         token,
         refreshToken,
         "Bearer",
-        new AuthResponse.UserSession(user.getId().toString(), user.getFullName(), user.getEmail())
+        new AuthResponse.UserSession(user.getId().toString(), user.getFullName(), user.getEmail(), role.name())
     );
   }
 

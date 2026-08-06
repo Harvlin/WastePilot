@@ -10,6 +10,7 @@ import {
   Material,
   OcrMaterialLine,
   OperationsPayload,
+  PatternReviewEntry,
   ProductionBatch,
   ProductionTemplate,
   ReportPeriod,
@@ -107,6 +108,7 @@ export const SPRING_API_ENDPOINTS = {
   activityLogs: "/api/v1/integrity/activity-logs",
   auditTrail: "/api/v1/integrity/audit-trail",
   integrityOverview: "/api/v1/integrity/overview",
+  patternReview: "/api/v1/integrity/pattern-review",
   authLogin: "/api/v1/auth/login",
   authSignup: "/api/v1/auth/signup",
   authMe: "/api/v1/auth/me",
@@ -171,6 +173,7 @@ export interface InternalApi {
   fetchActivityLogs(batchId?: string): Promise<ActivityLogEntry[]>;
   fetchAuditTrail(batchId?: string): Promise<AuditTrailEntry[]>;
   fetchIntegrityOverview(): Promise<IntegrityOverview>;
+  fetchPatternReview(): Promise<PatternReviewEntry[]>;
   fetchMaterials(): Promise<Material[]>;
   upsertMaterial(input: Material): Promise<Material[]>;
   deleteMaterial(id: string): Promise<Material[]>;
@@ -197,6 +200,7 @@ class MockInternalApi implements InternalApi {
         id: "mock-user",
         fullName: input.email.split("@")[0],
         email: input.email,
+        role: "OPERATOR",
       },
     };
   }
@@ -210,6 +214,7 @@ class MockInternalApi implements InternalApi {
         id: "mock-user",
         fullName: input.fullName,
         email: input.email,
+        role: "OPERATOR",
       },
     };
   }
@@ -247,6 +252,7 @@ class MockInternalApi implements InternalApi {
   fetchActivityLogs = mock.fetchActivityLogs;
   fetchAuditTrail = mock.fetchAuditTrail;
   fetchIntegrityOverview = mock.fetchIntegrityOverview;
+  fetchPatternReview = mock.fetchPatternReview;
   fetchMaterials = mock.fetchMaterials;
   upsertMaterial = mock.upsertMaterial;
   deleteMaterial = mock.deleteMaterial;
@@ -525,6 +531,14 @@ class SpringBootInternalApi implements InternalApi {
       "fetchIntegrityOverview",
       () => this.request<IntegrityOverview>(SPRING_API_ENDPOINTS.integrityOverview),
       this.options.fallbackApi ? () => this.options.fallbackApi!.fetchIntegrityOverview() : undefined,
+    );
+  }
+
+  async fetchPatternReview() {
+    return this.withFallback(
+      "fetchPatternReview",
+      () => this.request<PatternReviewEntry[]>(SPRING_API_ENDPOINTS.patternReview),
+      this.options.fallbackApi ? () => this.options.fallbackApi!.fetchPatternReview() : undefined,
     );
   }
 

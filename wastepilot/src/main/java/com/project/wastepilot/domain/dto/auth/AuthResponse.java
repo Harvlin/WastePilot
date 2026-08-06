@@ -9,7 +9,8 @@ public record AuthResponse(
   public record UserSession(
       String id,
       String fullName,
-      String email
+      String email,
+      String role
   ) {
   }
 }

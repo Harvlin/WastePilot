@@ -194,6 +194,14 @@ export interface IntegrityOverview {
   overdueBatchClosures: number;
 }
 
+export interface PatternReviewEntry {
+  closedBy: string;
+  suspiciousCloseCount: number;
+  totalCloseCount: number;
+  suspicionPercent: number;
+  note: string;
+}
+
 export interface AnalyticsPayload {
   circularityTrend: Array<{ week: string; score: number }>;
   wasteBreakdown: WasteBreakdownPoint[];

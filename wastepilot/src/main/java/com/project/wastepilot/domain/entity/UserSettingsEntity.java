@@ -1,5 +1,6 @@
 package com.project.wastepilot.domain.entity;
 
+import com.project.wastepilot.domain.enums.UserRole;
 import jakarta.persistence.*;
 import java.util.UUID;
 import lombok.Getter;
@@ -23,8 +24,9 @@ public class UserSettingsEntity {
     @Column(nullable = false, length = 160)
     private String email;
 
-    @Column(nullable = false, length = 80)
-    private String role;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 16)
+    private UserRole role;
 
     @Column(nullable = false, length = 80)
     private String timezone;

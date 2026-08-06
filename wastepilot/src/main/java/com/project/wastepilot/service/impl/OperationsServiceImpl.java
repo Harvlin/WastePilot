@@ -347,14 +347,7 @@ public class OperationsServiceImpl implements OperationsService {
     List<AuditTrailEntity> auditEntries = auditTrailRepository.findByEntityIdIn(entityIds);
     int meaningfulReasons = 0;
     for (AuditTrailEntity entry : auditEntries) {
-        String actorStr = entry.getActor();
-        String reason = null;
-        if (actorStr != null && actorStr.contains("|reason=")) {
-            String[] parts = actorStr.split("\\|reason=", 2);
-            if (parts.length > 1) {
-                reason = parts[1].trim();
-            }
-        }
+        String reason = entry.getReason();
         if (reason != null && !reason.isBlank() && reason.length() >= 10) {
             meaningfulReasons++;
         }
@@ -601,8 +594,8 @@ public class OperationsServiceImpl implements OperationsService {
     trail.setField(field);
     trail.setOldValue(oldValue);
     trail.setNewValue(newValue);
-    String payload = reason == null ? "" : "reason=" + reason;
-    trail.setActor(resolveActor() + (payload.isBlank() ? "" : "|" + payload));
+    trail.setActor(resolveActor());
+    trail.setReason(reason == null || reason.isBlank() ? null : reason.trim());
     trail.setTimestamp(Instant.now());
     auditTrailRepository.save(trail);
   }

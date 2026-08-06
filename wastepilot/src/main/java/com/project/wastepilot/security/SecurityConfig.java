@@ -21,6 +21,7 @@ public class SecurityConfig {
   private final AuthenticationEntryPoint authEntryPoint;
   private final AccessDeniedHandler accessDeniedHandler;
   private final AuthRateLimitFilter authRateLimitFilter;
+  private final RoleClaimConverter roleClaimConverter;
 
   @Bean
   SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -43,9 +44,13 @@ public class SecurityConfig {
         .requestMatchers("/api/v1/auth/login", "/api/v1/auth/signup", "/api/v1/auth/register",
             "/api/v1/auth/refresh",
             "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password").permitAll()
+        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/operations/batch-close").hasRole("SUPERVISOR")
+        .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/v1/ai/anomalies/*/status").hasRole("SUPERVISOR")
+        .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/v1/ai/insights/*/status").hasRole("SUPERVISOR")
+        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/integrity/pattern-review").hasRole("SUPERVISOR")
         .anyRequest().authenticated()
       )
-      .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))
+      .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(roleClaimConverter)))
       .addFilterBefore(authRateLimitFilter, UsernamePasswordAuthenticationFilter.class);
 
     return http.build();
