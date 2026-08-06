@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Activity, AlertTriangle, CheckCircle2, Clock3, Eye, Filter, Plus, ShieldCheck, User } from "lucide-react";
+import { Activity, AlertTriangle, CheckCircle2, Clock3, Filter, Plus, ShieldCheck, User } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1352,7 +1352,6 @@ const OperationsPage = () => {
                         ))}
                       </div>
                     )}
-                  </div>
                   </div>
                 </div>
 

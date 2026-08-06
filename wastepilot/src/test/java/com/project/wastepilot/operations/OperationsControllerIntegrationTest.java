@@ -13,6 +13,11 @@ import com.project.wastepilot.repository.BatchRepository;
 import com.project.wastepilot.repository.InventoryLogRepository;
 import com.project.wastepilot.repository.RedFlagRepository;
 import com.project.wastepilot.repository.WasteLogRepository;
+import com.project.wastepilot.repository.AuthUserRepository;
+import com.project.wastepilot.repository.UserSettingsRepository;
+import com.project.wastepilot.domain.enums.UserRole;
+import com.project.wastepilot.domain.entity.UserSettingsEntity;
+import com.project.wastepilot.domain.entity.AuthUserEntity;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,6 +57,12 @@ class OperationsControllerIntegrationTest {
 
   @Autowired
   private RedFlagRepository redFlagRepository;
+
+  @Autowired
+  private AuthUserRepository authUserRepository;
+
+  @Autowired
+  private UserSettingsRepository userSettingsRepository;
 
   @BeforeEach
   void setUp() {
@@ -155,13 +166,23 @@ class OperationsControllerIntegrationTest {
 
   private String signupAndGetToken(String email) throws Exception {
     SignupRequest signupRequest = new SignupRequest("Operations User", email, "superSecret123");
-    MvcResult signupResult = mockMvc.perform(post("/api/v1/auth/signup")
+    mockMvc.perform(post("/api/v1/auth/signup")
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(signupRequest)))
-        .andExpect(status().isCreated())
+        .andExpect(status().isCreated());
+
+    AuthUserEntity user = authUserRepository.findByEmailIgnoreCase(email).get();
+    UserSettingsEntity settings = userSettingsRepository.findByUserId(user.getId().toString()).get();
+    settings.setRole(UserRole.SUPERVISOR);
+    userSettingsRepository.save(settings);
+
+    MvcResult loginResult = mockMvc.perform(post("/api/v1/auth/login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(Map.of("email", email, "password", "superSecret123"))))
+        .andExpect(status().isOk())
         .andReturn();
 
-    return objectMapper.readTree(signupResult.getResponse().getContentAsString()).get("accessToken").asText();
+    return objectMapper.readTree(loginResult.getResponse().getContentAsString()).get("accessToken").asText();
   }
 }
 

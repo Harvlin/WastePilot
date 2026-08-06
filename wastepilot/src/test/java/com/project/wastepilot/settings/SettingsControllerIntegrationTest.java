@@ -73,7 +73,7 @@ class SettingsControllerIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.companyName").value("Pilot Circular"))
         .andExpect(jsonPath("$.email").value("ops@pilot.circular"))
-        .andExpect(jsonPath("$.role").value("Operations Lead"))
+        .andExpect(jsonPath("$.role").value("OPERATOR"))
         .andExpect(jsonPath("$.timezone").value("Asia/Jakarta"))
         .andExpect(jsonPath("$.dailyTokenBudget").value(18000))
         .andExpect(jsonPath("$.notifyInsights").value(false));

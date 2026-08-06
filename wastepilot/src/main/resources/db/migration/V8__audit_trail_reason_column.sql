@@ -7,6 +7,7 @@ ALTER TABLE audit_trail ADD COLUMN reason VARCHAR(500);
 -- One-time data migration: extract reason from actor field for any existing rows
 -- that used the "|reason=" encoding from the previous implementation.
 -- After this runs, actor will contain only the actor identifier.
+-- NOTE: LOCATE() is compatible with both MySQL and H2.
 UPDATE audit_trail
   SET reason = SUBSTRING(actor, LOCATE('|reason=', actor) + 8),
       actor  = SUBSTRING(actor, 1, LOCATE('|reason=', actor) - 1)

@@ -75,39 +75,49 @@ public class IntegrityServiceImpl implements IntegrityService {
   @Transactional(readOnly = true)
   public List<PatternReviewEntry> getPatternReview() {
     List<BatchEntity> completedBatches = batchRepository.findByStatusOrderByStartedAtDesc(BatchStatus.completed);
-    
+
+    // Group by closer, then cap each user's sample to the most recent N batches.
+    // Using LinkedHashMap via Collectors.groupingBy preserves insertion order (desc by startedAt).
     Map<String, List<BatchEntity>> batchesByUser = completedBatches.stream()
         .filter(b -> b.getClosedBy() != null && !b.getClosedBy().isBlank())
         .collect(Collectors.groupingBy(BatchEntity::getClosedBy));
-        
+
     List<PatternReviewEntry> results = new ArrayList<>();
-    
+
     for (Map.Entry<String, List<BatchEntity>> entry : batchesByUser.entrySet()) {
-      List<BatchEntity> userBatches = entry.getValue();
+      // Limit to the configured sample window (most recent first).
+      List<BatchEntity> userBatches = entry.getValue().stream()
+          .limit(PATTERN_REVIEW_MIN_SAMPLE)
+          .toList();
+
+      // Require a full sample before flagging to avoid false positives on new users.
       if (userBatches.size() < PATTERN_REVIEW_MIN_SAMPLE) continue;
-      
+
       int suspiciousCount = 0;
       for (BatchEntity batch : userBatches) {
         BigDecimal variance = operationsService.getBatchCloseSummary(batch.getId().toString()).variancePercent();
-        
+
+        // Use absolute value: flag both over- and under-reporting just below the threshold.
+        BigDecimal absVariance = variance.abs();
         BigDecimal lowerBound = CLOSE_VARIANCE_THRESHOLD.subtract(PATTERN_REVIEW_BAND_POINTS);
         BigDecimal upperBound = CLOSE_VARIANCE_THRESHOLD;
-        
-        if (variance.compareTo(lowerBound) >= 0 && variance.compareTo(upperBound) <= 0) {
+
+        if (absVariance.compareTo(lowerBound) >= 0 && absVariance.compareTo(upperBound) <= 0) {
           suspiciousCount++;
         }
       }
-      
+
       BigDecimal suspicionPercent = new BigDecimal(suspiciousCount)
           .divide(new BigDecimal(userBatches.size()), 4, RoundingMode.HALF_UP);
-          
+
       if (suspicionPercent.compareTo(PATTERN_REVIEW_SUSPICION_THRESHOLD) >= 0) {
-        String note = String.format("%d of %d recent batch closes fall within 0.5%% below the variance threshold — pattern warrants review", 
+        String note = String.format(
+            "%d of %d recent batch closes fall within 0.5%% below the variance threshold — pattern warrants review",
             suspiciousCount, userBatches.size());
         results.add(new PatternReviewEntry(entry.getKey(), suspiciousCount, userBatches.size(), suspicionPercent, note));
       }
     }
-    
+
     return results;
   }
 
@@ -130,7 +140,7 @@ public class IntegrityServiceImpl implements IntegrityService {
         batchId,
         entity.getActor(),
         entity.getAction(),
-        normalizeActivityEntity(entity.getEntity()),
+        normalizeActivityEntity(entity.getEntity(), entity.getAction()),
         entity.getEntityId(),
         source,
         cleanDetails,
@@ -186,11 +196,15 @@ public class IntegrityServiceImpl implements IntegrityService {
     return details.substring(start + 7, end);
   }
 
-  private String normalizeActivityEntity(EntityType entityType) {
+  private String normalizeActivityEntity(EntityType entityType, String action) {
+    if (action != null && action.startsWith("score_")) {
+      return "score";
+    }
     return switch (entityType) {
       case batch -> "batch";
       case inventory -> "inventory";
       case waste -> "waste";
+      case material, template, insight, anomaly, settings -> "system";
       default -> "system";
     };
   }

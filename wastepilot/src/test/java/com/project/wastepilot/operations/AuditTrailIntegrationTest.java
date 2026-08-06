@@ -50,9 +50,17 @@ class AuditTrailIntegrationTest {
   @Autowired
   private JwtService jwtService;
 
+  @Autowired
+  private com.project.wastepilot.repository.WasteLogRepository wasteLogRepository;
+
+  @Autowired
+  private com.project.wastepilot.repository.InventoryLogRepository inventoryLogRepository;
+
   @BeforeEach
   void setUp() {
     auditTrailRepository.deleteAll();
+    wasteLogRepository.deleteAll();
+    inventoryLogRepository.deleteAll();
     batchRepository.deleteAll();
     authUserRepository.deleteAll();
   }

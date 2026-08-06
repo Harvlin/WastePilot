@@ -352,8 +352,9 @@ public class OperationsServiceImpl implements OperationsService {
             meaningfulReasons++;
         }
     }
-    BigDecimal auditIntegrity = auditEntries.isEmpty() ? BigDecimal.ONE 
-        : new BigDecimal(meaningfulReasons).divide(new BigDecimal(auditEntries.size()), 4, RoundingMode.HALF_UP);    int confidenceScore = BigDecimal.valueOf(100)
+    BigDecimal auditIntegrity = auditEntries.isEmpty() ? BigDecimal.ONE
+        : new BigDecimal(meaningfulReasons).divide(new BigDecimal(auditEntries.size()), 4, RoundingMode.HALF_UP);
+    int confidenceScore = BigDecimal.valueOf(100)
         .multiply(completeness.multiply(new BigDecimal("0.5"))
             .add(timeliness.multiply(new BigDecimal("0.3")))
             .add(auditIntegrity.multiply(new BigDecimal("0.2"))))
