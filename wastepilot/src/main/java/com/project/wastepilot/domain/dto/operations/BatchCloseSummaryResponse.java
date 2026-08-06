@@ -11,6 +11,7 @@ public record BatchCloseSummaryResponse(
         Boolean overdue,
         BigDecimal plannedInputKg,
         BigDecimal actualInputKg,
+        String actualInputSource,
         BigDecimal outputUnits,
         BigDecimal wasteTotalKg,
         BigDecimal reuseKg,

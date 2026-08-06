@@ -17,6 +17,9 @@ public class InsightEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Column(name = "rule_id", length = 64)
+    private String ruleId;
+
     @Column(nullable = false, length = 200)
     private String title;
 

@@ -9,6 +9,7 @@ import jakarta.validation.constraints.NotBlank;
 @Validated
 public record JwtProperties(
     @NotBlank String secret,
-    @Min(300) long accessTokenTtlSeconds
+    @Min(300) long accessTokenTtlSeconds,
+    @Min(300) long refreshTokenTtlSeconds
 ) {
 }

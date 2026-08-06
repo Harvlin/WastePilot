@@ -25,6 +25,12 @@ public class AnomalyEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Column(name = "batch_id")
+    private UUID batchId;
+
+    @Column(name = "material_name", length = 160)
+    private String materialName;
+
     @Column(nullable = false, length = 120)
     private String process;
 

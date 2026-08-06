@@ -88,6 +88,29 @@ public class AuthServiceImpl implements AuthService {
 
   @Override
   @Transactional(readOnly = true)
+  public AuthResponse refreshToken(String refreshToken) {
+    String subject;
+    try {
+      subject = jwtService.validateRefreshToken(refreshToken);
+    } catch (Exception e) {
+      throw new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_REFRESH_TOKEN", "Refresh token is invalid or expired.");
+    }
+    
+    java.util.UUID userId;
+    try {
+      userId = java.util.UUID.fromString(subject);
+    } catch (Exception ex) {
+      throw new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Invalid token subject.");
+    }
+
+    AuthUserEntity user = authUserRepository.findById(userId)
+        .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "USER_NOT_FOUND", "User not found."));
+    
+    return toResponse(user);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
   public AuthResponse.UserSession getCurrentUser() {
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     if (authentication == null) {
@@ -116,8 +139,10 @@ public class AuthServiceImpl implements AuthService {
 
   private AuthResponse toResponse(AuthUserEntity user) {
     String token = jwtService.generateToken(user.getId().toString());
+    String refreshToken = jwtService.generateRefreshToken(user.getId().toString());
     return new AuthResponse(
         token,
+        refreshToken,
         "Bearer",
         new AuthResponse.UserSession(user.getId().toString(), user.getFullName(), user.getEmail())
     );

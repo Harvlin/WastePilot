@@ -44,6 +44,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import com.project.wastepilot.service.OperationsService;
+import com.project.wastepilot.service.AnomalyDetectionService;
+import com.project.wastepilot.service.InsightGenerationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -64,6 +66,8 @@ public class OperationsServiceImpl implements OperationsService {
   private final ActivityLogRepository activityLogRepository;
   private final AuditTrailRepository auditTrailRepository;
   private final RedFlagRepository redFlagRepository;
+  private final AnomalyDetectionService anomalyDetectionService;
+  private final InsightGenerationService insightGenerationService;
   private final ConcurrentHashMap<UUID, RecoveryMeta> recoveryMeta = new ConcurrentHashMap<>();
 
   @Override
@@ -155,6 +159,7 @@ public class OperationsServiceImpl implements OperationsService {
         "manual",
         saved.getQuantityKg() + "kg to " + saved.getDestination() + "."
     );
+    anomalyDetectionService.evaluateWasteLog(saved);
     return toWasteLogResponse(saved);
   }
 
@@ -257,6 +262,9 @@ public class OperationsServiceImpl implements OperationsService {
       );
     }
     logActivity(EntityType.batch, batch.getId().toString(), "batch_closed", batch.getId().toString(), "manual", batch.getCloseReason());
+    
+    insightGenerationService.evaluateAfterBatchClose(batch);
+    
     return buildBatchCloseSummary(batch, batch.getOutputUnits());
   }
 
@@ -307,8 +315,14 @@ public class OperationsServiceImpl implements OperationsService {
     BigDecimal landfillShare = wasteTotalKg.compareTo(ZERO) > 0
         ? scale(disposeKg.divide(wasteTotalKg, 6, RoundingMode.HALF_UP), 4)
         : ZERO;
-    BigDecimal actualInputKg = plannedInputKg.add(wasteTotalKg.multiply(new BigDecimal("0.45")))
-        .max(plannedInputKg.multiply(new BigDecimal("0.8")));
+    List<InventoryLogEntity> inLogs = inventoryLogRepository.findByBatchIdOrderByTimestampDesc(batch.getId())
+        .stream().filter(log -> log.getType() == InventoryType.IN).toList();
+    BigDecimal measuredInputKg = inLogs.stream()
+        .map(InventoryLogEntity::getQuantity)
+        .reduce(BigDecimal.ZERO, BigDecimal::add);
+    boolean hasRealInput = !inLogs.isEmpty() && measuredInputKg.compareTo(BigDecimal.ZERO) > 0;
+    String actualInputSource = hasRealInput ? "measured" : "estimated";
+    BigDecimal actualInputKg = hasRealInput ? measuredInputKg : plannedInputKg;
     BigDecimal landfillIntensity = outputUnits.compareTo(ZERO) > 0
         ? scale(disposeKg.divide(outputUnits, 6, RoundingMode.HALF_UP), 4)
         : scale(disposeKg, 4);
@@ -325,8 +339,28 @@ public class OperationsServiceImpl implements OperationsService {
     BigDecimal completeness = BigDecimal.valueOf((hasInventorySignal ? 1 : 0) + (hasWasteSignal ? 1 : 0) + (hasOutputSignal ? 1 : 0))
         .divide(BigDecimal.valueOf(3), 6, RoundingMode.HALF_UP);
     BigDecimal timeliness = overdue ? new BigDecimal("0.72") : BigDecimal.ONE;
-    BigDecimal auditIntegrity = BigDecimal.ONE;
-    int confidenceScore = BigDecimal.valueOf(100)
+    List<String> entityIds = new java.util.ArrayList<>();
+    entityIds.add(batch.getId().toString());
+    inventoryLogRepository.findByBatchIdOrderByTimestampDesc(batch.getId()).forEach(log -> entityIds.add(log.getId().toString()));
+    wasteLogRepository.findByBatchIdOrderByTimestampDesc(batch.getId()).forEach(log -> entityIds.add(log.getId().toString()));
+
+    List<AuditTrailEntity> auditEntries = auditTrailRepository.findByEntityIdIn(entityIds);
+    int meaningfulReasons = 0;
+    for (AuditTrailEntity entry : auditEntries) {
+        String actorStr = entry.getActor();
+        String reason = null;
+        if (actorStr != null && actorStr.contains("|reason=")) {
+            String[] parts = actorStr.split("\\|reason=", 2);
+            if (parts.length > 1) {
+                reason = parts[1].trim();
+            }
+        }
+        if (reason != null && !reason.isBlank() && reason.length() >= 10) {
+            meaningfulReasons++;
+        }
+    }
+    BigDecimal auditIntegrity = auditEntries.isEmpty() ? BigDecimal.ONE 
+        : new BigDecimal(meaningfulReasons).divide(new BigDecimal(auditEntries.size()), 4, RoundingMode.HALF_UP);    int confidenceScore = BigDecimal.valueOf(100)
         .multiply(completeness.multiply(new BigDecimal("0.5"))
             .add(timeliness.multiply(new BigDecimal("0.3")))
             .add(auditIntegrity.multiply(new BigDecimal("0.2"))))
@@ -343,6 +377,7 @@ public class OperationsServiceImpl implements OperationsService {
         overdue,
         scale(plannedInputKg, 3),
         scale(actualInputKg, 3),
+        actualInputSource,
         scale(outputUnits, 3),
         scale(wasteTotalKg, 3),
         scale(reuseKg, 3),
@@ -491,6 +526,16 @@ public class OperationsServiceImpl implements OperationsService {
       case repair -> "Send this material for repair and quality check before re-entry.";
       case dispose -> "Isolate and dispose according to compliance policy.";
     };
+  }
+
+
+  @Override
+  public BatchEntity resolveRunningBatch(String batchId) {
+    BatchEntity batch = resolveBatch(batchId);
+    if (batch.getStatus() != BatchStatus.running) {
+      throw new ApiException(HttpStatus.CONFLICT, "BATCH_NOT_RUNNING", "Batch is not in running status.");
+    }
+    return batch;
   }
 
   private BatchEntity resolveBatch(String batchId) {

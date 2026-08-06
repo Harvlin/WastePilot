@@ -13,4 +13,5 @@ import java.util.List;
 public interface InsightRepository extends JpaRepository<InsightEntity, UUID> {
   List<InsightEntity> findAllByOrderByTimestampDesc();
   List<InsightEntity> findByStatus(InsightStatus status);
+  boolean existsByRuleIdAndStatus(String ruleId, InsightStatus status);
 }

@@ -42,6 +42,8 @@ interface BatchCloseSummary {
   batchId: string;
   templateName: string;
   // ... existing fields ...
+  actualInputKg: number;
+  actualInputSource: "measured" | "estimated";
   confidenceScore: number;
   confidenceLevel: "high" | "medium" | "low";
   // EXTENSION:

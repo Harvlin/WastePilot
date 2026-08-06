@@ -25,4 +25,6 @@ public interface OperationsService {
     int getOverdueBatchClosuresCount();
     int getOpenRedFlagsCount();
     int getAverageConfidenceScoreForCompletedBatches();
+    
+    com.project.wastepilot.domain.entity.BatchEntity resolveRunningBatch(String batchId);
 }

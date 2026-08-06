@@ -4,6 +4,7 @@ import com.project.wastepilot.domain.dto.auth.AuthResponse;
 import com.project.wastepilot.domain.dto.auth.ForgotPasswordRequest;
 import com.project.wastepilot.domain.dto.auth.LoginRequest;
 import com.project.wastepilot.domain.dto.auth.MessageResponse;
+import com.project.wastepilot.domain.dto.auth.RefreshTokenRequest;
 import com.project.wastepilot.domain.dto.auth.ResetPasswordRequest;
 import com.project.wastepilot.domain.dto.auth.SignupRequest;
 import com.project.wastepilot.service.AuthService;
@@ -39,6 +40,11 @@ public class AuthController {
   @PostMapping("/login")
   public AuthResponse login(@Valid @RequestBody LoginRequest request) {
     return authService.login(request);
+  }
+
+  @PostMapping("/refresh")
+  public AuthResponse refresh(@Valid @RequestBody RefreshTokenRequest request) {
+    return authService.refreshToken(request.refreshToken());
   }
 
   @GetMapping("/me")

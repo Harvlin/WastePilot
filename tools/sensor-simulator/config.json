@@ -1,0 +1,11 @@
+{
+  "endpointUrl": "http://localhost:8080/api/v1/sensors/ingest",
+  "token": "YOUR_JWT_TOKEN_HERE",
+  "batchId": "YOUR_BATCH_ID_HERE",
+  "materialName": "Cotton",
+  "unit": "kg",
+  "sensorType": "weight",
+  "minValue": 1.0,
+  "maxValue": 5.5,
+  "intervalSeconds": 5
+}

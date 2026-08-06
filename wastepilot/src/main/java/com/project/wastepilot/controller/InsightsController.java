@@ -22,8 +22,6 @@ public class InsightsController {
 
   private final InsightsService insightsService;
 
-  // ── Insights ──────────────────────────────────────────────────────────────────
-
   /** GET /api/v1/ai/insights — all insights ordered newest first */
   @GetMapping("/insights")
   public List<InsightResponse> getInsights() {
@@ -38,8 +36,6 @@ public class InsightsController {
   ) {
     return insightsService.updateInsightStatus(id, request.status());
   }
-
-  // ── Anomalies ────────────────────────────────────────────────────────────────
 
   /** GET /api/v1/ai/anomalies — all anomalies ordered newest first */
   @GetMapping("/anomalies")

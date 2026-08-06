@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.wastepilot.domain.dto.auth.LoginRequest;
+import com.project.wastepilot.domain.dto.auth.RefreshTokenRequest;
 import com.project.wastepilot.domain.dto.auth.SignupRequest;
 import com.project.wastepilot.repository.AuthUserRepository;
 import java.util.Map;
@@ -106,5 +107,28 @@ class AuthControllerIntegrationTest {
   void meWithoutTokenShouldReturnUnauthorized() throws Exception {
     mockMvc.perform(get("/api/v1/auth/me"))
         .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void refreshTokenFlowWorks() throws Exception {
+    SignupRequest signupRequest = new SignupRequest("Refresh User", "refresh@wastepilot.dev", "superSecret123");
+
+    MvcResult signupResult = mockMvc.perform(post("/api/v1/auth/signup")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(signupRequest)))
+        .andExpect(status().isCreated())
+        .andReturn();
+
+    Map<?, ?> signupBody = objectMapper.readValue(signupResult.getResponse().getContentAsString(), Map.class);
+    String refreshToken = (String) signupBody.get("refreshToken");
+
+    RefreshTokenRequest refreshRequest = new RefreshTokenRequest(refreshToken);
+    mockMvc.perform(post("/api/v1/auth/refresh")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(refreshRequest)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.accessToken").isNotEmpty())
+        .andExpect(jsonPath("$.refreshToken").isNotEmpty())
+        .andExpect(jsonPath("$.user.email").value("refresh@wastepilot.dev"));
   }
 }

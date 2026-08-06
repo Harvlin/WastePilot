@@ -10,4 +10,5 @@ import java.util.List;
 @Repository
 public interface AuditTrailRepository extends JpaRepository<AuditTrailEntity, UUID> {
   List<AuditTrailEntity> findTop200ByOrderByTimestampDesc();
+  List<AuditTrailEntity> findByEntityIdIn(List<String> entityIds);
 }
