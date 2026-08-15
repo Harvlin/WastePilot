@@ -76,15 +76,20 @@ export default function FloorViewPage() {
                 </div>
               </div>
               
-              <div
-                className={`w-3 h-3 rounded-full ${
-                  batch.healthIndicator === "green"
-                    ? "bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]"
-                    : batch.healthIndicator === "amber"
-                    ? "bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.5)]"
-                    : "bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]"
-                }`}
-              />
+              <div className="flex items-center gap-2" title={`Health: ${batch.healthIndicator}`}>
+                <div
+                  className={`w-3 h-3 rounded-full ${
+                    batch.healthIndicator === "green"
+                      ? "bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]"
+                      : batch.healthIndicator === "amber"
+                      ? "bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.5)]"
+                      : "bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]"
+                  }`}
+                />
+                <span className="text-xs uppercase tracking-wider font-semibold text-white/70">
+                  {batch.healthIndicator}
+                </span>
+              </div>
             </div>
 
             <div className="mt-6 flex items-center gap-4">

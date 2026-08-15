@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Activity, AlertTriangle, CheckCircle2, Clock3, Filter, Plus, ShieldCheck, User } from "lucide-react";
+import { Activity, AlertCircle, AlertTriangle, CheckCircle2, Clock3, Filter, Info, Plus, ShieldCheck, User } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1142,9 +1142,13 @@ const OperationsPage = () => {
                           ) : (
                             closeSummary.redFlags.map((flag) => (
                               <div key={flag.id} className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm font-body flex items-start gap-2">
-                                <AlertTriangle className="w-4 h-4 mt-0.5 text-amber-300" />
+                                {flag.severity === "high" && <AlertTriangle className="w-4 h-4 mt-0.5 text-rose-400" />}
+                                {flag.severity === "medium" && <AlertCircle className="w-4 h-4 mt-0.5 text-amber-400" />}
+                                {flag.severity === "low" && <Info className="w-4 h-4 mt-0.5 text-sky-400" />}
                                 <div>
-                                  <span className={`px-2 py-0.5 rounded-full text-xs ${severityTone[flag.severity]}`}>{flag.severity}</span>
+                                  <span className={`px-2 py-0.5 rounded-full text-xs flex items-center gap-1 w-fit ${severityTone[flag.severity]}`}>
+                                    <span className="uppercase tracking-wider font-semibold">{flag.severity}</span>
+                                  </span>
                                   <p className="text-white/80 mt-1">{flag.message}</p>
                                 </div>
                               </div>

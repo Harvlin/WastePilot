@@ -1,5 +1,7 @@
 # WastePilot
 
+[![CI](https://github.com/Harvlin/WastePilot/actions/workflows/ci.yml/badge.svg)](https://github.com/Harvlin/WastePilot/actions/workflows/ci.yml)
+
 **Smart Circular Economy Platform for Manufacturing**
 
 WastePilot is a production waste operational management platform built for small-to-mid-scale manufacturing plants. It combines a structured daily operational workflow — `start batch → log inventory → classify waste → close batch → integrity check` — with a **four-layer data integrity architecture** that treats human-entered data as something that can be manipulated, and defends against that reality by design rather than by assumption.
