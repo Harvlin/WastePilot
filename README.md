@@ -12,7 +12,7 @@ This is not a dashboard. It's a system built to be trusted with real operational
 
 ## Demo & Access
 
-- **Live App:** https://waste-pilot.vercel.app/
+- **Live Demo:** https://waste-pilot.vercel.app/
 - **Repository:** https://github.com/Harvlin/WastePilot
 - **Walkthrough Video:** *(linked in submission — 3-minute end-to-end demo, kept as a fallback in case of live network issues)*
 

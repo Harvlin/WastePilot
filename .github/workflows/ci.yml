@@ -7,7 +7,6 @@ on:
     branches: [master, main]
 
 jobs:
-  # ── Backend Tests ─────────────────────────────────────────────────────────────
   backend-test:
     name: Backend — Java 21 / Maven
     runs-on: ubuntu-latest   # Ubuntu has Docker available natively for Testcontainers
@@ -37,7 +36,6 @@ jobs:
           path: wastepilot/target/surefire-reports/
           retention-days: 7
 
-  # ── Frontend Tests ────────────────────────────────────────────────────────────
   frontend-test:
     name: Frontend — Node 20 / npm
     runs-on: ubuntu-latest
@@ -69,7 +67,7 @@ jobs:
         working-directory: frontend
         run: npm run build
 
-  # ── E2E Tests (disabled — enable once Playwright specs are proven stable) ─────
+  # E2E Tests (disabled — enable once Playwright specs are proven stable)
   # e2e:
   #   name: E2E — Playwright
   #   runs-on: ubuntu-latest
