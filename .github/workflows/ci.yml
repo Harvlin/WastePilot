@@ -25,7 +25,9 @@ jobs:
 
       - name: Build and run tests
         working-directory: wastepilot
-        run: ./mvnw -B -ntp test
+        run: |
+          chmod +x ./mvnw
+          ./mvnw -B -ntp test
 
       - name: Upload test results on failure
         if: failure()
