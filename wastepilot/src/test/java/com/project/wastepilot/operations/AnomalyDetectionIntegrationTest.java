@@ -47,6 +47,9 @@ class AnomalyDetectionIntegrationTest {
   private BatchRepository batchRepository;
 
   @Autowired
+  private com.project.wastepilot.repository.InventoryLogRepository inventoryLogRepository;
+
+  @Autowired
   private MaterialRepository materialRepository;
 
   @Autowired
@@ -63,6 +66,7 @@ class AnomalyDetectionIntegrationTest {
     anomalyRepository.deleteAll();
     insightRepository.deleteAll();
     wasteLogRepository.deleteAll();
+    inventoryLogRepository.deleteAll();
     batchRepository.deleteAll();
     templateRepository.deleteAll();
     materialRepository.deleteAll();

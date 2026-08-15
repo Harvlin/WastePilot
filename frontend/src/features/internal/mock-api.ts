@@ -305,7 +305,7 @@ let auditTrailStore: AuditTrailEntry[] = [
   },
 ];
 
-let redFlagStore: BatchRedFlag[] = [
+const redFlagStore: BatchRedFlag[] = [
   {
     id: "RF-1",
     batchId: "B-102",
