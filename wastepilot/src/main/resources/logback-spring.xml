@@ -18,32 +18,19 @@
         </root>
     </springProfile>
 
-    <!-- Production / Docker Profile: Structured JSON output -->
+    <!-- Production / Docker Profile: Structured JSON output to stdout only.
+         Docker/container runtimes capture stdout — no file appender needed. -->
     <springProfile name="prod,docker">
         <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
             <encoder class="net.logstash.logback.encoder.LogstashEncoder">
                 <includeMdcKeyName>traceId</includeMdcKeyName>
                 <includeMdcKeyName>spanId</includeMdcKeyName>
-                <!-- Include custom fields if necessary -->
                 <customFields>{"app":"wastepilot"}</customFields>
             </encoder>
-        </appender>
-
-        <!-- Optional file appender for prod if mounted volumes are used -->
-        <appender name="JSON_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-            <file>${LOG_FILE}</file>
-            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
-                <customFields>{"app":"wastepilot"}</customFields>
-            </encoder>
-            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-                <fileNamePattern>logs/spring-%d{yyyy-MM-dd}.log</fileNamePattern>
-                <maxHistory>30</maxHistory>
-            </rollingPolicy>
         </appender>
 
         <root level="INFO">
             <appender-ref ref="JSON_CONSOLE" />
-            <appender-ref ref="JSON_FILE" />
         </root>
     </springProfile>
 
