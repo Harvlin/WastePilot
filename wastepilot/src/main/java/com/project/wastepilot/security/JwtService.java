@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-public class JwtService {
+public class  JwtService {
 
   private final JwtEncoder jwtEncoder;
   private final JwtDecoder jwtDecoder;
