@@ -12,11 +12,14 @@ This is not a dashboard. It's a system built to be trusted with real operational
 
 ## Demo & Access
 
-- **Live Demo:** https://waste-pilot.vercel.app/
+- **Live Demo (Frontend Only):** https://waste-pilot.vercel.app/
 - **Repository:** https://github.com/Harvlin/WastePilot
-- **Walkthrough Video:** *(linked in submission — 3-minute end-to-end demo, kept as a fallback in case of live network issues)*
 
-The backend is deployed publicly and connected by default. If you ever see a banner indicating fallback/mock mode, it means a transient backend read failure occurred — the app will recover automatically, and this is itself a deliberately engineered resilience feature, not a hidden limitation (see [Resilience by Design](#resilience-by-design)).
+> [!NOTE]
+> **Important Note on the Live Demo**
+> The Vercel link above is a **standalone frontend demo running entirely on mock data**. It is designed to let you instantly explore the UI, dashboards, and user flows without any setup. 
+> 
+> **To experience the full WastePilot system** — including the real Spring Boot backend, MySQL database, Live OCR (Google Gemini AI), and the 4-layer Data Integrity Engine — **you must clone the repository and run it locally** using the instructions in the [Run Locally (Fullstack)](#run-locally-fullstack) section.
 
 ---
 
@@ -132,7 +135,7 @@ The frontend always attempts the real Spring Boot API first. If a specific read 
 
 - The application never leaves an operator mid-shift with a broken screen.
 - The fallback state is always visibly indicated, never silent — data provenance is never ambiguous to the person using the app.
-- The demo remains stable under real-world network conditions, while the backend integration is genuinely live and load-bearing for the actual business logic (variance, confidence, integrity checks) that matters most.
+- When running the fullstack deployment, the app remains stable under real-world network conditions, while the backend integration is genuinely live and load-bearing for the actual business logic (variance, confidence, integrity checks) that matters most.
 
 ---
 
@@ -283,10 +286,10 @@ CI runs the full backend and frontend test suites on every push.
 
 ---
 
-## Deployment
+## Deployment Strategy
 
-- **Frontend:** Vercel
-- **Backend:** deployed via Docker to a managed platform (Railway/Render), with all secrets (`JWT_SECRET`, `GEMINI_API_KEY`, DB credentials) explicitly configured as environment variables — never relying on the local-dev fallback defaults present in `application.properties`, which exist solely to make local onboarding painless and are not safe for any public deployment.
+- **Frontend:** The live demo is hosted on Vercel (running in standalone mock mode).
+- **Backend:** Designed to be deployed via Docker to a managed platform (e.g., Railway/Render/AWS), with all secrets (`JWT_SECRET`, `GEMINI_API_KEY`, DB credentials) explicitly configured as environment variables — never relying on the local-dev fallback defaults.
 - Health check available at `GET /actuator/health`.
 
 ---
