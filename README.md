@@ -241,10 +241,10 @@ See `tools/sensor-simulator/README.md` for configuration details.
 ### Frontend (`frontend/.env`)
 | Variable | Purpose |
 |---|---|
-| `VITE_SPRING_API_PROVIDER` | `spring` or `mock` |
-| `VITE_SPRING_API_BASE_URL` | Backend base URL |
+| `VITE_INTERNAL_API_PROVIDER` | **Mode Switch:** Set to `spring` to connect to the live backend, or `mock` to run the UI fully standalone with pre-populated fake data (no backend needed). **Note:** Restart the Vite server (`npm run dev`) after changing this! |
+| `VITE_SPRING_API_BASE_URL` | Backend base URL (default `http://localhost:8088` for Docker, `http://localhost:8080` for local Maven) |
 | `VITE_SPRING_API_TIMEOUT_MS` | Request timeout before fallback consideration |
-| `VITE_SPRING_FALLBACK_TO_MOCK` | `true`/`false` |
+| `VITE_SPRING_FALLBACK_TO_MOCK` | `true`/`false` - Automatically switch to mock data if the backend is down/unreachable |
 
 ### Backend (`wastepilot/.env`)
 | Variable | Purpose |
