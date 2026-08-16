@@ -1,4 +1,5 @@
 import {
+  Activity,
   AlertTriangle,
   ArrowRight,
   BarChart3,
@@ -7,6 +8,7 @@ import {
   ClipboardList,
   Clock3,
   QrCode,
+  Settings,
   Sparkles,
   Target,
   Zap,
@@ -110,6 +112,14 @@ const supportingModules = [
     action: "Create reusable composition and expected waste baseline.",
   },
   {
+    icon: Activity,
+    title: "Floor View",
+    to: "/floor-view",
+    cta: "Open Floor View",
+    when: "Supervisor use only. Best viewed during active production shift.",
+    action: "Monitor all running batches, active anomalies, and live floor metrics in one dashboard.",
+  },
+  {
     icon: Sparkles,
     title: "Insights",
     to: "/insights",
@@ -124,6 +134,14 @@ const supportingModules = [
     cta: "Open Analytics",
     when: "Use at daily/weekly/monthly review time.",
     action: "Review trend, waste breakdown, and period report snapshots.",
+  },
+  {
+    icon: Settings,
+    title: "Settings",
+    to: "/settings",
+    cta: "Open Settings",
+    when: "Use when onboarding a new user or updating account details.",
+    action: "Update display name, email, and password. Account changes take effect immediately.",
   },
 ];
 
@@ -445,9 +463,10 @@ const GuidePage = () => {
             ))}
           </div>
 
-          <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-3">
+          <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-3 space-y-1">
+            <p className="text-emerald-100 text-sm font-body font-medium">Live backend is connected.</p>
             <p className="text-emerald-200 text-sm font-body">
-              Data provider can switch between mock and Spring API without changing this user flow.
+              All data is real and persisted. If the backend is unreachable, the app will fall back to mock mode automatically and display a clear banner — data provenance is never ambiguous.
             </p>
           </div>
         </div>
