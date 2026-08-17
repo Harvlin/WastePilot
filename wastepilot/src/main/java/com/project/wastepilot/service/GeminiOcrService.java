@@ -22,10 +22,6 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-/**
- * Calls the Google Gemini Vision API to extract material lines from an uploaded invoice/receipt image.
- * Uses in-memory processing — no file is persisted to disk.
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -33,7 +29,8 @@ public class GeminiOcrService {
 
   private static final Duration TIMEOUT = Duration.ofSeconds(30);
 
-  // JSON Schema prompt sent to Gemini. Forces it to respond with a strict JSON array.
+  // JSON Schema prompt sent to Gemini. Forces it to respond with a strict JSON
+  // array.
   private static final String OCR_PROMPT = """
       You are an OCR assistant specialized in extracting purchasing data from factory invoices and delivery receipts.
 
@@ -61,13 +58,6 @@ public class GeminiOcrService {
       .connectTimeout(TIMEOUT)
       .build();
 
-  /**
-   * Process an uploaded image through Gemini Vision and return extracted material lines.
-   * File is processed entirely in memory — no disk I/O.
-   *
-   * @param file the uploaded invoice/receipt image
-   * @return list of extracted OcrMaterialLine items
-   */
   public List<OcrMaterialLine> extractMaterialLines(MultipartFile file) {
     validateFile(file);
 
@@ -212,15 +202,15 @@ public class GeminiOcrService {
       List<OcrMaterialLine> result = new ArrayList<>();
       for (JsonNode node : array) {
         String materialName = node.path("materialName").asText("").trim();
-        if (materialName.isBlank()) continue; // skip empty entries
+        if (materialName.isBlank())
+          continue; // skip empty entries
 
         result.add(new OcrMaterialLine(
             UUID.randomUUID().toString(),
             materialName,
             node.path("quantity").asDouble(0),
             node.path("unit").asText("pcs").trim(),
-            node.path("price").asDouble(0)
-        ));
+            node.path("price").asDouble(0)));
       }
       return result;
     } catch (Exception e) {
@@ -257,7 +247,8 @@ public class GeminiOcrService {
   }
 
   private String resolveMimeType(String contentType) {
-    if (contentType == null) return "image/jpeg";
+    if (contentType == null)
+      return "image/jpeg";
     return switch (contentType.toLowerCase()) {
       case "image/png" -> "image/png";
       case "image/webp" -> "image/webp";
