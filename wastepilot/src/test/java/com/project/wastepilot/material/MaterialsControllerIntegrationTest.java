@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.wastepilot.domain.dto.auth.SignupRequest;
 import com.project.wastepilot.repository.MaterialRepository;
+import com.project.wastepilot.repository.TemplateRepository;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,8 +36,12 @@ class MaterialsControllerIntegrationTest {
   @Autowired
   private MaterialRepository materialRepository;
 
+    @Autowired
+    private TemplateRepository templateRepository;
+
   @BeforeEach
   void setUp() {
+        templateRepository.deleteAll();
     materialRepository.deleteAll();
   }
 
