@@ -1,0 +1,228 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - region "Notifications (F8)":
+      - list
+    - region "Notifications alt+T"
+    - generic [ref=e4]:
+      - complementary [ref=e6]:
+        - generic [ref=e7]:
+          - link "WastePilot" [ref=e9] [cursor=pointer]:
+            - /url: /
+            - img "WastePilot" [ref=e10]
+          - navigation [ref=e11]:
+            - link "Dashboard" [ref=e12] [cursor=pointer]:
+              - /url: /dashboard
+              - img [ref=e14]
+              - generic [ref=e19]: Dashboard
+            - link "Scan" [ref=e20] [cursor=pointer]:
+              - /url: /scan
+              - img [ref=e21]
+              - generic [ref=e27]: Scan
+            - link "Materials" [ref=e28] [cursor=pointer]:
+              - /url: /materials
+              - img [ref=e29]
+              - generic [ref=e39]: Materials
+            - link "Templates" [ref=e40] [cursor=pointer]:
+              - /url: /templates
+              - img [ref=e41]
+              - generic [ref=e45]: Templates
+            - link "Operations" [ref=e46] [cursor=pointer]:
+              - /url: /operations
+              - img [ref=e47]
+              - generic [ref=e50]: Operations
+            - link "Floor View" [ref=e51] [cursor=pointer]:
+              - /url: /floor-view
+              - img [ref=e52]
+              - generic [ref=e54]: Floor View
+            - link "Insights" [ref=e55] [cursor=pointer]:
+              - /url: /insights
+              - img [ref=e56]
+              - generic [ref=e58]: Insights
+            - link "Analytics" [ref=e59] [cursor=pointer]:
+              - /url: /analytics
+              - img [ref=e60]
+              - generic [ref=e62]: Analytics
+            - link "How To Use" [ref=e63] [cursor=pointer]:
+              - /url: /how-to-use
+              - img [ref=e64]
+              - generic [ref=e66]: How To Use
+            - link "Settings" [ref=e67] [cursor=pointer]:
+              - /url: /settings
+              - img [ref=e68]
+              - generic [ref=e71]: Settings
+          - generic [ref=e73]:
+            - paragraph [ref=e74]: Circular score this week
+            - paragraph [ref=e75]: "76"
+      - generic [ref=e76]:
+        - banner [ref=e77]:
+          - generic [ref=e79]:
+            - generic [ref=e81]:
+              - paragraph [ref=e82]: Workspace
+              - paragraph [ref=e83]: Dashboard
+            - generic [ref=e84]:
+              - button "Search" [ref=e85] [cursor=pointer]:
+                - img [ref=e86]
+              - textbox "Search features, services, sections..." [ref=e89]
+            - generic [ref=e90]:
+              - generic [ref=e91]:
+                - generic [ref=e92]: Dev User
+                - generic [ref=e93]: SUPERVISOR
+              - button "Log out" [ref=e94] [cursor=pointer]:
+                - img [ref=e95]
+                - generic [ref=e97]: Log out
+        - main [ref=e98]:
+          - generic [ref=e100]:
+            - generic [ref=e102]:
+              - heading "Circular Operations Dashboard" [level=1] [ref=e103]
+              - paragraph [ref=e104]: Monitor internal circularity, waste behavior, and AI-driven operational actions from one command surface.
+            - generic [ref=e105]:
+              - generic [ref=e106]:
+                - generic [ref=e107]:
+                  - paragraph [ref=e108]: Mission Control
+                  - paragraph [ref=e109]: Prioritized tasks to move circular score faster, not just update records.
+                - link "Open Integrity" [ref=e110] [cursor=pointer]:
+                  - /url: /operations
+                  - button "Open Integrity" [ref=e111]:
+                    - text: Open Integrity
+                    - img
+              - generic [ref=e112]:
+                - generic [ref=e113]:
+                  - generic [ref=e114]:
+                    - generic [ref=e115]:
+                      - img [ref=e116]
+                      - paragraph [ref=e120]: Resolve 3 integrity red flags
+                    - generic [ref=e121]: high
+                  - paragraph [ref=e122]: Unresolved red flags lower trust in operational scores and reporting.
+                  - paragraph [ref=e123]: "Confidence risk now: 83% average"
+                  - link "Open Integrity" [ref=e124] [cursor=pointer]:
+                    - /url: /operations
+                    - button "Open Integrity" [ref=e125]
+                - generic [ref=e126]:
+                  - generic [ref=e127]:
+                    - generic [ref=e128]:
+                      - img [ref=e129]
+                      - paragraph [ref=e133]: Investigate anomaly in Cutting Line A
+                    - generic [ref=e134]: high
+                  - paragraph [ref=e135]: Detected z-score 3.2 with 42kg unusual waste signal.
+                  - paragraph [ref=e136]: "Potential avoidable waste: 15kg"
+                  - link "Handle Anomaly" [ref=e137] [cursor=pointer]:
+                    - /url: /insights
+                    - button "Handle Anomaly" [ref=e138]
+                - generic [ref=e139]:
+                  - generic [ref=e140]:
+                    - generic [ref=e141]:
+                      - img [ref=e142]
+                      - paragraph [ref=e146]: Apply 1 new AI recommendation
+                    - generic [ref=e147]: medium
+                  - paragraph [ref=e148]: Recommendations are ready and waiting for operational confirmation.
+                  - paragraph [ref=e149]: "Expected score lift: +1.8 pts"
+                  - link "Apply Insights" [ref=e150] [cursor=pointer]:
+                    - /url: /insights
+                    - button "Apply Insights" [ref=e151]
+                - generic [ref=e152]:
+                  - generic [ref=e153]:
+                    - generic [ref=e154]:
+                      - img [ref=e155]
+                      - paragraph [ref=e159]: Close 1 overdue batch
+                    - generic [ref=e160]: medium
+                  - paragraph [ref=e161]: Open batches delay reports and increase data drift in score calculations.
+                  - paragraph [ref=e162]: Operational clarity improves after close snapshots are finalized.
+                  - link "Close Batches" [ref=e163] [cursor=pointer]:
+                    - /url: /operations
+                    - button "Close Batches" [ref=e164]
+            - generic [ref=e165]:
+              - generic [ref=e166]:
+                - generic [ref=e168]:
+                  - img [ref=e169]
+                  - generic [ref=e172]:
+                    - paragraph [ref=e173]: Circular Score
+                    - paragraph [ref=e174]: "61.3"
+                    - paragraph [ref=e175]: out of 100
+                - generic [ref=e176]:
+                  - paragraph [ref=e177]: How the score is calculated
+                  - paragraph [ref=e178]: Weighted by recovery rate, landfill share, batch close discipline, and anomaly resolution.
+              - generic [ref=e179]:
+                - generic [ref=e180]:
+                  - generic [ref=e181]:
+                    - paragraph [ref=e182]: Material Input
+                    - generic [ref=e183]:
+                      - img [ref=e184]
+                      - text: 4.3%
+                  - paragraph [ref=e187]: 150kg
+                - generic [ref=e188]:
+                  - generic [ref=e189]:
+                    - paragraph [ref=e190]: Waste Output
+                    - generic [ref=e191]:
+                      - img [ref=e192]
+                      - text: 3.2%
+                  - paragraph [ref=e195]: 15kg
+                - generic [ref=e196]:
+                  - generic [ref=e197]:
+                    - paragraph [ref=e198]: Recovery Rate
+                    - generic [ref=e199]:
+                      - img [ref=e200]
+                      - text: 5.4%
+                  - paragraph [ref=e203]: 73.3%
+            - generic [ref=e204]:
+              - generic [ref=e205]:
+                - generic [ref=e206]:
+                  - paragraph [ref=e207]: Waste Trend
+                  - heading "Input, Waste, and Reuse" [level=3] [ref=e208]
+                - img [ref=e212]:
+                  - generic [ref=e216]:
+                    - generic [ref=e218]: Sat
+                    - generic [ref=e220]: Sun
+                  - generic [ref=e222]:
+                    - generic [ref=e224]: "0"
+                    - generic [ref=e226]: "7"
+                    - generic [ref=e228]: "14"
+                    - generic [ref=e230]: "21"
+                    - generic [ref=e232]: "28"
+              - generic [ref=e237]:
+                - generic [ref=e238]:
+                  - generic [ref=e239]:
+                    - generic [ref=e240]:
+                      - paragraph [ref=e241]: Anomaly Highlight
+                      - heading "Cutting Line A" [level=3] [ref=e242]
+                    - generic [ref=e243]: z-score 3.2
+                  - paragraph [ref=e244]: Waste spike detected above normal variance; inspect blade wear and pressure alignment.
+                  - generic [ref=e245]:
+                    - img [ref=e246]
+                    - text: 42kg spike detected on 2026-03-28
+                - generic [ref=e248]:
+                  - generic [ref=e249]:
+                    - img [ref=e250]
+                    - paragraph [ref=e252]: AI Insights Preview
+                  - generic [ref=e253]:
+                    - generic [ref=e254]:
+                      - paragraph [ref=e255]: Repurpose cotton offcuts
+                      - paragraph [ref=e256]: Route cotton offcuts from Batch B-102 into tote-handle components for next Tuesday run.
+                    - generic [ref=e257]:
+                      - paragraph [ref=e258]: Tune cutter calibration
+                      - paragraph [ref=e259]: Reduce cutter speed by 6% in line A to drop edge-trim waste without affecting throughput.
+                    - generic [ref=e260]:
+                      - paragraph [ref=e261]: Shift supplier mix
+                      - paragraph [ref=e262]: Increase SourceTex lot 14 share to 40%; it generated 18% less scrap than current baseline.
+                - generic [ref=e263]:
+                  - generic [ref=e264]:
+                    - img [ref=e265]
+                    - paragraph [ref=e268]: Data Integrity Pulse
+                  - generic [ref=e269]:
+                    - generic [ref=e270]:
+                      - paragraph [ref=e271]: Avg Confidence
+                      - paragraph [ref=e272]: 83%
+                    - generic [ref=e273]:
+                      - paragraph [ref=e274]: Open Red Flags
+                      - generic [ref=e275]:
+                        - paragraph [ref=e276]: "3"
+                        - link "Resolve" [ref=e277] [cursor=pointer]:
+                          - /url: /operations
+                          - button "Resolve" [ref=e278]
+                    - generic [ref=e279]:
+                      - paragraph [ref=e280]: Overdue Closures
+                      - paragraph [ref=e281]: "1"
+  - generic [ref=e282]: "0"
+```

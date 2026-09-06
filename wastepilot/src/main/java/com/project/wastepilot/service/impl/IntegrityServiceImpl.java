@@ -40,7 +40,6 @@ public class IntegrityServiceImpl implements IntegrityService {
   private final com.project.wastepilot.service.OperationsService operationsService;
 
   private static final int PATTERN_REVIEW_MIN_SAMPLE = 5;
-  // 20 is a reasonable window given our system expects roughly 2-3 closes per operator per shift, providing ~2 weeks of history.
   private static final int PATTERN_REVIEW_WINDOW = 20;
   private static final BigDecimal PATTERN_REVIEW_SUSPICION_THRESHOLD = new BigDecimal("0.60");
   private static final BigDecimal CLOSE_VARIANCE_THRESHOLD = new BigDecimal("5");
@@ -80,8 +79,6 @@ public class IntegrityServiceImpl implements IntegrityService {
   public List<PatternReviewEntry> getPatternReview() {
     List<BatchEntity> completedBatches = batchRepository.findByStatusOrderByStartedAtDesc(BatchStatus.completed);
 
-    // Group by closer, then cap each user's sample to the most recent N batches.
-    // Using LinkedHashMap via Collectors.groupingBy preserves insertion order (desc by startedAt).
     Map<String, List<BatchEntity>> batchesByUser = completedBatches.stream()
         .filter(b -> b.getClosedBy() != null && !b.getClosedBy().isBlank())
         .collect(Collectors.groupingBy(BatchEntity::getClosedBy));

@@ -21,10 +21,6 @@ public class ReportsController {
   private final ReportsService reportsService;
   private final ExportService exportService;
 
-  /**
-   * GET /api/v1/reports?period=weekly
-   * GET /api/v1/reports?period=monthly
-   */
   @GetMapping
   public ReportsPayloadResponse getReports(
       @RequestParam(name = "period", defaultValue = "weekly") String period

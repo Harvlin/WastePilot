@@ -23,7 +23,6 @@ public class InsightsServiceImpl implements InsightsService {
   private final InsightRepository insightRepository;
   private final AnomalyRepository anomalyRepository;
 
-  // ── Insights ─────────────────────────────────────────────────────────────────
 
   @Override
   @Transactional(readOnly = true)
@@ -44,7 +43,6 @@ public class InsightsServiceImpl implements InsightsService {
     return toInsightResponse(insightRepository.save(entity));
   }
 
-  // ── Anomalies ────────────────────────────────────────────────────────────────
 
   @Override
   @Transactional(readOnly = true)
@@ -65,7 +63,6 @@ public class InsightsServiceImpl implements InsightsService {
     return toAnomalyResponse(anomalyRepository.save(entity));
   }
 
-  // ── Mappers ─────────────────────────────────────────────────────────────────
 
   private InsightResponse toInsightResponse(InsightEntity e) {
     return new InsightResponse(
@@ -90,7 +87,6 @@ public class InsightsServiceImpl implements InsightsService {
     );
   }
 
-  // ── Utility ─────────────────────────────────────────────────────────────────
 
   private InsightStatus parseStatus(String status) {
     try {

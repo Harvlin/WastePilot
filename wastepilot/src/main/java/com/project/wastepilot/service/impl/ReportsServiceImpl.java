@@ -36,26 +36,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * REPORTS AUDIT NOTES (Minggu 3 Hardening Review)
- *
- * Classification of all calculations:
- *   (a) REAL — genuine aggregation from database records within the time window
- *   (b) DERIVED — computed metric from real data; formula documented inline
- *
- * buildTrend: (a) Real — all bucket values (inventory, waste, recovered, landfill) aggregated
- *   from actual database records within each time bucket.
- * buildSummary.batch counts: (a) Real — counted from BatchEntity records.
- * buildSummary.inventory/waste totals: (a) Real — summed from InventoryLog/WasteLog records.
- * buildSummary.onTimeCloseRate: (b) Derived — closedWithin24h / totalClosed.
- *   FIXED (Minggu 3): When closedBatches is empty, rate returns 100% with onTimeCloseRateIsEstimated=true
- *   to signal to clients that this is a fallback value, not a measured result.
- * buildSummary.circularScoreAvg: (b) Derived — average of per-bucket scores (real data-derived).
- *   Formula weights: see computeTrendScore — 30% recovery, 25% waste efficiency, 45% landfill avoidance
- *   (policy-defined, not empirically measured).
- * buildTopActions/buildTopContributors: (a) Real — aggregated from ActivityLog records.
- * buildHighlights: (b) Derived — generated narrative from real calculated values above.
- */
 @Service
 @RequiredArgsConstructor
 public class ReportsServiceImpl implements ReportsService {
@@ -81,44 +61,34 @@ public class ReportsServiceImpl implements ReportsService {
     Instant now = Instant.now();
     ZonedDateTime nowUtc = now.atZone(ZoneOffset.UTC);
 
-    // ── Define time buckets ─────────────────────────────────────────────────
     List<TimeBucket> buckets = isWeekly
         ? buildDailyBuckets(nowUtc, 7)
         : buildMonthlyBuckets(nowUtc, 6);
 
-    // ── Summary window = full span of all buckets ───────────────────────────
     Instant windowStart = buckets.get(0).from();
     Instant windowEnd = buckets.get(buckets.size() - 1).to();
 
-    // ── Load data in window ─────────────────────────────────────────────────
-    List<ActivityLogEntity> activities =
-        activityLogRepository.findByTimestampBetweenOrderByTimestampAsc(windowStart, windowEnd);
-    List<InventoryLogEntity> inventoryLogs =
-        inventoryLogRepository.findByTimestampBetweenOrderByTimestampAsc(windowStart, windowEnd);
-    List<WasteLogEntity> wasteLogs =
-        wasteLogRepository.findByTimestampBetweenOrderByTimestampAsc(windowStart, windowEnd);
-    List<BatchEntity> startedBatches =
-        batchRepository.findByStartedAtBetweenOrderByStartedAtAsc(windowStart, windowEnd);
-    List<BatchEntity> closedBatches =
-        batchRepository.findByClosedAtBetweenOrderByClosedAtAsc(windowStart, windowEnd);
+    List<ActivityLogEntity> activities = activityLogRepository.findByTimestampBetweenOrderByTimestampAsc(windowStart,
+        windowEnd);
+    List<InventoryLogEntity> inventoryLogs = inventoryLogRepository
+        .findByTimestampBetweenOrderByTimestampAsc(windowStart, windowEnd);
+    List<WasteLogEntity> wasteLogs = wasteLogRepository.findByTimestampBetweenOrderByTimestampAsc(windowStart,
+        windowEnd);
+    List<BatchEntity> startedBatches = batchRepository.findByStartedAtBetweenOrderByStartedAtAsc(windowStart,
+        windowEnd);
+    List<BatchEntity> closedBatches = batchRepository.findByClosedAtBetweenOrderByClosedAtAsc(windowStart, windowEnd);
 
-    // ── Build trend (one point per bucket) ──────────────────────────────────
     List<ReportTrendPoint> trend = buildTrend(buckets, inventoryLogs, wasteLogs, activities);
 
-    // ── Build summary ────────────────────────────────────────────────────────
     ReportSummaryResponse summary = buildSummary(
         activities, inventoryLogs, wasteLogs, startedBatches, closedBatches, trend);
 
-    // ── Top actions ──────────────────────────────────────────────────────────
     List<ReportTopAction> topActions = buildTopActions(activities);
 
-    // ── Top contributors ────────────────────────────────────────────────────
     List<ReportTopContributor> topContributors = buildTopContributors(activities);
 
-    // ── Window label ─────────────────────────────────────────────────────────
     String windowLabel = buildWindowLabel(isWeekly, nowUtc);
 
-    // ── Highlights ───────────────────────────────────────────────────────────
     List<String> highlights = buildHighlights(summary, topActions);
 
     return new ReportsPayloadResponse(
@@ -129,13 +99,9 @@ public class ReportsServiceImpl implements ReportsService {
         trend,
         topActions,
         topContributors,
-        highlights
-    );
+        highlights);
   }
 
-  // ── Bucket Builders ─────────────────────────────────────────────────────────
-
-  /** 7 daily buckets: [day-6..day-5), [day-5..day-4), …, [today..tomorrow) */
   private List<TimeBucket> buildDailyBuckets(ZonedDateTime anchor, int days) {
     List<TimeBucket> buckets = new ArrayList<>();
     ZonedDateTime dayStart = anchor.truncatedTo(ChronoUnit.DAYS);
@@ -149,7 +115,6 @@ public class ReportsServiceImpl implements ReportsService {
     return buckets;
   }
 
-  /** 6 monthly buckets: [month-5..month-4), …, [this-month..next-month) */
   private List<TimeBucket> buildMonthlyBuckets(ZonedDateTime anchor, int months) {
     List<TimeBucket> buckets = new ArrayList<>();
     ZonedDateTime monthStart = anchor.withDayOfMonth(1).truncatedTo(ChronoUnit.DAYS);
@@ -163,14 +128,11 @@ public class ReportsServiceImpl implements ReportsService {
     return buckets;
   }
 
-  // ── Trend ───────────────────────────────────────────────────────────────────
-
   private List<ReportTrendPoint> buildTrend(
       List<TimeBucket> buckets,
       List<InventoryLogEntity> inventoryLogs,
       List<WasteLogEntity> wasteLogs,
-      List<ActivityLogEntity> activities
-  ) {
+      List<ActivityLogEntity> activities) {
     return buckets.stream().map(bucket -> {
       double inventoryIn = inventoryLogs.stream()
           .filter(i -> inBucket(i.getTimestamp(), bucket) && i.getType() == InventoryType.IN)
@@ -204,12 +166,9 @@ public class ReportsServiceImpl implements ReportsService {
           scale(wasteKg, 2),
           scale(recoveredKg, 2),
           scale(landfillKg, 2),
-          transactions
-      );
+          transactions);
     }).toList();
   }
-
-  // ── Summary ─────────────────────────────────────────────────────────────────
 
   private ReportSummaryResponse buildSummary(
       List<ActivityLogEntity> activities,
@@ -217,8 +176,7 @@ public class ReportsServiceImpl implements ReportsService {
       List<WasteLogEntity> wasteLogs,
       List<BatchEntity> startedBatches,
       List<BatchEntity> closedBatches,
-      List<ReportTrendPoint> trend
-  ) {
+      List<ReportTrendPoint> trend) {
     long onTimeClosedCount = closedBatches.stream()
         .filter(b -> b.getClosedAt() != null
             && b.getStartedAt() != null
@@ -266,18 +224,14 @@ public class ReportsServiceImpl implements ReportsService {
         scale(totalWasteKg, 2),
         scale(recoveredWasteKg, 2),
         scale(landfillWasteKg, 2),
-        circularScoreAvg
-    );
+        circularScoreAvg);
   }
-
-  // ── Top Actions ─────────────────────────────────────────────────────────────
 
   private List<ReportTopAction> buildTopActions(List<ActivityLogEntity> activities) {
     Map<String, Long> counts = activities.stream()
         .collect(Collectors.groupingBy(
             a -> a.getAction().replace("_", " "),
-            Collectors.counting()
-        ));
+            Collectors.counting()));
     return counts.entrySet().stream()
         .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
         .limit(TOP_ACTIONS_LIMIT)
@@ -285,10 +239,9 @@ public class ReportsServiceImpl implements ReportsService {
         .toList();
   }
 
-  // ── Top Contributors ────────────────────────────────────────────────────────
-
   private List<ReportTopContributor> buildTopContributors(List<ActivityLogEntity> activities) {
-    record ActorStats(int count, Instant lastSeen) {}
+    record ActorStats(int count, Instant lastSeen) {
+    }
 
     Map<String, ActorStats> actorMap = activities.stream()
         .collect(Collectors.toMap(
@@ -296,9 +249,7 @@ public class ReportsServiceImpl implements ReportsService {
             a -> new ActorStats(1, a.getTimestamp()),
             (existing, next) -> new ActorStats(
                 existing.count() + 1,
-                existing.lastSeen().isAfter(next.lastSeen()) ? existing.lastSeen() : next.lastSeen()
-            )
-        ));
+                existing.lastSeen().isAfter(next.lastSeen()) ? existing.lastSeen() : next.lastSeen())));
 
     return actorMap.entrySet().stream()
         .sorted((e1, e2) -> Integer.compare(e2.getValue().count(), e1.getValue().count()))
@@ -306,8 +257,6 @@ public class ReportsServiceImpl implements ReportsService {
         .map(e -> new ReportTopContributor(e.getKey(), e.getValue().count(), e.getValue().lastSeen()))
         .toList();
   }
-
-  // ── Highlights ──────────────────────────────────────────────────────────────
 
   private List<String> buildHighlights(ReportSummaryResponse summary, List<ReportTopAction> topActions) {
     List<String> highlights = new ArrayList<>();
@@ -321,15 +270,13 @@ public class ReportsServiceImpl implements ReportsService {
 
     highlights.add(String.format(
         "Recovery reached %.1f%% with landfill share at %.1f%%.",
-        recoveredRate, landfillRate
-    ));
+        recoveredRate, landfillRate));
 
     if (!topActions.isEmpty()) {
       ReportTopAction top = topActions.get(0);
       highlights.add(String.format(
           "Most frequent action: %s (%d logs).",
-          top.action(), top.count()
-      ));
+          top.action(), top.count()));
     } else {
       highlights.add("No dominant action detected in this period.");
     }
@@ -346,8 +293,6 @@ public class ReportsServiceImpl implements ReportsService {
     return highlights;
   }
 
-  // ── Window label ────────────────────────────────────────────────────────────
-
   private String buildWindowLabel(boolean isWeekly, ZonedDateTime anchor) {
     if (isWeekly) {
       DateTimeFormatter fmt = DateTimeFormatter.ofPattern("MMM d", Locale.ENGLISH);
@@ -358,10 +303,10 @@ public class ReportsServiceImpl implements ReportsService {
     }
   }
 
-  // ── Score helpers ────────────────────────────────────────────────────────────
 
   private BigDecimal computeTrendScore(double inputKg, double wasteKg, double recoveredKg, double landfillKg) {
-    if (inputKg <= 0 && wasteKg <= 0) return BigDecimal.ZERO;
+    if (inputKg <= 0 && wasteKg <= 0)
+      return BigDecimal.ZERO;
     double safeWaste = Math.max(0.0001, wasteKg);
     double safeInput = Math.max(1, inputKg);
     double recoveryRate = clamp(recoveredKg / safeWaste, 0, 1);
@@ -374,15 +319,18 @@ public class ReportsServiceImpl implements ReportsService {
   }
 
   private double resolveLandfillCap(double share) {
-    if (share > 0.4) return 55;
-    if (share > 0.3) return 70;
-    if (share > 0.2) return 80;
+    if (share > 0.4)
+      return 55;
+    if (share > 0.3)
+      return 70;
+    if (share > 0.2)
+      return 80;
     return 100;
   }
 
-  // ── Utility ─────────────────────────────────────────────────────────────────
 
-  private record TimeBucket(Instant from, Instant to, String label) {}
+  private record TimeBucket(Instant from, Instant to, String label) {
+  }
 
   private boolean inBucket(Instant ts, TimeBucket bucket) {
     return ts != null && !ts.isBefore(bucket.from()) && ts.isBefore(bucket.to());

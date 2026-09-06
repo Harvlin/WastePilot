@@ -65,7 +65,6 @@ public class DashboardServiceImpl implements DashboardService {
     );
   }
 
-  // ── Circular Score ──────────────────────────────────────────────────────────
 
   private record CircularScore(double value, double materialInput, double totalWaste, double reuseRatePercent, double landfillSharePercent) {}
 
@@ -107,7 +106,6 @@ public class DashboardServiceImpl implements DashboardService {
     );
   }
 
-  // ── Metrics Cards ───────────────────────────────────────────────────────────
 
   private List<CircularMetricResponse> buildMetrics(CircularScore score, List<InventoryLogEntity> inventory, List<WasteLogEntity> waste) {
     return List.of(
@@ -117,7 +115,6 @@ public class DashboardServiceImpl implements DashboardService {
     );
   }
 
-  // ── Waste Trend (last N days, grouped by day of week) ───────────────────────
 
   private List<WasteTrendPointResponse> buildWasteTrend(List<WasteLogEntity> allWaste, List<InventoryLogEntity> allInventory) {
     Instant now = Instant.now();
@@ -156,7 +153,6 @@ public class DashboardServiceImpl implements DashboardService {
     return hasAnyData ? trend : Collections.emptyList();
   }
 
-  // ── Insights Preview ────────────────────────────────────────────────────────
 
   private List<InsightPreviewResponse> buildInsightPreview() {
     return insightRepository.findAllByOrderByTimestampDesc().stream()
@@ -176,7 +172,6 @@ public class DashboardServiceImpl implements DashboardService {
     );
   }
 
-  // ── Top Anomaly ─────────────────────────────────────────────────────────────
 
   private TopAnomalyResponse buildTopAnomaly() {
     return anomalyRepository.findAllByOrderByTimestampDesc().stream()
@@ -197,7 +192,6 @@ public class DashboardServiceImpl implements DashboardService {
     );
   }
 
-  // ── Utility ─────────────────────────────────────────────────────────────────
 
   private String dayLabel(Instant instant) {
     return instant.atZone(ZoneOffset.UTC)

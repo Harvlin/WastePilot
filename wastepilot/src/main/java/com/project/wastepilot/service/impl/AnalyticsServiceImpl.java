@@ -31,26 +31,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-/**
- * ANALYTICS AUDIT NOTES (Minggu 3 Hardening Review)
- *
- * Classification of all calculations:
- *   (a) REAL — genuine aggregation from database records
- *   (b) DERIVED — computed metric from real data; formula documented inline
- *   (c) PLACEHOLDER — removed in this audit
- *
- * buildWasteBreakdown: (a) Real — sums actual WasteLog records by destination.
- * buildEfficiencyByMaterial: (b) Derived — efficiency = (1 - landfillShare) * 100. Reasonable proxy.
- * buildCircularityTrend (per-batch): (b) Derived — weighted formula, see computeBatchCircularScore.
- *   Formula weights: 40% recovery rate (reuse+repair / total waste), 60% landfill avoidance.
- *   These are policy-defined weights, not empirically measured; documented here for traceability.
- * buildLandfillShareTrend: (a) Real — per-batch landfill fraction from actual WasteLog records.
- * buildLandfillIntensityTrend: (b) Derived — kg-landfill per output-unit, from actual records.
- *
- * FIXED (Minggu 3): Removed all empty-state fallback stubs that returned a single synthetic
- * "W1" data point (including one with a hardcoded 0.030 value) when no completed batches existed.
- * Empty lists are now returned; the frontend should render an appropriate no-data state.
- */
 public class AnalyticsServiceImpl implements AnalyticsService {
 
   private static final int WEEK_COUNT = 5;
@@ -82,7 +62,6 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     );
   }
 
-  // ── Circularity Trend (per completed batch, latest N) ──────────────────────
 
   private List<CircularityPoint> buildCircularityTrend(
       List<BatchEntity> completedBatches,
@@ -111,7 +90,6 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     return points;
   }
 
-  // ── Waste Breakdown (percentage by destination) ────────────────────────────
 
   private List<WasteBreakdownItem> buildWasteBreakdown(List<WasteLogEntity> allWaste) {
     if (allWaste.isEmpty()) {
@@ -137,7 +115,6 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     );
   }
 
-  // ── Efficiency by Material (recovery efficiency per distinct material) ──────
 
   private List<EfficiencyItem> buildEfficiencyByMaterial(
       List<WasteLogEntity> allWaste,
@@ -171,7 +148,6 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         .toList();
   }
 
-  // ── Landfill Share Trend (per completed batch) ─────────────────────────────
 
   private List<LandfillSharePoint> buildLandfillShareTrend(
       List<BatchEntity> completedBatches,
@@ -199,7 +175,6 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     return points;
   }
 
-  // ── Landfill Intensity Trend (kg per output unit, per completed batch) ──────
 
   private List<LandfillIntensityPoint> buildLandfillIntensityTrend(
       List<BatchEntity> completedBatches,
@@ -231,7 +206,6 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     return points;
   }
 
-  // ── Score helpers ────────────────────────────────────────────────────────────
 
   private double computeBatchCircularScore(List<WasteLogEntity> batchWaste) {
     double total = Math.max(0.0001, batchWaste.stream().mapToDouble(w -> w.getQuantityKg().doubleValue()).sum());
@@ -282,7 +256,6 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     return clamp(disposed / total, 0, 1);
   }
 
-  // ── Utility ─────────────────────────────────────────────────────────────────
 
   private double sumByDestination(List<WasteLogEntity> waste, WasteDestination destination) {
     return waste.stream()

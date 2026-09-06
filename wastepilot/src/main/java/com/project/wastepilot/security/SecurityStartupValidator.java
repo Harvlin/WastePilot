@@ -10,17 +10,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
 
-/**
- * Startup-time security validator.
- *
- * <p>On production profiles (docker, prod), this component fails fast if either:
- * <ul>
- *   <li>JWT_SECRET is the publicly-known local-dev default — hard failure, prevents insecure token issuance.</li>
- *   <li>GEMINI_API_KEY is the mock default — warning only, degrades OCR feature but does not compromise auth.</li>
- * </ul>
- *
- * <p>The local and test profiles are intentionally excluded so developers can onboard with zero config.
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -59,7 +48,6 @@ public class SecurityStartupValidator implements ApplicationRunner {
       );
     }
 
-    // --- Gemini API Key check (warning only) ---
     if (MOCK_GEMINI_KEY.equals(geminiProperties.apiKey())) {
       log.warn(
           "[SECURITY] GEMINI_API_KEY is still set to the mock development value. " +

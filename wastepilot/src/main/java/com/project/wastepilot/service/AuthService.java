@@ -8,13 +8,14 @@ import com.project.wastepilot.domain.dto.auth.SignupRequest;
 
 public interface AuthService {
   AuthResponse signup(SignupRequest request);
+
   AuthResponse login(LoginRequest request);
+
   AuthResponse refreshToken(String refreshToken);
+
   AuthResponse.UserSession getCurrentUser();
-  /**
-   * Initiates a password reset. Always returns a generic success message
-   * even if the email does not exist, to prevent user enumeration.
-   */
+
   void forgotPassword(ForgotPasswordRequest request);
+
   void resetPassword(ResetPasswordRequest request);
 }

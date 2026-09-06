@@ -76,8 +76,6 @@ public class GeminiOcrService {
     return parseOcrResponse(responseText);
   }
 
-  // ── Gemini API call ─────────────────────────────────────────────────────────
-
   private String callGeminiApi(String requestBody) {
     String url = String.format("%s/%s:generateContent?key=%s",
         geminiProperties.baseUrl(),
@@ -125,8 +123,6 @@ public class GeminiOcrService {
     }
   }
 
-  // ── Request / Response builders ─────────────────────────────────────────────
-
   private String buildGeminiRequestBody(String base64Image, String mimeType) {
     try {
       var body = objectMapper.createObjectNode();
@@ -134,12 +130,10 @@ public class GeminiOcrService {
       var content = objectMapper.createObjectNode();
       var parts = objectMapper.createArrayNode();
 
-      // Text part — the OCR prompt
       var textPart = objectMapper.createObjectNode();
       textPart.put("text", OCR_PROMPT);
       parts.add(textPart);
 
-      // Image part — inline base64
       var imagePart = objectMapper.createObjectNode();
       var inlineData = objectMapper.createObjectNode();
       inlineData.put("mimeType", mimeType);
@@ -183,8 +177,6 @@ public class GeminiOcrService {
     }
   }
 
-  // ── OCR result parsing ──────────────────────────────────────────────────────
-
   private List<OcrMaterialLine> parseOcrResponse(String jsonText) {
     try {
       // Strip any accidental markdown fences (safety net even with responseMimeType)
@@ -218,8 +210,6 @@ public class GeminiOcrService {
       return List.of();
     }
   }
-
-  // ── Validation ──────────────────────────────────────────────────────────────
 
   private void validateFile(MultipartFile file) {
     if (file == null || file.isEmpty()) {

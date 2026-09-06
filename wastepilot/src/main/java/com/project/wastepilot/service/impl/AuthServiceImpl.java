@@ -178,7 +178,6 @@ public class AuthServiceImpl implements AuthService {
     });
   }
 
-  // ── Password Reset ────────────────────────────────────────────────────────
 
   @Override
   @Transactional
@@ -203,7 +202,6 @@ public class AuthServiceImpl implements AuthService {
 
       // In a real deployment, rawToken would be emailed here.
       // For now, log it at INFO level so it can be retrieved from logs during development.
-      // TODO: integrate email service (e.g. SendGrid / SES) to deliver the token.
       org.slf4j.LoggerFactory.getLogger(AuthServiceImpl.class)
           .info("[DEV] Password reset token for {}: {}", normalizedEmail, rawToken);
     });

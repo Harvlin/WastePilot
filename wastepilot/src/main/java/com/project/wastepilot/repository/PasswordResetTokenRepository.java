@@ -14,7 +14,6 @@ public interface PasswordResetTokenRepository extends JpaRepository<PasswordRese
 
   Optional<PasswordResetTokenEntity> findByTokenHash(String tokenHash);
 
-  /** Purge all existing unused tokens for a user before issuing a new one */
   @Modifying
   @Query("DELETE FROM PasswordResetTokenEntity t WHERE t.user.id = :userId AND t.usedAt IS NULL")
   void deleteUnusedByUserId(@Param("userId") UUID userId);

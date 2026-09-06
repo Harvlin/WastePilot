@@ -18,14 +18,6 @@ public class OcrController {
 
   private final GeminiOcrService geminiOcrService;
 
-  /**
-   * POST /api/v1/ai/ocr
-   * Accepts a multipart image upload, processes it via Gemini Vision (in-memory),
-   * and returns extracted material lines.
-   *
-   * Content-Type: multipart/form-data
-   * Form field: "file" — the image (PNG, JPEG, WebP, max 10 MB)
-   */
   @PostMapping(value = "/ocr", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public List<OcrMaterialLine> scanInvoice(
       @RequestParam("file") MultipartFile file
