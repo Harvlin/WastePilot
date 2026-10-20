@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&family=Barlow:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,60 +6,81 @@
 
 @layer base {
   :root {
-    --background: 0 0% 0%;
-    --foreground: 0 0% 100%;
+    --background: 0 0% 95.7%;
+    --foreground: 0 0% 7.8%;
 
-    /* Accent palette provided by user */
+    --text-secondary: 0 0% 14.1%;
+    --surface-muted: 220 13% 91%;
+    --border-strong: 0 0% 46.3%;
+    --focus-ring: 214 90% 59%;
+    --status-info: 221 83% 53%;
+    --status-success: 142 71% 29%;
+    --status-warning: 40 100% 27%;
+    --status-critical: 5 72% 42%;
+
+    --radius-tag: 4px;
+    --radius-control: 8px;
+    --radius-card: 12px;
+    --radius-frame: 29px;
+    --radius-pill: 100px;
+    --radius: var(--radius-card);
+
+    --shadow-card: rgba(36, 36, 36, 0.7) 0px 1px 5px -4px, rgba(36, 36, 36, 0.05) 0px 4px 8px 0px;
+    --shadow-popover: rgba(19, 19, 22, 0.7) 0px 1px 5px -4px, rgba(34, 42, 53, 0.08) 0px 0px 0px 1px, rgba(34, 42, 53, 0.05) 0px 4px 8px 0px;
+    --shadow-inset-control: rgba(0, 0, 0, 0.16) 0px 1px 1.9px 0px inset;
+
+    --font-heading: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+    /* Legacy page palette retained until the page-level redesign. */
     --palette-primary-green: 140 100% 19%; /* #006241 */
     --palette-light-green: 160 32% 87%; /* #d4e9e2 */
     --palette-house-green: 164 31% 17%; /* #1e3932 */
     --palette-tea-green: 85 84% 85%; /* #dff9ba */
 
-    --card: 0 0% 5%;
-    --card-foreground: 0 0% 100%;
+    --card: 0 0% 100%;
+    --card-foreground: var(--foreground);
 
-    --popover: 0 0% 5%;
-    --popover-foreground: 0 0% 100%;
+    --popover: 0 0% 100%;
+    --popover-foreground: var(--foreground);
 
-    --primary: 0 0% 100%;
-    --primary-foreground: var(--palette-light-green);
+    --primary: var(--foreground);
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 10%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 0 0% 100%;
+    --secondary-foreground: var(--text-secondary);
 
-    --muted: 0 0% 15%;
-    --muted-foreground: 160 12% 70%;
+    --muted: var(--surface-muted);
+    --muted-foreground: 0 0% 38%;
+    --brand: 160 100% 19.2%;
+    --brand-foreground: 0 0% 100%;
 
-    --accent: var(--palette-primary-green);
-    --accent-foreground: var(--palette-light-green);
+    --accent: var(--surface-muted);
+    --accent-foreground: var(--foreground);
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 100%;
-    --input: 0 0% 20%;
-    --ring: var(--palette-tea-green);
+    --border: 220 10% 84%;
+    --input: 220 13% 91%;
+    --ring: var(--focus-ring);
 
-    --radius: 9999px;
+    --hero-subtitle: 0 0% 53.7%;
 
-    --font-heading: 'Instrument Serif', serif;
-    --font-body: 'Barlow', sans-serif;
-    --hero-subtitle: 160 22% 74%;
-
-    --sidebar-background: 0 0% 5%;
-    --sidebar-foreground: 0 0% 90%;
-    --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 0 0% 0%;
-    --sidebar-accent: var(--palette-house-green);
-    --sidebar-accent-foreground: var(--palette-light-green);
-    --sidebar-border: 0 0% 20%;
-    --sidebar-ring: 0 0% 100%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: var(--foreground);
+    --sidebar-primary: var(--foreground);
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: var(--surface-muted);
+    --sidebar-accent-foreground: var(--foreground);
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--focus-ring);
   }
 }
 
 @layer base {
   * {
-    @apply border-white/20;
+    @apply border-border;
   }
 
   html,
@@ -144,4 +165,97 @@
     mask-composite: exclude;
     pointer-events: none;
   }
+}
+
+body.internal-workspace {
+  background-color: hsl(var(--background));
+  background-image: none;
+  color: hsl(var(--foreground));
+}
+
+body.internal-workspace .app-shell-page-content .liquid-glass,
+body.internal-workspace .app-shell-page-content .liquid-glass-strong,
+body.internal-workspace :is([data-radix-portal], [role="dialog"], [role="alertdialog"]) .liquid-glass,
+body.internal-workspace :is([data-radix-portal], [role="dialog"], [role="alertdialog"]) .liquid-glass-strong {
+  background-color: hsl(var(--card));
+  background-image: none;
+  border: 1px solid hsl(var(--border));
+  box-shadow: var(--shadow-card);
+  backdrop-filter: none;
+}
+
+body.internal-workspace .app-shell-page-content .liquid-glass::before,
+body.internal-workspace .app-shell-page-content .liquid-glass-strong::before,
+body.internal-workspace :is([data-radix-portal], [role="dialog"], [role="alertdialog"]) .liquid-glass::before,
+body.internal-workspace :is([data-radix-portal], [role="dialog"], [role="alertdialog"]) .liquid-glass-strong::before {
+  display: none;
+}
+
+/* Keep legacy workspace pages readable while their individual layouts are migrated. */
+body.internal-workspace .app-shell-page-content [class~="text-white"],
+body.internal-workspace :is([data-radix-portal], [role="dialog"], [role="alertdialog"]) [class~="text-white"] {
+  color: hsl(var(--foreground));
+}
+
+body.internal-workspace .app-shell-page-content [class*="text-white/"],
+body.internal-workspace :is([data-radix-portal], [role="dialog"], [role="alertdialog"]) [class*="text-white/"] {
+  color: hsl(var(--muted-foreground));
+}
+
+body.internal-workspace .app-shell-page-content [class*="text-[hsl(var(--palette-light-green))]"],
+body.internal-workspace :is([data-radix-portal], [role="dialog"], [role="alertdialog"]) [class*="text-[hsl(var(--palette-light-green))]"] {
+  color: hsl(var(--muted-foreground));
+}
+
+body.internal-workspace .app-shell-page-content [class*="text-[hsl(var(--palette-tea-green))]"],
+body.internal-workspace .app-shell-page-content [class*="text-[hsl(var(--palette-house-green))]"],
+body.internal-workspace :is([data-radix-portal], [role="dialog"], [role="alertdialog"]) [class*="text-[hsl(var(--palette-tea-green))]"],
+body.internal-workspace :is([data-radix-portal], [role="dialog"], [role="alertdialog"]) [class*="text-[hsl(var(--palette-house-green))]"] {
+  color: hsl(var(--foreground));
+}
+
+body.internal-workspace .app-shell-page-content [class*="bg-white/"],
+body.internal-workspace :is([data-radix-portal], [role="dialog"], [role="alertdialog"]) [class*="bg-white/"],
+body.internal-workspace .app-shell-page-content [class*="bg-[hsl(var(--palette-primary-green))]"],
+body.internal-workspace .app-shell-page-content [class*="bg-[hsl(var(--palette-light-green))]"],
+body.internal-workspace .app-shell-page-content [class*="bg-[hsl(var(--palette-house-green))]"],
+body.internal-workspace :is([data-radix-portal], [role="dialog"], [role="alertdialog"]) [class*="bg-[hsl(var(--palette-primary-green))]"],
+body.internal-workspace :is([data-radix-portal], [role="dialog"], [role="alertdialog"]) [class*="bg-[hsl(var(--palette-light-green))]"],
+body.internal-workspace :is([data-radix-portal], [role="dialog"], [role="alertdialog"]) [class*="bg-[hsl(var(--palette-house-green))]"] {
+  background-color: hsl(var(--surface-muted));
+}
+
+body.internal-workspace .app-shell-page-content [class*="bg-[hsl(var(--palette-tea-green))]/"],
+body.internal-workspace :is([data-radix-portal], [role="dialog"], [role="alertdialog"]) [class*="bg-[hsl(var(--palette-tea-green))]/"] {
+  background-color: hsl(var(--surface-muted));
+}
+
+body.internal-workspace .app-shell-page-content [class~="bg-[hsl(var(--palette-tea-green))]"],
+body.internal-workspace :is([data-radix-portal], [role="dialog"], [role="alertdialog"]) [class~="bg-[hsl(var(--palette-tea-green))]"] {
+  background-color: hsl(var(--brand));  color: hsl(var(--brand-foreground));
+}
+
+body.internal-workspace .app-shell-page-content [class~="bg-[hsl(var(--palette-tea-green))]"][class~="text-[hsl(var(--palette-house-green))]"],
+body.internal-workspace :is([data-radix-portal], [role="dialog"], [role="alertdialog"]) [class~="bg-[hsl(var(--palette-tea-green))]"][class~="text-[hsl(var(--palette-house-green))]"] {
+  color: hsl(var(--brand-foreground));
+}
+
+/* Legacy pastel status text (built for dark UI) -> AA-contrast functional status tones. */
+body.internal-workspace :is(.app-shell-page-content, [role="dialog"], [role="alertdialog"]) :is(input, textarea)::placeholder {
+  color: hsl(var(--muted-foreground));
+  opacity: 0.8;
+}
+body.internal-workspace :is(.app-shell-page-content, [role="dialog"], [role="alertdialog"]) :is([class*="text-emerald-"], [class*="text-green-"]) {
+  color: hsl(var(--status-success));
+}
+body.internal-workspace :is(.app-shell-page-content, [role="dialog"], [role="alertdialog"]) :is([class*="text-amber-"], [class*="text-yellow-"]) {
+  color: hsl(var(--status-warning));
+}
+body.internal-workspace :is(.app-shell-page-content, [role="dialog"], [role="alertdialog"]) :is([class*="text-rose-"], [class*="text-red-"]) {
+  color: hsl(var(--status-critical));
+}
+
+body.internal-workspace .app-shell-page-content [class*="border-white"],
+body.internal-workspace :is([data-radix-portal], [role="dialog"], [role="alertdialog"]) [class*="border-white"] {
+  border-color: hsl(var(--border));
 }

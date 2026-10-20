@@ -3,7 +3,7 @@ import { ArrowUpRight } from "lucide-react";
 import { useRef } from "react";
 import { Link } from "react-router-dom";
 import HlsVideo from "./HlsVideo";
-import { useAuth } from "@/features/auth/auth-context";
+import { useAuth } from "@/features/auth/use-auth";
 
 const StartSection = () => {
   const ref = useRef<HTMLElement>(null);

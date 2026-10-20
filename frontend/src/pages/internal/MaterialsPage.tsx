@@ -461,7 +461,7 @@ const MaterialsPage = () => {
       )}
 
       <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
-        <DialogContent className="liquid-glass-strong border-white/25 bg-black/95 text-white rounded-3xl shadow-[0_30px_80px_rgba(0,0,0,0.75)] overflow-visible [&::before]:hidden">
+        <DialogContent className="overflow-visible">
           <div className="max-h-[85vh] overflow-y-auto pr-1 pb-2">
             <DialogHeader className="pt-1">
               <DialogTitle className="font-heading italic text-2xl text-white leading-[1.2]">
@@ -564,7 +564,7 @@ const MaterialsPage = () => {
       </Dialog>
 
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
-        <DialogContent className="liquid-glass-strong border-white/25 bg-black/95 text-white rounded-3xl max-w-3xl shadow-[0_30px_80px_rgba(0,0,0,0.75)] overflow-visible [&::before]:hidden">
+        <DialogContent className="max-w-3xl overflow-visible">
           <div className="max-h-[85vh] overflow-y-auto pr-1">
             <DialogHeader className="pt-1">
               <DialogTitle className="font-heading italic text-2xl text-white leading-[1.2]">

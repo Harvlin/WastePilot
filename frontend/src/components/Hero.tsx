@@ -3,7 +3,7 @@ import { ArrowUpRight, Play } from "lucide-react";
 import { useRef, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import BlurText from "./BlurText";
-import { useAuth } from "@/features/auth/auth-context";
+import { useAuth } from "@/features/auth/use-auth";
 import { toast } from "sonner";
 
 const techStack = ["Spring Boot", "Next.js 15", "Gemini Flash", "Docker", "MySQL", "Oauth2"];

@@ -109,12 +109,9 @@ const SettingsPage = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="grid gap-2">
                 <Label className="text-white/75">Role</Label>
-                <Input
-                  className="rounded-xl bg-white/[0.04] border-white/10 text-white"
-                  value={settings.role}
-                  onChange={(e) => setSettings((prev) => (prev ? { ...prev, role: e.target.value } : prev))}
-                  placeholder="e.g. Operations Manager"
-                />
+                <p className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-body text-white/75">
+                  {settings.role}
+                </p>
               </div>
               <div className="grid gap-2">
                 <Label className="text-white/75">Time Display</Label>
@@ -198,4 +195,3 @@ const SettingsPage = () => {
 };
 
 export default SettingsPage;
-

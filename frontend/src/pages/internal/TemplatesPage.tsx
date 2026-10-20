@@ -193,7 +193,7 @@ const TemplatesPage = () => {
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="liquid-glass-strong border-white/25 bg-black/95 text-white rounded-3xl max-w-2xl shadow-[0_30px_80px_rgba(0,0,0,0.75)] overflow-visible [&::before]:hidden">
+        <DialogContent className="max-w-2xl overflow-visible">
           <DialogHeader className="pt-1">
             <DialogTitle className="font-heading italic text-2xl text-white leading-[1.2]">
               {draft.id ? "Edit Template" : "Create Template"}

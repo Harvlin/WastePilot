@@ -8,6 +8,7 @@ import { OcrMaterialLine } from "@/features/internal/types";
 import { PageHeader } from "@/features/internal/components/PageHeader";
 import { DataEmpty, DataError } from "@/features/internal/components/StateViews";
 import { internalApi } from "@/lib/api/internal-api";
+import { BatchStatus } from "@/features/internal/types";
 import { toast } from "sonner";
 
 const ScanPage = () => {
@@ -33,7 +34,7 @@ const ScanPage = () => {
     const loadRunningBatches = async () => {
       try {
         const payload = await internalApi.fetchOperationsPayload();
-        const ids = payload.batches.filter((batch) => batch.status === "running").map((batch) => batch.id);
+        const ids = payload.batches.filter((batch) => batch.status === BatchStatus.Running).map((batch) => batch.id);
         setRunningBatchIds(ids);
       } catch {
         setRunningBatchIds([]);
@@ -108,7 +109,7 @@ const ScanPage = () => {
 
       const latestOperations = await internalApi.fetchOperationsPayload();
       const latestRunningBatchIds = latestOperations.batches
-        .filter((batch) => batch.status === "running")
+        .filter((batch) => batch.status === BatchStatus.Running)
         .map((batch) => batch.id);
       setRunningBatchIds(latestRunningBatchIds);
 
@@ -317,4 +318,3 @@ const ScanPage = () => {
 };
 
 export default ScanPage;
-

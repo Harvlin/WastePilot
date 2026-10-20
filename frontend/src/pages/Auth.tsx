@@ -2,8 +2,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ArrowUpRight, Mail, Lock, User, Eye, EyeOff, ArrowLeft, KeyRound, CheckCircle2 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import HlsVideo from "@/components/HlsVideo";
-import { useAuth } from "@/features/auth/auth-context";
+import { useAuth } from "@/features/auth/use-auth";
 import { isValidEmail } from "@/lib/validation";
 import { toast } from "sonner";
 
@@ -89,13 +88,7 @@ const Auth = () => {
   };
 
   return (
-    <div className="relative min-h-screen bg-black flex items-center justify-center overflow-hidden">
-      {/* Background video */}
-      <HlsVideo
-        src="https://stream.mux.com/9JXDljEVWYwWu01PUkAemafDugK89o01BR6zqJ3aS9u00A.m3u8"
-        className="absolute inset-0 w-full h-full object-cover z-0 opacity-30"
-      />
-      <div className="absolute inset-0 bg-black/60 z-[1]" />
+    <div className="relative min-h-screen bg-background flex items-center justify-center overflow-hidden">
 
       {/* Back to home */}
       <motion.div
@@ -106,7 +99,7 @@ const Auth = () => {
       >
         <Link
           to="/"
-          className="liquid-glass rounded-full px-4 py-2 font-body text-sm text-white/80 flex items-center gap-2 hover:bg-white/5 transition-colors"
+          className="rounded-full border border-border bg-card px-4 py-2 font-body text-sm text-foreground flex items-center gap-2 hover:bg-muted transition-colors"
         >
           <ArrowLeft className="w-4 h-4" /> Back
         </Link>
@@ -119,7 +112,7 @@ const Auth = () => {
         transition={{ duration: 0.8, ease: "easeOut" }}
         className="relative z-10 w-full max-w-md px-6"
       >
-        <div className="liquid-glass-strong rounded-3xl p-8 md:p-10">
+        <div className="rounded-xl border border-border bg-card p-8 shadow-card md:p-10">
           {/* Logo */}
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
@@ -130,7 +123,7 @@ const Auth = () => {
             <img
               src="/logoDevSpeak.png"
               alt="WastePilot"
-              className="h-14 w-auto object-contain"
+              className="h-12 w-auto object-contain"
             />
           </motion.div>
 
@@ -147,22 +140,22 @@ const Auth = () => {
                 className="text-center space-y-6"
               >
                 <div className="flex justify-center">
-                  <div className="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
-                    <CheckCircle2 className="w-8 h-8 text-emerald-400" />
+                  <div className="w-16 h-16 rounded-full bg-brand/10 border border-brand/30 flex items-center justify-center">
+                    <CheckCircle2 className="w-8 h-8 text-brand" />
                   </div>
                 </div>
                 <div>
-                  <h1 className="text-2xl font-heading italic text-white tracking-tight">Check your inbox</h1>
-                  <p className="text-white/50 font-body text-sm mt-3 leading-relaxed">
-                    If <span className="text-white/70">{email}</span> is registered, you'll receive a reset link shortly. Check your spam folder too.
+                  <h1 className="text-2xl font-heading font-semibold text-foreground tracking-tight">Check your inbox</h1>
+                  <p className="text-muted-foreground font-body text-sm mt-3 leading-relaxed">
+                    If <span className="text-secondary-foreground">{email}</span> is registered, you'll receive a reset link shortly. Check your spam folder too.
                   </p>
                 </div>
-                <p className="text-white/30 font-body text-xs">
+                <p className="text-muted-foreground font-body text-xs">
                   The link expires in 30 minutes.
                 </p>
                 <button
                   onClick={resetToLogin}
-                  className="w-full bg-white/10 border border-white/15 text-white font-body font-medium text-sm py-3 rounded-full flex items-center justify-center gap-2 hover:bg-white/15 transition-colors"
+                  className="w-full border border-border bg-card text-foreground font-body font-medium text-sm py-3 rounded-full flex items-center justify-center gap-2 hover:bg-muted transition-colors"
                 >
                   <ArrowLeft className="w-4 h-4" /> Back to sign in
                 </button>
@@ -180,28 +173,28 @@ const Auth = () => {
               >
                 <div className="text-center mb-8">
                   <div className="flex justify-center mb-4">
-                    <div className="w-12 h-12 rounded-full bg-white/10 border border-white/15 flex items-center justify-center">
-                      <KeyRound className="w-5 h-5 text-white/70" />
+                    <div className="w-12 h-12 rounded-full bg-muted border border-border flex items-center justify-center">
+                      <KeyRound className="w-5 h-5 text-secondary-foreground" />
                     </div>
                   </div>
-                  <h1 className="text-3xl md:text-4xl font-heading italic text-white tracking-tight leading-[0.9]">
+                  <h1 className="text-3xl md:text-4xl font-heading font-semibold text-foreground tracking-tight leading-tight">
                     Reset password
                   </h1>
-                  <p className="text-white/50 font-body font-light text-sm mt-3">
+                  <p className="text-muted-foreground font-body text-sm mt-3">
                     Enter your work email and we'll send a reset link.
                   </p>
                 </div>
 
                 <form className="space-y-4" onSubmit={handleForgotPasswordSubmit}>
                   <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <input
                       id="forgot-email"
                       type="email"
                       placeholder="Work email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-full px-10 py-3 font-body text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 transition-colors"
+                      className="w-full rounded-full border border-input bg-card px-10 py-3 font-body text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
                     />
                   </div>
 
@@ -210,7 +203,7 @@ const Auth = () => {
                     whileTap={{ scale: 0.98 }}
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full bg-white text-black font-body font-medium text-sm py-3 rounded-full flex items-center justify-center gap-2 hover:bg-white/90 transition-colors mt-2"
+                    className="w-full bg-brand text-brand-foreground font-body font-medium text-sm py-3 rounded-full flex items-center justify-center gap-2 hover:bg-brand/90 transition-colors mt-2 disabled:opacity-60"
                   >
                     {isSubmitting ? "Sending..." : "Send reset link"} <ArrowUpRight className="w-4 h-4" />
                   </motion.button>
@@ -218,7 +211,7 @@ const Auth = () => {
                   <button
                     type="button"
                     onClick={resetToLogin}
-                    className="w-full text-white/40 font-body text-sm hover:text-white/60 transition-colors flex items-center justify-center gap-2 mt-1"
+                    className="w-full text-muted-foreground font-body text-sm hover:text-foreground transition-colors flex items-center justify-center gap-2 mt-1"
                   >
                     <ArrowLeft className="w-4 h-4" /> Back to sign in
                   </button>
@@ -237,10 +230,10 @@ const Auth = () => {
               >
                 {/* Title */}
                 <div className="text-center mb-8">
-                  <h1 className="text-3xl md:text-4xl font-heading italic text-white tracking-tight leading-[0.9]">
+                  <h1 className="text-3xl md:text-4xl font-heading font-semibold text-foreground tracking-tight leading-tight">
                     {isLogin ? "Welcome back" : "Join Waste Pilot"}
                   </h1>
-                  <p className="text-white/50 font-body font-light text-sm mt-3">
+                  <p className="text-muted-foreground font-body text-sm mt-3">
                     {isLogin
                       ? "Sign in to your circular intelligence dashboard."
                       : "Start optimizing your circular economy today."}
@@ -249,7 +242,7 @@ const Auth = () => {
 
                 {/* Form */}
                 <form className="space-y-4" onSubmit={handleSubmit}>
-                  <p className="text-white/45 text-xs font-body">
+                  <p className="text-muted-foreground text-xs font-body">
                     Use your work email to sign in to your workspace.
                   </p>
 
@@ -260,44 +253,44 @@ const Auth = () => {
                       exit={{ opacity: 0, height: 0 }}
                       className="relative"
                     >
-                      <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <input
                         id="signup-name"
                         type="text"
                         placeholder="Full name (e.g. Raka Pratama)"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-full px-10 py-3 font-body text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 transition-colors"
+                        className="w-full rounded-full border border-input bg-card px-10 py-3 font-body text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
                       />
                     </motion.div>
                   )}
 
                   <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <input
                       id="auth-email"
                       type="email"
                       placeholder="Work email (e.g. raka@company.com)"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-full px-10 py-3 font-body text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 transition-colors"
+                      className="w-full rounded-full border border-input bg-card px-10 py-3 font-body text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
                     />
                   </div>
 
                   <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <input
                       id="auth-password"
                       type={showPassword ? "text" : "password"}
                       placeholder="Password (min 8 characters)"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-full px-10 py-3 font-body text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 transition-colors"
+                      className="w-full rounded-full border border-input bg-card px-10 py-3 font-body text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/60 transition-colors"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -312,7 +305,7 @@ const Auth = () => {
                           setPassword("");
                           setView("forgot-password");
                         }}
-                        className="text-white/40 font-body text-xs hover:text-white/60 transition-colors"
+                        className="text-muted-foreground font-body text-xs hover:text-foreground transition-colors"
                       >
                         Forgot password?
                       </button>
@@ -324,7 +317,7 @@ const Auth = () => {
                     whileTap={{ scale: 0.98 }}
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full bg-white text-black font-body font-medium text-sm py-3 rounded-full flex items-center justify-center gap-2 hover:bg-white/90 transition-colors mt-2"
+                    className="w-full bg-brand text-brand-foreground font-body font-medium text-sm py-3 rounded-full flex items-center justify-center gap-2 hover:bg-brand/90 transition-colors mt-2 disabled:opacity-60"
                   >
                     {isSubmitting ? "Please wait..." : (isLogin ? "Sign In" : "Create Account")} <ArrowUpRight className="w-4 h-4" />
                   </motion.button>
@@ -332,9 +325,9 @@ const Auth = () => {
 
                 {/* Divider */}
                 <div className="flex items-center gap-4 my-6">
-                  <div className="flex-1 h-px bg-white/10" />
-                  <span className="text-white/30 font-body text-xs">or continue with</span>
-                  <div className="flex-1 h-px bg-white/10" />
+                  <div className="flex-1 h-px bg-border" />
+                  <span className="text-muted-foreground font-body text-xs">or continue with</span>
+                  <div className="flex-1 h-px bg-border" />
                 </div>
 
                 {/* Social */}
@@ -344,7 +337,7 @@ const Auth = () => {
                     whileTap={{ scale: 0.98 }}
                     type="button"
                     onClick={() => handleSocialContinue("Google")}
-                    className="liquid-glass rounded-full py-2.5 font-body text-sm text-white/80 hover:bg-white/5 transition-colors flex items-center justify-center gap-2"
+                    className="rounded-full border border-border bg-card py-2.5 font-body text-sm text-foreground hover:bg-muted transition-colors flex items-center justify-center gap-2"
                   >
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
@@ -359,7 +352,7 @@ const Auth = () => {
                     whileTap={{ scale: 0.98 }}
                     type="button"
                     onClick={() => handleSocialContinue("Apple")}
-                    className="liquid-glass rounded-full py-2.5 font-body text-sm text-white/80 hover:bg-white/5 transition-colors flex items-center justify-center gap-2"
+                    className="rounded-full border border-border bg-card py-2.5 font-body text-sm text-foreground hover:bg-muted transition-colors flex items-center justify-center gap-2"
                   >
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
@@ -369,11 +362,11 @@ const Auth = () => {
                 </div>
 
                 {/* Toggle login/signup */}
-                <motion.p layout className="text-center mt-8 text-white/40 font-body text-sm">
+                <motion.p layout className="text-center mt-8 text-muted-foreground font-body text-sm">
                   {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
                   <button
                     onClick={() => setView(isLogin ? "signup" : "login")}
-                    className="text-white font-medium hover:underline transition-colors"
+                    className="text-brand font-medium hover:underline transition-colors"
                   >
                     {isLogin ? "Sign up" : "Sign in"}
                   </button>

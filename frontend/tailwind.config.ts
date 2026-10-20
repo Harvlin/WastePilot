@@ -15,15 +15,34 @@ export default {
     },
     extend: {
       fontFamily: {
-        heading: ["'Instrument Serif'", "serif"],
-        body: ["'Barlow'", "sans-serif"],
+        heading: ["var(--font-heading)"],
+        body: ["var(--font-body)"],
+      },
+      fontSize: {
+        "display-lg": ["4rem", { lineHeight: "1.1", fontWeight: "600" }],
+        "headline-md": ["3rem", { lineHeight: "1.1", fontWeight: "600" }],
+        "body-md": ["0.875rem", { lineHeight: "1.4", fontWeight: "400" }],
+        "label-md": ["1.125rem", { lineHeight: "1.3", letterSpacing: "-0.0125em", fontWeight: "400" }],
       },
       colors: {
         border: "hsl(var(--border))",
+        "border-strong": "hsl(var(--border-strong))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        "text-secondary": "hsl(var(--text-secondary))",
+        "surface-muted": "hsl(var(--surface-muted))",
+        status: {
+          info: "hsl(var(--status-info) / <alpha-value>)",
+          success: "hsl(var(--status-success) / <alpha-value>)",
+          warning: "hsl(var(--status-warning) / <alpha-value>)",
+          critical: "hsl(var(--status-critical) / <alpha-value>)",
+        },
+        brand: {
+          DEFAULT: "hsl(var(--brand) / <alpha-value>)",
+          foreground: "hsl(var(--brand-foreground) / <alpha-value>)",
+        },
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
@@ -64,9 +83,16 @@ export default {
         },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        sm: "var(--radius-tag)",
+        md: "var(--radius-control)",
+        lg: "var(--radius-card)",
+        xl: "var(--radius-frame)",
+        full: "var(--radius-pill)",
+      },
+      boxShadow: {
+        card: "var(--shadow-card)",
+        popover: "var(--shadow-popover)",
+        "inset-control": "var(--shadow-inset-control)",
       },
       keyframes: {
         "accordion-down": {
