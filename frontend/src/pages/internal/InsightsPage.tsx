@@ -9,11 +9,18 @@ import { Anomaly, CircularInsight, InsightStatus } from "@/features/internal/typ
 import { internalApi } from "@/lib/api/internal-api";
 import { toast } from "sonner";
 
-const statusStyles: Record<InsightStatus, string> = {
-  new: "bg-sky-500/15 text-sky-300",
-  applied: "bg-emerald-500/15 text-emerald-300",
-  ignored: "bg-white/10 text-white/70",
-};
+function describeInsightStatus(status: InsightStatus): { label: string; tone: string } {
+  switch (status) {
+    case InsightStatus.New:
+      return { label: "new", tone: "bg-sky-500/15 text-sky-300" };
+    case InsightStatus.Applied:
+      return { label: "applied", tone: "bg-emerald-500/15 text-emerald-300" };
+    case InsightStatus.Ignored:
+      return { label: "ignored", tone: "bg-white/10 text-white/70" };
+    default:
+      throw new Error(`Unsupported insight status: ${status satisfies never}`);
+  }
+}
 
 type QueueItem = {
   id: string;
@@ -72,7 +79,7 @@ const InsightsPage = () => {
 
   const actionQueue = useMemo<QueueItem[]>(() => {
     const recommendationQueue: QueueItem[] = insights
-      .filter((item) => item.status === "new")
+      .filter((item) => item.status === InsightStatus.New)
       .map((item) => {
         const impactBoost = item.impactCategory === "environment" ? 2.8 : item.impactCategory === "operations" ? 2.1 : 1.6;
         return {
@@ -87,15 +94,17 @@ const InsightsPage = () => {
       });
 
     const anomalyQueue: QueueItem[] = anomalies
-      .filter((item) => item.status === "new")
+      .filter((item) => item.status === InsightStatus.New)
       .map((item) => ({
         id: item.id,
         type: "anomaly",
         title: `Anomaly: ${item.process}`,
-        detail: `z-score ${item.zScore} with ${item.wasteKg}kg unusual waste on ${item.date}.`,
+        detail: item.detectionMode === "PROVISIONAL_THRESHOLD"
+          ? `Cold-start provisional threshold ${item.provisionalThresholdKg}kg met by ${item.wasteKg}kg waste on ${item.date}.`
+          : `z-score ${item.zScore} with ${item.wasteKg}kg unusual waste on ${item.date}.`,
         impact: `Potential avoidable waste: ${Math.max(1, Math.round(item.wasteKg * 0.35))}kg`,
         tab: "anomalies",
-        score: Math.round(item.zScore * 12 + item.wasteKg),
+        score: Math.round((item.zScore ?? 0) * 12 + item.wasteKg),
       }));
 
     return [...anomalyQueue, ...recommendationQueue]
@@ -104,14 +113,14 @@ const InsightsPage = () => {
   }, [anomalies, insights]);
 
   const applyAllNewRecommendations = async () => {
-    const pendingRecommendations = insights.filter((item) => item.status === "new");
+    const pendingRecommendations = insights.filter((item) => item.status === InsightStatus.New);
     if (pendingRecommendations.length === 0) {
       toast.info("No new recommendations to apply.");
       return;
     }
 
     try {
-      await Promise.all(pendingRecommendations.map((item) => internalApi.updateInsightStatus(item.id, "applied")));
+      await Promise.all(pendingRecommendations.map((item) => internalApi.updateInsightStatus(item.id, InsightStatus.Applied)));
       await load();
       setActiveTab("recommendations");
       toast.success(`${pendingRecommendations.length} recommendation(s) marked as applied.`);
@@ -122,8 +131,8 @@ const InsightsPage = () => {
 
   const resolveTopAnomaly = async () => {
     const pendingAnomaly = anomalies
-      .filter((item) => item.status === "new")
-      .sort((a, b) => b.zScore - a.zScore)[0];
+      .filter((item) => item.status === InsightStatus.New)
+      .sort((a, b) => (b.zScore ?? b.wasteKg) - (a.zScore ?? a.wasteKg))[0];
 
     if (!pendingAnomaly) {
       toast.info("No open anomalies to resolve.");
@@ -131,7 +140,7 @@ const InsightsPage = () => {
     }
 
     try {
-      await internalApi.updateAnomalyStatus(pendingAnomaly.id, "applied");
+      await internalApi.updateAnomalyStatus(pendingAnomaly.id, InsightStatus.Applied);
       await load();
       setActiveTab("anomalies");
       toast.success("Top anomaly marked as resolved.");
@@ -242,14 +251,16 @@ const InsightsPage = () => {
                       <Sparkles className="w-4 h-4 text-white/80" />
                       <p className="text-white font-body font-medium">{item.title}</p>
                     </div>
-                    <span className={`px-2.5 py-1 rounded-full text-xs ${statusStyles[item.status]}`}>{item.status}</span>
+                    <span className={`px-2.5 py-1 rounded-full text-xs ${describeInsightStatus(item.status).tone}`}>
+                      {describeInsightStatus(item.status).label}
+                    </span>
                   </div>
                   <p className="text-white/65 text-sm font-body mt-3">{item.content}</p>
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Button
                       size="sm"
                       className="rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]"
-                      onClick={() => applyInsightStatus(item.id, "applied")}
+                      onClick={() => applyInsightStatus(item.id, InsightStatus.Applied)}
                     >
                       Mark Applied
                     </Button>
@@ -257,7 +268,7 @@ const InsightsPage = () => {
                       size="sm"
                       variant="outline"
                       className="rounded-full border-white/20 bg-white/5 text-white hover:bg-white/10"
-                      onClick={() => applyInsightStatus(item.id, "ignored")}
+                      onClick={() => applyInsightStatus(item.id, InsightStatus.Ignored)}
                     >
                       Ignore
                     </Button>
@@ -265,7 +276,7 @@ const InsightsPage = () => {
                       size="sm"
                       variant="ghost"
                       className="rounded-full text-white/80 hover:bg-white/10"
-                      onClick={() => applyInsightStatus(item.id, "new")}
+                      onClick={() => applyInsightStatus(item.id, InsightStatus.New)}
                     >
                       Mark New
                     </Button>
@@ -292,17 +303,21 @@ const InsightsPage = () => {
                       <TriangleAlert className="w-4 h-4 text-rose-300" />
                       <p className="text-white font-body font-medium">{item.process}</p>
                     </div>
-                    <span className={`px-2.5 py-1 rounded-full text-xs ${statusStyles[item.status]}`}>{item.status}</span>
+                    <span className={`px-2.5 py-1 rounded-full text-xs ${describeInsightStatus(item.status).tone}`}>
+                      {describeInsightStatus(item.status).label}
+                    </span>
                   </div>
                   <p className="text-white/65 text-sm font-body mt-3">{item.note}</p>
                   <p className="text-white/45 text-xs font-body mt-2">
-                    z-score {item.zScore} | waste {item.wasteKg}kg | {item.date}
+                    {item.detectionMode === "PROVISIONAL_THRESHOLD"
+                      ? `Provisional ${item.provisionalThresholdKg}kg threshold`
+                      : `z-score ${item.zScore}`} | waste {item.wasteKg}kg | {item.date}
                   </p>
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Button
                       size="sm"
                       className="rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]"
-                      onClick={() => applyAnomalyStatus(item.id, "applied")}
+                      onClick={() => applyAnomalyStatus(item.id, InsightStatus.Applied)}
                     >
                       Resolve
                     </Button>
@@ -310,7 +325,7 @@ const InsightsPage = () => {
                       size="sm"
                       variant="outline"
                       className="rounded-full border-white/20 bg-white/5 text-white hover:bg-white/10"
-                      onClick={() => applyAnomalyStatus(item.id, "ignored")}
+                      onClick={() => applyAnomalyStatus(item.id, InsightStatus.Ignored)}
                     >
                       Dismiss
                     </Button>
@@ -318,7 +333,7 @@ const InsightsPage = () => {
                       size="sm"
                       variant="ghost"
                       className="rounded-full text-white/80 hover:bg-white/10"
-                      onClick={() => applyAnomalyStatus(item.id, "new")}
+                      onClick={() => applyAnomalyStatus(item.id, InsightStatus.New)}
                     >
                       Reopen
                     </Button>
@@ -335,4 +350,3 @@ const InsightsPage = () => {
 };
 
 export default InsightsPage;
-

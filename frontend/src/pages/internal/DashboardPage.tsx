@@ -2,20 +2,37 @@ import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ArrowRight, ShieldCheck, Sparkles, Target } from "lucide-react";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import { Link } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { internalApi } from "@/lib/api/internal-api";
-import { DashboardPayload, IntegrityOverview } from "@/features/internal/types";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { DashboardPayload, InsightStatus, IntegrityOverview } from "@/features/internal/types";
 import { CircularGauge } from "@/features/internal/components/CircularGauge";
 import { PageHeader } from "@/features/internal/components/PageHeader";
 import { StatCard } from "@/features/internal/components/StatCard";
+import { chartAxisTick, chartPalette } from "@/features/internal/components/chart-theme";
 import { DataError, DataLoading } from "@/features/internal/components/StateViews";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { Badge } from "@/components/ui/badge";
+import { internalApi } from "@/lib/api/internal-api";
 
 const chartConfig = {
-  waste: { label: "Waste (kg)", color: "hsl(var(--palette-tea-green))" },
-  reused: { label: "Reused (kg)", color: "hsl(var(--palette-light-green) / 0.85)" },
+  input: { label: "Input (kg)", color: chartPalette.primary },
+  waste: { label: "Waste (kg)", color: chartPalette.secondary },
+  reused: { label: "Reused (kg)", color: chartPalette.tertiary },
 };
+
+function describeInsightStatus(status: InsightStatus): { label: string; tone: string } {
+  switch (status) {
+    case InsightStatus.New:
+      return { label: "New", tone: "bg-sky-100 text-sky-800" };
+    case InsightStatus.Applied:
+      return { label: "Applied", tone: "bg-emerald-100 text-emerald-800" };
+    case InsightStatus.Ignored:
+      return { label: "Ignored", tone: "border border-border text-muted-foreground" };
+    default:
+      throw new Error(`Unsupported insight status: ${status satisfies never}`);
+  }
+}
 
 type MissionItem = {
   id: string;
@@ -26,12 +43,6 @@ type MissionItem = {
   cta: string;
   priority: number;
   tone: "high" | "medium" | "low";
-};
-
-const missionToneClass: Record<MissionItem["tone"], string> = {
-  high: "bg-rose-500/15 text-rose-300",
-  medium: "bg-amber-500/15 text-amber-300",
-  low: "bg-emerald-500/15 text-emerald-300",
 };
 
 const DashboardPage = () => {
@@ -67,7 +78,7 @@ const DashboardPage = () => {
     }
 
     const queue: MissionItem[] = [];
-    const newRecommendationCount = data.insights.filter((item) => item.status === "new").length;
+    const newRecommendationCount = data.insights.filter((item) => item.status === InsightStatus.New).length;
 
     if (integrity && integrity.openRedFlags > 0) {
       queue.push({
@@ -82,11 +93,13 @@ const DashboardPage = () => {
       });
     }
 
-    if (data.topAnomaly?.status === "new") {
+    if (data.topAnomaly?.status === InsightStatus.New) {
       queue.push({
         id: "mission-anomaly",
         title: `Investigate anomaly in ${data.topAnomaly.process}`,
-        detail: `Detected z-score ${data.topAnomaly.zScore} with ${data.topAnomaly.wasteKg}kg unusual waste signal.`,
+        detail: data.topAnomaly.detectionMode === "PROVISIONAL_THRESHOLD"
+          ? `Cold-start signal: ${data.topAnomaly.wasteKg}kg met the provisional ${data.topAnomaly.provisionalThresholdKg}kg threshold.`
+          : `Detected z-score ${data.topAnomaly.zScore} with ${data.topAnomaly.wasteKg}kg unusual waste signal.`,
         impact: `Potential avoidable waste: ${Math.max(1, Math.round(data.topAnomaly.wasteKg * 0.35))}kg`,
         to: "/insights",
         cta: "Handle Anomaly",
@@ -144,6 +157,7 @@ const DashboardPage = () => {
       <PageHeader
         title="Circular Operations Dashboard"
         description="Monitor internal circularity, waste behavior, and AI-driven operational actions from one command surface."
+        appearance="editorial"
       />
 
       {loading && <DataLoading rows={6} />}
@@ -151,60 +165,63 @@ const DashboardPage = () => {
 
       {!loading && !error && data && (
         <>
-          <section className="liquid-glass-strong rounded-3xl p-4 md:p-6 border border-white/10 space-y-4">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <Card>
+            <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between space-y-0">
               <div>
-                <p className="text-white text-xl font-heading italic">Mission Control</p>
-                <p className="text-white/60 text-sm font-body mt-1">
+                <CardTitle>Mission Control</CardTitle>
+                <CardDescription className="mt-1">
                   Prioritized tasks to move circular score faster, not just update records.
-                </p>
+                </CardDescription>
               </div>
               {topMission && (
                 <Link to={topMission.to}>
-                  <Button className="rounded-full bg-[hsl(var(--palette-tea-green))] text-[hsl(var(--palette-house-green))] hover:bg-[hsl(var(--palette-light-green))]">
+                  <Button className="w-full sm:w-auto">
                     {topMission.cta}
-                    <ArrowRight className="w-4 h-4" />
+                    <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
               )}
-            </div>
-
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-3 xl:grid-cols-2">
               {missionQueue.map((mission) => (
-                <div key={mission.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <div key={mission.id} className="rounded-lg border border-border p-4">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Target className="w-4 h-4 text-[hsl(var(--palette-tea-green))] shrink-0" />
-                      <p className="text-white font-body font-medium truncate">{mission.title}</p>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <Target className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <p className="truncate font-medium text-foreground">{mission.title}</p>
                     </div>
-                    <span className={`px-2.5 py-1 rounded-full text-xs ${missionToneClass[mission.tone]} shrink-0`}>
-                      {mission.tone}
-                    </span>
+                    {mission.tone === "high" ? (
+                      <StatusBadge status="critical">High priority</StatusBadge>
+                    ) : mission.tone === "medium" ? (
+                      <StatusBadge status="warning">Medium priority</StatusBadge>
+                    ) : (
+                      <Badge variant="outline">Low priority</Badge>
+                    )}
                   </div>
-                  <p className="text-white/65 text-sm font-body mt-3">{mission.detail}</p>
-                  <p className="text-white/50 text-xs font-body mt-2">{mission.impact}</p>
-                  <Link to={mission.to} className="inline-block mt-4">
-                    <Button variant="outline" className="rounded-full border-white/20 bg-white/5 text-white hover:bg-white/10">
-                      {mission.cta}
-                    </Button>
+                  <p className="mt-3 text-sm text-secondary-foreground">{mission.detail}</p>
+                  <p className="mt-2 text-xs text-muted-foreground">{mission.impact}</p>
+                  <Link to={mission.to} className="mt-4 inline-block">
+                    <Button variant="outline">{mission.cta}</Button>
                   </Link>
                 </div>
               ))}
-            </div>
-          </section>
+            </CardContent>
+          </Card>
 
-          <section className="grid grid-cols-1 xl:grid-cols-[320px_1fr] gap-4">
+          <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(240px,0.8fr)_minmax(0,2fr)]">
             <div className="space-y-3">
               <CircularGauge value={data.circularScore} />
-              <div className="liquid-glass rounded-2xl p-4 border border-white/10">
-                <p className="text-white text-sm font-body font-medium">How the score is calculated</p>
-                <p className="text-white/60 text-xs font-body mt-2">
-                  Weighted by recovery rate, landfill share, batch close discipline, and anomaly resolution.
-                </p>
-              </div>
+              <Card>
+                <CardContent className="p-4">
+                  <p className="text-sm font-medium text-foreground">Composite Circularity Score</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Displayed from the current dashboard response. Analytics trend scores are reported separately.
+                  </p>
+                </CardContent>
+              </Card>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {data.metrics.map((metric) => (
                 <StatCard
                   key={metric.id}
@@ -217,91 +234,141 @@ const DashboardPage = () => {
             </div>
           </section>
 
-          <section className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-4">
-            <div className="liquid-glass rounded-3xl p-6 shadow-[0_0_0_1px_hsl(var(--palette-house-green)_/_0.5)]">
-              <div className="mb-5">
-                <p className="text-[hsl(var(--palette-light-green))]/65 text-xs uppercase tracking-[0.18em] font-body">Waste Trend</p>
-                <h3 className="text-white text-2xl font-heading italic mt-2">Input, Waste, and Reuse</h3>
-              </div>
-
-              <ChartContainer config={chartConfig} className="h-[280px] w-full">
-                <LineChart data={data.wasteTrend}>
-                  <CartesianGrid stroke="hsl(var(--palette-light-green) / 0.16)" vertical={false} />
-                  <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--palette-light-green) / 0.72)" }} />
-                  <YAxis tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--palette-light-green) / 0.62)" }} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Line type="monotone" dataKey="waste" stroke="var(--color-waste)" strokeWidth={3} dot={false} />
-                  <Line type="monotone" dataKey="reused" stroke="var(--color-reused)" strokeWidth={2} dot={false} />
-                </LineChart>
-              </ChartContainer>
-            </div>
+          <section className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
+            <Card className="min-w-0">
+              <CardHeader>
+                <CardTitle>7-day waste trend</CardTitle>
+                <CardDescription>Material input, waste output, and reuse recorded each day.</CardDescription>
+              </CardHeader>
+              <CardContent className="min-w-0">
+                {data.wasteTrend.length === 0 ? (
+                  <div className="flex h-[280px] items-center justify-center rounded-md border border-dashed border-border">
+                    <p className="px-6 text-center text-sm text-muted-foreground">
+                      No trend data is available for this period.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <ChartContainer config={chartConfig} className="h-[280px] w-full">
+                      <LineChart data={data.wasteTrend} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
+                        <CartesianGrid stroke={chartPalette.grid} vertical={false} />
+                        <XAxis dataKey="date" tickLine={false} axisLine={false} tick={chartAxisTick} />
+                        <YAxis tickLine={false} axisLine={false} tick={chartAxisTick} />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Line type="monotone" dataKey="input" stroke="var(--color-input)" strokeWidth={2} dot={false} />
+                        <Line type="monotone" dataKey="waste" stroke="var(--color-waste)" strokeWidth={2} dot={false} />
+                        <Line type="monotone" dataKey="reused" stroke="var(--color-reused)" strokeWidth={2} strokeDasharray="5 4" dot={false} />
+                      </LineChart>
+                    </ChartContainer>
+                    <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground" aria-label="Chart series">
+                      {Object.entries(chartConfig).map(([key, series]) => (
+                        <span key={key} className="inline-flex items-center gap-2">
+                          <span
+                            aria-hidden="true"
+                            className={`h-0.5 w-4 ${key === "reused" ? "border-t border-dashed border-muted-foreground" : ""}`}
+                            style={key === "reused" ? undefined : { backgroundColor: series.color }}
+                          />
+                          {series.label}
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
 
             <div className="space-y-4">
               {data.topAnomaly && (
-              <div className="liquid-glass rounded-3xl p-6 shadow-[0_0_0_1px_hsl(var(--palette-house-green)_/_0.5)]">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-[hsl(var(--palette-light-green))]/65 text-xs uppercase tracking-[0.18em] font-body">Anomaly Highlight</p>
-                    <h3 className="text-white text-xl font-heading italic mt-2">{data.topAnomaly.process}</h3>
-                  </div>
-                  <Badge className="bg-rose-500/15 text-rose-300 border-rose-300/20">z-score {data.topAnomaly.zScore}</Badge>
-                </div>
-                <p className="text-[hsl(var(--palette-light-green))] opacity-82 font-body text-sm mt-4">{data.topAnomaly.note}</p>
-                <div className="mt-5 flex items-center gap-2 text-[hsl(var(--palette-light-green))] opacity-86 text-sm font-body">
-                  <AlertTriangle className="w-4 h-4" />
-                  {data.topAnomaly.wasteKg}kg spike detected on {data.topAnomaly.date}
-                </div>
-              </div>
+                <Card>
+                  <CardHeader className="flex-row items-start justify-between gap-4 space-y-0">
+                    <div>
+                      <CardTitle>Anomaly highlight</CardTitle>
+                      <CardDescription className="mt-1">{data.topAnomaly.date}</CardDescription>
+                    </div>
+                    <StatusBadge status="critical">
+                      {data.topAnomaly.detectionMode === "PROVISIONAL_THRESHOLD"
+                        ? `Provisional ${data.topAnomaly.provisionalThresholdKg}kg threshold`
+                        : `Z-score ${data.topAnomaly.zScore}`}
+                    </StatusBadge>
+                  </CardHeader>
+                  <CardContent>
+                    <h3 className="font-medium text-foreground">{data.topAnomaly.process}</h3>
+                    <p className="mt-3 text-sm text-secondary-foreground">{data.topAnomaly.note}</p>
+                    <div className="mt-4 flex items-center gap-2 text-sm text-status-critical">
+                      <AlertTriangle className="h-4 w-4" />
+                      {data.topAnomaly.wasteKg}kg spike detected
+                    </div>
+                  </CardContent>
+                </Card>
               )}
 
-
-              <div className="liquid-glass rounded-3xl p-6 shadow-[0_0_0_1px_hsl(var(--palette-house-green)_/_0.5)]">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-[hsl(var(--palette-tea-green))]" />
-                  <p className="text-[hsl(var(--palette-light-green))] font-body font-medium">AI Insights Preview</p>
-                </div>
-                <div className="mt-4 space-y-3">
-                  {data.insights.slice(0, 3).map((insight) => (
-                    <div
-                      key={insight.id}
-                      className="rounded-2xl bg-[hsl(var(--palette-house-green))]/35 border border-[hsl(var(--palette-house-green))]/60 p-4"
-                    >
-                      <p className="text-white text-sm font-body font-medium">{insight.title}</p>
-                      <p className="text-[hsl(var(--palette-light-green))] opacity-82 text-sm font-body mt-2">{insight.content}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-muted-foreground" />
+                    AI insights preview
+                  </CardTitle>
+                  <CardDescription>Recent recommendations and their current review status.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {data.insights.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No insights are available yet.</p>
+                  ) : (
+                    data.insights.slice(0, 3).map((insight) => (
+                      <div key={insight.id} className="rounded-md border border-border p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <p className="text-sm font-medium text-foreground">{insight.title}</p>
+                          <span className={`rounded-full px-2 py-1 text-xs font-medium ${describeInsightStatus(insight.status).tone}`}>
+                            {describeInsightStatus(insight.status).label}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-sm text-secondary-foreground">{insight.content}</p>
+                      </div>
+                    ))
+                  )}
+                  {data.insights.length > 0 && (
+                    <Link to="/insights" className="inline-flex items-center gap-1 text-sm font-medium text-foreground underline underline-offset-4">
+                      View all insights <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  )}
+                </CardContent>
+              </Card>
 
               {integrity && (
-                <div className="liquid-glass rounded-3xl p-6 shadow-[0_0_0_1px_hsl(var(--palette-house-green)_/_0.5)]">
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-[hsl(var(--palette-light-green))]" />
-                    <p className="text-[hsl(var(--palette-light-green))] font-body font-medium">Data Integrity Pulse</p>
-                  </div>
-                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm font-body">
-                    <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-3">
-                      <p className="text-white/55">Avg Confidence</p>
-                      <p className="text-white mt-1">{integrity.averageConfidenceScore}%</p>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                      Data integrity pulse
+                    </CardTitle>
+                    <CardDescription>Quality indicators from the current integrity overview.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
+                    <div className="rounded-md border border-border p-3">
+                      <p className="text-xs text-muted-foreground">Average confidence</p>
+                      <p className="mt-1 font-medium text-foreground">{integrity.averageConfidenceScore}%</p>
                     </div>
-                    <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-3">
-                      <p className="text-white/55">Open Red Flags</p>
+                    <div className="rounded-md border border-border p-3">
+                      <p className="text-xs text-muted-foreground">Open red flags</p>
                       <div className="mt-1 flex items-center justify-between gap-2">
-                        <p className="text-white">{integrity.openRedFlags}</p>
+                        <StatusBadge status={integrity.openRedFlags > 0 ? "critical" : "completed"}>
+                          {integrity.openRedFlags}
+                        </StatusBadge>
                         <Link to="/operations">
-                          <Button variant="outline" className="h-7 rounded-full border-white/20 bg-white/5 text-white hover:bg-white/10 px-3 text-xs">
-                            Resolve
-                          </Button>
+                          <Button variant="outline" size="sm">Resolve</Button>
                         </Link>
                       </div>
                     </div>
-
-                    <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-3">
-                      <p className="text-white/55">Overdue Closures</p>
-                      <p className="text-white mt-1">{integrity.overdueBatchClosures}</p>
+                    <div className="rounded-md border border-border p-3">
+                      <p className="text-xs text-muted-foreground">Overdue closures</p>
+                      <div className="mt-1">
+                        <StatusBadge status={integrity.overdueBatchClosures > 0 ? "warning" : "completed"}>
+                          {integrity.overdueBatchClosures}
+                        </StatusBadge>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               )}
             </div>
           </section>

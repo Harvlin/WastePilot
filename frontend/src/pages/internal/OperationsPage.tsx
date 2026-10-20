@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Activity, AlertCircle, AlertTriangle, CheckCircle2, Clock3, Filter, Info, Plus, ShieldCheck, User } from "lucide-react";
 import {
@@ -20,18 +20,22 @@ import { Switch } from "@/components/ui/switch";
 import {
   ActivityLogEntry,
   AuditTrailEntry,
+  AuditChainVerification,
   BatchCloseSummary,
+  BatchStatus,
+  CrossValidationDiscrepancy,
   IntegrityOverview,
   OperationsPayload,
   WasteDestination,
   PatternReviewEntry,
+  WasteRecoveryStatus,
 } from "@/features/internal/types";
 import { CLOSE_VARIANCE_THRESHOLD } from "@/features/internal/constants";
 import { PageHeader } from "@/features/internal/components/PageHeader";
 import { DataEmpty, DataError, DataLoading } from "@/features/internal/components/StateViews";
 import { internalApi } from "@/lib/api/internal-api";
 import { toast } from "sonner";
-import { useAuth } from "@/features/auth/auth-context";
+import { useAuth } from "@/features/auth/use-auth";
 
 type OperationTab = "batches" | "inventory" | "waste" | "batch-close" | "integrity";
 
@@ -78,6 +82,30 @@ const severityTone = {
   medium: "bg-amber-500/15 text-amber-300",
   high: "bg-rose-500/15 text-rose-300",
 } as const;
+
+function describeBatchStatus(status: BatchStatus): { label: string; tone: string } {
+  switch (status) {
+    case BatchStatus.Running:
+      return { label: "Running", tone: "bg-emerald-500/15 text-emerald-300" };
+    case BatchStatus.Completed:
+      return { label: "Completed", tone: "bg-white/10 text-white/70" };
+    default:
+      throw new Error(`Unsupported batch status: ${status satisfies never}`);
+  }
+}
+
+function describeWasteRecoveryStatus(status: WasteRecoveryStatus): { label: string; tone: string } {
+  switch (status) {
+    case WasteRecoveryStatus.NotApplicable:
+      return { label: "not applicable", tone: "bg-white/10 text-white/70" };
+    case WasteRecoveryStatus.Pending:
+      return { label: "pending", tone: "bg-amber-500/15 text-amber-300" };
+    case WasteRecoveryStatus.Converted:
+      return { label: "converted", tone: "bg-emerald-500/15 text-emerald-300" };
+    default:
+      throw new Error(`Unsupported waste recovery status: ${status satisfies never}`);
+  }
+}
 
 const wasteSuggestionByDestination: Record<WasteDestination, string> = {
   reuse: "Route this material for immediate reuse in secondary production.",
@@ -175,27 +203,34 @@ const OperationsPage = () => {
   const [activityLogs, setActivityLogs] = useState<ActivityLogEntry[]>([]);
   const [auditTrail, setAuditTrail] = useState<AuditTrailEntry[]>([]);
   const [integrityOverview, setIntegrityOverview] = useState<IntegrityOverview | null>(null);
+  const [auditVerification, setAuditVerification] = useState<AuditChainVerification | null>(null);
+  const [crossValidation, setCrossValidation] = useState<CrossValidationDiscrepancy[]>([]);
   const [patternReviews, setPatternReviews] = useState<PatternReviewEntry[]>([]);
   const [activityFilter, setActivityFilter] = useState<ActivityFilterKey>("all");
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const [payload, logs, audits, intOverview, pReviews] = await Promise.all([
+      const isSupervisor = user?.role === "SUPERVISOR";
+      const [payload, logs, audits, intOverview, pReviews, verification, discrepancies] = await Promise.all([
         internalApi.fetchOperationsPayload(),
         internalApi.fetchActivityLogs(),
         internalApi.fetchAuditTrail(),
         internalApi.fetchIntegrityOverview(),
-        user?.role === "SUPERVISOR" ? internalApi.fetchPatternReview() : Promise.resolve([]),
+        isSupervisor ? internalApi.fetchPatternReview() : Promise.resolve([]),
+        isSupervisor ? internalApi.fetchAuditChainVerification() : Promise.resolve(null),
+        isSupervisor ? internalApi.fetchCrossValidationDiscrepancies() : Promise.resolve([]),
       ]);
       setData(payload);
       setActivityLogs(logs);
       setAuditTrail(audits);
       setIntegrityOverview(intOverview);
       setPatternReviews(pReviews);
+      setAuditVerification(verification);
+      setCrossValidation(discrepancies);
 
-      const runningBatch = payload.batches.find((item) => item.status === "running");
+      const runningBatch = payload.batches.find((item) => item.status === BatchStatus.Running);
       if (runningBatch) {
         setActiveCloseBatchId((prev) => prev || runningBatch.id);
         setCloseOutputUnits(String(runningBatch.outputUnits));
@@ -210,24 +245,33 @@ const OperationsPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.role]);
 
   const refreshIntegrity = async () => {
-    const [logs, audits, intOverview, pReviews] = await Promise.all([
-      internalApi.fetchActivityLogs(),
-      internalApi.fetchAuditTrail(),
-      internalApi.fetchIntegrityOverview(),
-      user?.role === "SUPERVISOR" ? internalApi.fetchPatternReview() : Promise.resolve([]),
-    ]);
-    setActivityLogs(logs);
-    setAuditTrail(audits);
-    setIntegrityOverview(intOverview);
-    setPatternReviews(pReviews);
+    try {
+      const isSupervisor = user?.role === "SUPERVISOR";
+      const [logs, audits, intOverview, pReviews, verification, discrepancies] = await Promise.all([
+        internalApi.fetchActivityLogs(),
+        internalApi.fetchAuditTrail(),
+        internalApi.fetchIntegrityOverview(),
+        isSupervisor ? internalApi.fetchPatternReview() : Promise.resolve([]),
+        isSupervisor ? internalApi.fetchAuditChainVerification() : Promise.resolve(null),
+        isSupervisor ? internalApi.fetchCrossValidationDiscrepancies() : Promise.resolve([]),
+      ]);
+      setActivityLogs(logs);
+      setAuditTrail(audits);
+      setIntegrityOverview(intOverview);
+      setPatternReviews(pReviews);
+      setAuditVerification(verification);
+      setCrossValidation(discrepancies);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Unable to refresh integrity checks.");
+    }
   };
 
   useEffect(() => {
-    load();
-  }, []);
+    void load();
+  }, [load]);
 
   useEffect(() => {
     if (!activeCloseBatchId) {
@@ -269,14 +313,14 @@ const OperationsPage = () => {
   const summary = useMemo(() => {
     if (!data) return { running: 0, completed: 0, wasteTotal: 0 };
     return {
-      running: data.batches.filter((item) => item.status === "running").length,
-      completed: data.batches.filter((item) => item.status === "completed").length,
+      running: data.batches.filter((item) => item.status === BatchStatus.Running).length,
+      completed: data.batches.filter((item) => item.status === BatchStatus.Completed).length,
       wasteTotal: data.wasteLogs.reduce((acc, item) => acc + item.quantityKg, 0),
     };
   }, [data]);
 
   const runningBatches = useMemo(
-    () => data?.batches.filter((item) => item.status === "running") ?? [],
+    () => data?.batches.filter((item) => item.status === BatchStatus.Running) ?? [],
     [data],
   );
 
@@ -313,7 +357,7 @@ const OperationsPage = () => {
     batches: (data?.batches.length ?? 0) > 0,
     inventory: (data?.inventoryLogs.length ?? 0) > 0,
     waste: (data?.wasteLogs.length ?? 0) > 0,
-    "batch-close": (data?.batches.some((batch) => batch.status === "completed") ?? false),
+    "batch-close": (data?.batches.some((batch) => batch.status === BatchStatus.Completed) ?? false),
     integrity: activityLogs.length > 0 || auditTrail.length > 0,
   }), [data, activityLogs.length, auditTrail.length]);
 
@@ -755,8 +799,8 @@ const OperationsPage = () => {
                               <TableCell>{batch.outputUnits}</TableCell>
                               <TableCell>{batch.wasteKg} kg</TableCell>
                               <TableCell>
-                                <span className={`px-2.5 py-1 rounded-full text-xs ${batch.status === "running" ? "bg-emerald-500/15 text-emerald-300" : "bg-white/10 text-white/70"}`}>
-                                  {batch.status}
+                                <span className={`px-2.5 py-1 rounded-full text-xs ${describeBatchStatus(batch.status).tone}`}>
+                                  {describeBatchStatus(batch.status).label}
                                 </span>
                               </TableCell>
                             </TableRow>
@@ -974,23 +1018,13 @@ const OperationsPage = () => {
                               <TableCell>{item.quantityKg} kg</TableCell>
                               <TableCell className="capitalize">{item.destination}</TableCell>
                               <TableCell>
-                                {item.destination === "dispose" ? (
-                                  <span className="px-2.5 py-1 rounded-full text-xs bg-white/10 text-white/70">
-                                    not applicable
-                                  </span>
-                                ) : item.recoveryStatus === "converted" ? (
-                                  <span className="px-2.5 py-1 rounded-full text-xs bg-emerald-500/15 text-emerald-300">
-                                    converted
-                                  </span>
-                                ) : (
-                                  <span className="px-2.5 py-1 rounded-full text-xs bg-amber-500/15 text-amber-300">
-                                    pending
-                                  </span>
-                                )}
+                                <span className={`px-2.5 py-1 rounded-full text-xs ${describeWasteRecoveryStatus(item.recoveryStatus).tone}`}>
+                                  {describeWasteRecoveryStatus(item.recoveryStatus).label}
+                                </span>
                               </TableCell>
                               <TableCell className="text-white/70 text-sm space-y-2">
                                 <p>{item.aiSuggestedAction}</p>
-                                {item.destination !== "dispose" && item.recoveryStatus !== "converted" && (
+                                {item.recoveryStatus === WasteRecoveryStatus.Pending && (
                                   <Button
                                     type="button"
                                     size="sm"
@@ -1213,6 +1247,59 @@ const OperationsPage = () => {
                   </div>
                 )}
 
+                {user?.role === "SUPERVISOR" && (
+                  <section className="grid grid-cols-1 xl:grid-cols-2 gap-4" aria-label="Supervisor integrity checks">
+                    <div className="liquid-glass rounded-3xl p-5 space-y-3">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <h3 className="text-white text-xl font-heading italic">Audit Chain Verification</h3>
+                          <p className="text-white/50 text-xs font-body mt-1">Verify the integrity of the recorded audit hash chain.</p>
+                        </div>
+                        <Button type="button" variant="outline" onClick={() => void refreshIntegrity()} className="rounded-full border-white/20 bg-white/5 text-white hover:bg-white/10">
+                          Verify again
+                        </Button>
+                      </div>
+                      {auditVerification ? (
+                        <>
+                          <div className={`rounded-xl border px-3 py-2 text-sm ${auditVerification.valid ? "border-emerald-300/20 bg-emerald-500/10 text-emerald-200" : "border-rose-300/20 bg-rose-500/10 text-rose-200"}`}>
+                            {auditVerification.valid ? "Audit chain is valid" : "Audit chain verification failed"}
+                          </div>
+                          <p className="text-white/70 text-sm">{auditVerification.message}</p>
+                          <p className="text-white/45 text-xs">
+                            {auditVerification.entriesChecked} entries checked · head sequence {auditVerification.headSequence}
+                            {auditVerification.firstInvalidSequence !== null && ` · first invalid sequence ${auditVerification.firstInvalidSequence}`}
+                          </p>
+                        </>
+                      ) : (
+                        <DataEmpty title="Verification unavailable" description="Audit-chain verification is only available to supervisors." />
+                      )}
+                    </div>
+
+                    <div className="liquid-glass rounded-3xl p-5 space-y-3">
+                      <div>
+                        <h3 className="text-white text-xl font-heading italic">Cross-validation</h3>
+                        <p className="text-white/50 text-xs font-body mt-1">Compare manual and sensor totals to find material discrepancies.</p>
+                      </div>
+                      {crossValidation.length === 0 ? (
+                        <DataEmpty title="No discrepancies found" description="No cross-validation differences are currently reported." />
+                      ) : (
+                        <div className="space-y-2 max-h-[320px] overflow-y-auto">
+                          {crossValidation.map((item, index) => (
+                            <div key={`${item.batchId}-${item.materialName}-${index}`} className="rounded-xl border border-amber-300/20 bg-amber-500/5 p-3">
+                              <div className="flex flex-wrap justify-between gap-2 text-sm">
+                                <span className="text-white font-medium">{item.materialName}</span>
+                                <span className="text-amber-200">{item.relativeDiscrepancyPercent}% discrepancy</span>
+                              </div>
+                              <p className="text-white/50 text-xs mt-1">Batch {item.batchId} · manual {item.manualTotalKg} kg · sensor {item.sensorTotalKg} kg</p>
+                              {item.note && <p className="text-white/70 text-sm mt-2">{item.note}</p>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </section>
+                )}
+
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                   {/* ── Activity Logs ── */}
                   <div className="liquid-glass rounded-3xl p-5 overflow-hidden">
@@ -1424,4 +1511,3 @@ const OperationsPage = () => {
 };
 
 export default OperationsPage;
-

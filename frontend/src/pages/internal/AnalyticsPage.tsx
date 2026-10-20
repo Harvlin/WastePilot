@@ -1,43 +1,75 @@
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, XAxis, YAxis } from "recharts";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { DataEmpty, DataError, DataLoading } from "@/features/internal/components/StateViews";
 import { PageHeader } from "@/features/internal/components/PageHeader";
+import { chartAxisTick, chartPalette } from "@/features/internal/components/chart-theme";
 import { AnalyticsPayload, ReportPeriod, ReportsPayload } from "@/features/internal/types";
 import { internalApi } from "@/lib/api/internal-api";
+import { DataError, DataLoading } from "@/features/internal/components/StateViews";
 
 const trendConfig = {
-  score: { label: "Circularity", color: "hsl(var(--palette-tea-green))" },
+  score: { label: "Per-batch index", color: chartPalette.primary },
 };
 
 const efficiencyConfig = {
-  efficiency: { label: "Efficiency", color: "hsl(var(--palette-light-green))" },
+  efficiency: { label: "Efficiency", color: chartPalette.primary },
 };
 
 const landfillShareConfig = {
-  share: { label: "Landfill Share", color: "hsl(var(--palette-primary-green))" },
+  share: { label: "Landfill Share", color: chartPalette.primary },
 };
 
 const landfillIntensityConfig = {
-  kgPerUnit: { label: "Landfill Intensity", color: "hsl(var(--palette-tea-green))" },
+  kgPerUnit: { label: "Landfill Intensity", color: chartPalette.primary },
 };
 
 const reportScoreTrendConfig = {
-  circularScore: { label: "Circular Score", color: "hsl(var(--palette-tea-green))" },
+  circularScore: { label: "Composite score", color: chartPalette.primary },
 };
 
 const reportWasteFlowConfig = {
-  recoveredKg: { label: "Recovered", color: "hsl(var(--palette-tea-green))" },
-  landfillKg: { label: "Landfill", color: "hsl(var(--palette-primary-green))" },
+  recoveredKg: { label: "Recovered", color: chartPalette.primary },
+  landfillKg: { label: "Landfill", color: chartPalette.tertiary },
 };
 
 const pieColors = [
-  "hsl(var(--palette-tea-green))",
-  "hsl(var(--palette-light-green))",
-  "hsl(var(--palette-primary-green) / 0.95)",
-  "hsl(var(--palette-house-green) / 0.95)",
+  chartPalette.primary,
+  chartPalette.secondary,
+  chartPalette.tertiary,
+  chartPalette.quaternary,
 ];
+
+function ChartPanel({
+  title,
+  description,
+  className,
+  children,
+}: {
+  title: string;
+  description?: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <Card className={className}>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        {description && <CardDescription>{description}</CardDescription>}
+      </CardHeader>
+      <CardContent className="min-w-0">{children}</CardContent>
+    </Card>
+  );
+}
+
+function ChartEmpty({ message }: { message: string }) {
+  return (
+    <div className="flex h-full min-h-48 items-center justify-center rounded-md border border-dashed border-border px-6">
+      <p className="text-center text-sm text-muted-foreground">{message}</p>
+    </div>
+  );
+}
 
 const AnalyticsPage = () => {
   const [data, setData] = useState<AnalyticsPayload | null>(null);
@@ -83,11 +115,19 @@ const AnalyticsPage = () => {
     void loadReports(reportPeriod);
   }, [reportPeriod]);
 
+  const breakdownConfig = Object.fromEntries(
+    (data?.wasteBreakdown ?? []).map((item, index) => [
+      item.category,
+      { label: item.category, color: pieColors[index % pieColors.length] },
+    ]),
+  );
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Analytics"
         description="Dive into trends and period summaries in one place for faster operational decisions."
+        appearance="editorial"
       />
 
       {loading && <DataLoading rows={7} />}
@@ -95,225 +135,304 @@ const AnalyticsPage = () => {
 
       {!loading && !error && data && (
         <section className="space-y-4">
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            <div className="liquid-glass rounded-3xl p-6 shadow-[0_0_0_1px_hsl(var(--palette-house-green)_/_0.5)]">
-              <p className="text-white text-xl font-heading italic mb-4">Circularity Trend</p>
-              <ChartContainer config={trendConfig} className="h-[280px] w-full">
-                <LineChart data={data.circularityTrend}>
-                  <CartesianGrid stroke="hsl(var(--palette-light-green) / 0.16)" vertical={false} />
-                  <XAxis dataKey="week" tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--palette-light-green) / 0.72)" }} />
-                  <YAxis tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--palette-light-green) / 0.62)" }} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Line type="monotone" dataKey="score" stroke="var(--color-score)" strokeWidth={3} dot={false} />
-                </LineChart>
-              </ChartContainer>
-            </div>
+          <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-2">
+            <ChartPanel
+              title="Per-batch circularity index"
+              description="Per-batch recovery and landfill-avoidance index for the five latest completed batches."
+            >
+              {data.circularityTrend.length === 0 ? (
+                <ChartEmpty message="No circularity trend data is available yet." />
+              ) : (
+                <ChartContainer config={trendConfig} className="h-[280px] w-full">
+                  <LineChart data={data.circularityTrend} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
+                    <CartesianGrid stroke={chartPalette.grid} vertical={false} />
+                    <XAxis dataKey="batchLabel" tickLine={false} axisLine={false} tick={chartAxisTick} />
+                    <YAxis tickLine={false} axisLine={false} tick={chartAxisTick} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Line type="monotone" dataKey="score" stroke="var(--color-score)" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} />
+                  </LineChart>
+                </ChartContainer>
+              )}
+            </ChartPanel>
 
-            <div className="liquid-glass rounded-3xl p-6 shadow-[0_0_0_1px_hsl(var(--palette-house-green)_/_0.5)]">
-              <p className="text-white text-xl font-heading italic mb-4">Waste Breakdown</p>
-              <ChartContainer config={{}} className="h-[280px] w-full">
-                <PieChart>
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Pie data={data.wasteBreakdown} dataKey="value" nameKey="category" innerRadius={64} outerRadius={92} stroke="hsl(var(--palette-house-green) / 0.7)">
+            <ChartPanel
+              title="Waste breakdown"
+              description="Distribution across the waste categories returned by analytics."
+            >
+              {data.wasteBreakdown.length === 0 ? (
+                <ChartEmpty message="No waste breakdown data is available yet." />
+              ) : (
+                <>
+                  <ChartContainer config={breakdownConfig} className="h-[280px] w-full">
+                    <PieChart>
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Pie
+                        data={data.wasteBreakdown}
+                        dataKey="value"
+                        nameKey="category"
+                        innerRadius={64}
+                        outerRadius={92}
+                        stroke={chartPalette.surface}
+                        strokeWidth={2}
+                      >
+                        {data.wasteBreakdown.map((item, index) => (
+                          <Cell key={item.category} fill={pieColors[index % pieColors.length]} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ChartContainer>
+                  <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {data.wasteBreakdown.map((item, index) => (
-                      <Cell key={item.category} fill={pieColors[index % pieColors.length]} />
+                      <div key={item.category} className="flex items-center gap-2 text-sm text-secondary-foreground">
+                        <span
+                          aria-hidden="true"
+                          className="h-2.5 w-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: pieColors[index % pieColors.length] }}
+                        />
+                        <span className="min-w-0 flex-1 truncate">{item.category}</span>
+                        <span className="tabular-nums text-muted-foreground">{item.value}%</span>
+                      </div>
                     ))}
-                  </Pie>
-                </PieChart>
-              </ChartContainer>
-              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {data.wasteBreakdown.map((item, index) => (
-                  <div key={item.category} className="text-sm font-body text-[hsl(var(--palette-light-green))] opacity-85 flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: pieColors[index % pieColors.length] }} />
-                    {item.category}: {item.value}%
                   </div>
-                ))}
-              </div>
-            </div>
+                </>
+              )}
+            </ChartPanel>
 
-            <div className="liquid-glass rounded-3xl p-6 xl:col-span-2 shadow-[0_0_0_1px_hsl(var(--palette-house-green)_/_0.5)]">
-              <p className="text-white text-xl font-heading italic mb-4">Material Efficiency</p>
-              <ChartContainer config={efficiencyConfig} className="h-[300px] w-full">
-                <BarChart data={data.efficiencyByMaterial}>
-                  <CartesianGrid stroke="hsl(var(--palette-light-green) / 0.16)" vertical={false} />
-                  <XAxis dataKey="material" tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--palette-light-green) / 0.72)" }} />
-                  <YAxis tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--palette-light-green) / 0.62)" }} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="efficiency" fill="var(--color-efficiency)" radius={[12, 12, 0, 0]} />
-                </BarChart>
-              </ChartContainer>
-            </div>
+            <ChartPanel
+              title="Material efficiency"
+              description="Efficiency by material using the values supplied by analytics."
+              className="xl:col-span-2"
+            >
+              {data.efficiencyByMaterial.length === 0 ? (
+                <ChartEmpty message="No material efficiency data is available yet." />
+              ) : (
+                <ChartContainer config={efficiencyConfig} className="h-[300px] w-full">
+                  <BarChart data={data.efficiencyByMaterial} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
+                    <CartesianGrid stroke={chartPalette.grid} vertical={false} />
+                    <XAxis dataKey="material" tickLine={false} axisLine={false} tick={chartAxisTick} />
+                    <YAxis tickLine={false} axisLine={false} tick={chartAxisTick} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="efficiency" fill="var(--color-efficiency)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ChartContainer>
+              )}
+            </ChartPanel>
 
-            <div className="liquid-glass rounded-3xl p-6 shadow-[0_0_0_1px_hsl(var(--palette-house-green)_/_0.5)]">
-              <p className="text-white text-xl font-heading italic mb-4">Landfill Share Trend</p>
-              <ChartContainer config={landfillShareConfig} className="h-[260px] w-full">
-                <LineChart data={data.landfillShareTrend}>
-                  <CartesianGrid stroke="hsl(var(--palette-light-green) / 0.16)" vertical={false} />
-                  <XAxis dataKey="week" tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--palette-light-green) / 0.72)" }} />
-                  <YAxis tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--palette-light-green) / 0.62)" }} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Line type="monotone" dataKey="share" stroke="var(--color-share)" strokeWidth={3} dot={false} />
-                </LineChart>
-              </ChartContainer>
-              <p className="text-white/65 text-sm font-body mt-3">
-                Lower is better. Score caps are triggered automatically when landfill share rises above defined thresholds.
-              </p>
-            </div>
+            <ChartPanel
+              title="Landfill share trend"
+              description="Lower is better. Score caps apply above defined landfill-share thresholds."
+            >
+              {data.landfillShareTrend.length === 0 ? (
+                <ChartEmpty message="No landfill share trend data is available yet." />
+              ) : (
+                <ChartContainer config={landfillShareConfig} className="h-[260px] w-full">
+                  <LineChart data={data.landfillShareTrend} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
+                    <CartesianGrid stroke={chartPalette.grid} vertical={false} />
+                    <XAxis dataKey="batchLabel" tickLine={false} axisLine={false} tick={chartAxisTick} />
+                    <YAxis tickLine={false} axisLine={false} tick={chartAxisTick} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Line type="monotone" dataKey="share" stroke="var(--color-share)" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} />
+                  </LineChart>
+                </ChartContainer>
+              )}
+            </ChartPanel>
 
-            <div className="liquid-glass rounded-3xl p-6 shadow-[0_0_0_1px_hsl(var(--palette-house-green)_/_0.5)]">
-              <p className="text-white text-xl font-heading italic mb-4">Landfill Intensity (kg per unit)</p>
-              <ChartContainer config={landfillIntensityConfig} className="h-[260px] w-full">
-                <LineChart data={data.landfillIntensityTrend}>
-                  <CartesianGrid stroke="hsl(var(--palette-light-green) / 0.16)" vertical={false} />
-                  <XAxis dataKey="week" tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--palette-light-green) / 0.72)" }} />
-                  <YAxis tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--palette-light-green) / 0.62)" }} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Line type="monotone" dataKey="kgPerUnit" stroke="var(--color-kgPerUnit)" strokeWidth={3} dot={false} />
-                </LineChart>
-              </ChartContainer>
-              <p className="text-white/65 text-sm font-body mt-3">
-                Tracks absolute landfill impact per finished unit, not only percentage allocation.
-              </p>
-            </div>
+            <ChartPanel
+              title="Landfill intensity (kg per unit)"
+              description="Absolute landfill impact per finished unit, alongside landfill-share percentage."
+            >
+              {data.landfillIntensityTrend.length === 0 ? (
+                <ChartEmpty message="No landfill intensity trend data is available yet." />
+              ) : (
+                <ChartContainer config={landfillIntensityConfig} className="h-[260px] w-full">
+                  <LineChart data={data.landfillIntensityTrend} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
+                    <CartesianGrid stroke={chartPalette.grid} vertical={false} />
+                    <XAxis dataKey="batchLabel" tickLine={false} axisLine={false} tick={chartAxisTick} />
+                    <YAxis tickLine={false} axisLine={false} tick={chartAxisTick} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Line type="monotone" dataKey="kgPerUnit" stroke="var(--color-kgPerUnit)" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} />
+                  </LineChart>
+                </ChartContainer>
+              )}
+            </ChartPanel>
           </div>
 
-          <div className="liquid-glass-strong rounded-3xl p-4 md:p-6 border border-white/10 space-y-4">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <Card>
+            <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-white text-xl font-heading italic">Period Report Section</p>
-                <p className="text-white/60 text-sm font-body mt-1">
+                <CardTitle>Period report</CardTitle>
+                <CardDescription className="mt-1">
                   Executive-style weekly and monthly snapshots based on activity and usage results.
-                </p>
+                </CardDescription>
               </div>
               <Tabs
                 value={reportPeriod}
                 onValueChange={(value) => setReportPeriod(value as ReportPeriod)}
-                className="w-full md:w-fit"
+                className="w-full sm:w-fit"
               >
-                <TabsList className="liquid-glass rounded-full h-auto p-1 w-full md:w-auto justify-start overflow-x-auto whitespace-nowrap">
-                  <TabsTrigger value="weekly" className="shrink-0 rounded-full data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70">
-                    Weekly
-                  </TabsTrigger>
-                  <TabsTrigger value="monthly" className="shrink-0 rounded-full data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70">
-                    Monthly
-                  </TabsTrigger>
+                <TabsList className="w-full sm:w-fit">
+                  <TabsTrigger value="weekly" className="flex-1 sm:flex-none">Weekly</TabsTrigger>
+                  <TabsTrigger value="monthly" className="flex-1 sm:flex-none">Monthly</TabsTrigger>
                 </TabsList>
               </Tabs>
-            </div>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {reportLoading && <DataLoading rows={5} />}
+              {reportError && !reportLoading && (
+                <DataError message={reportError} onRetry={() => void loadReports(reportPeriod)} />
+              )}
 
-            {reportLoading && <DataLoading rows={5} />}
-            {reportError && !reportLoading && <DataError message={reportError} onRetry={() => void loadReports(reportPeriod)} />}
+              {!reportLoading && !reportError && reportData && (
+                <>
+                  <p className="text-sm text-muted-foreground">{reportData.windowLabel}</p>
 
-            {!reportLoading && !reportError && reportData && (
-              <>
-                <p className="text-white/55 text-sm font-body">{reportData.windowLabel}</p>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                    <p className="text-white/55 text-xs">Circular Score Avg</p>
-                    <p className="text-white text-2xl font-heading italic mt-1">{reportData.summary.circularScoreAvg}</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                    <p className="text-white/55 text-xs">Activities</p>
-                    <p className="text-white text-2xl font-heading italic mt-1">{reportData.summary.totalActivities}</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                    <p className="text-white/55 text-xs">On-Time Close</p>
-                    <p className="text-white text-2xl font-heading italic mt-1">{reportData.summary.onTimeCloseRate}%</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                    <p className="text-white/55 text-xs">Inventory Flow</p>
-                    <p className="text-emerald-300 text-sm mt-1">IN {reportData.summary.totalInventoryIn} kg</p>
-                    <p className="text-amber-300 text-sm">OUT {reportData.summary.totalInventoryOut} kg</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                    <p className="text-white/55 text-xs">Waste Outcome</p>
-                    <p className="text-emerald-300 text-sm mt-1">Recovered {reportData.summary.recoveredWasteKg} kg</p>
-                    <p className="text-rose-300 text-sm">Landfill {reportData.summary.landfillWasteKg} kg</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                    <p className="text-white text-lg font-heading italic mb-3">Circular Score Trend</p>
-                    <ChartContainer config={reportScoreTrendConfig} className="h-[240px] w-full">
-                      <LineChart data={reportData.trend}>
-                        <CartesianGrid stroke="hsl(var(--palette-light-green) / 0.16)" vertical={false} />
-                        <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--palette-light-green) / 0.72)" }} />
-                        <YAxis tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--palette-light-green) / 0.62)" }} />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <Line type="monotone" dataKey="circularScore" stroke="var(--color-circularScore)" strokeWidth={3} dot={false} />
-                      </LineChart>
-                    </ChartContainer>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                    <SummaryCard label="Composite circularity score avg" value={reportData.summary.circularScoreAvg} />
+                    <SummaryCard label="Activities" value={reportData.summary.totalActivities} />
+                    <SummaryCard label="On-time close" value={`${reportData.summary.onTimeCloseRate}%`} />
+                    <SummaryCard
+                      label="Inventory flow"
+                      value={`IN ${reportData.summary.totalInventoryIn} kg`}
+                      detail={`OUT ${reportData.summary.totalInventoryOut} kg`}
+                    />
+                    <SummaryCard
+                      label="Waste outcome"
+                      value={`Recovered ${reportData.summary.recoveredWasteKg} kg`}
+                      detail={`Landfill ${reportData.summary.landfillWasteKg} kg`}
+                    />
                   </div>
 
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                    <p className="text-white text-lg font-heading italic mb-3">Waste Flow Trend</p>
-                    <ChartContainer config={reportWasteFlowConfig} className="h-[240px] w-full">
-                      <BarChart data={reportData.trend}>
-                        <CartesianGrid stroke="hsl(var(--palette-light-green) / 0.16)" vertical={false} />
-                        <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--palette-light-green) / 0.72)" }} />
-                        <YAxis tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--palette-light-green) / 0.62)" }} />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <Bar dataKey="recoveredKg" fill="var(--color-recoveredKg)" radius={[8, 8, 0, 0]} />
-                        <Bar dataKey="landfillKg" fill="var(--color-landfillKg)" radius={[8, 8, 0, 0]} />
-                      </BarChart>
-                    </ChartContainer>
-                  </div>
-                </div>
+                  <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                    <ChartPanel title="Composite circularity score trend">
+                      {reportData.trend.length === 0 ? (
+                        <ChartEmpty message="No circular score trend data is available for this period." />
+                      ) : (
+                        <ChartContainer config={reportScoreTrendConfig} className="h-[240px] w-full">
+                          <LineChart data={reportData.trend} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
+                            <CartesianGrid stroke={chartPalette.grid} vertical={false} />
+                            <XAxis dataKey="label" tickLine={false} axisLine={false} tick={chartAxisTick} />
+                            <YAxis tickLine={false} axisLine={false} tick={chartAxisTick} />
+                            <ChartTooltip content={<ChartTooltipContent />} />
+                            <Line type="monotone" dataKey="circularScore" stroke="var(--color-circularScore)" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} />
+                          </LineChart>
+                        </ChartContainer>
+                      )}
+                    </ChartPanel>
 
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-2">
-                    <p className="text-white text-lg font-heading italic">Top Actions</p>
-                    {reportData.topActions.length === 0 ? (
-                      <DataEmpty title="No actions" description="No activity data for this period." />
-                    ) : (
-                      reportData.topActions.map((item) => (
-                        <div key={item.action} className="rounded-xl border border-white/10 px-3 py-2 flex items-center justify-between">
-                          <p className="text-white/80 text-sm capitalize">{item.action}</p>
-                          <p className="text-white text-sm font-medium">{item.count}</p>
-                        </div>
-                      ))
-                    )}
-                  </div>
-
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-2">
-                    <p className="text-white text-lg font-heading italic">Top Contributors</p>
-                    {reportData.topContributors.length === 0 ? (
-                      <DataEmpty title="No contributors" description="No actor data in this period." />
-                    ) : (
-                      reportData.topContributors.map((item) => (
-                        <div key={`${item.actor}-${item.lastSeen}`} className="rounded-xl border border-white/10 px-3 py-2">
-                          <div className="flex items-center justify-between">
-                            <p className="text-white/85 text-sm">{item.actor}</p>
-                            <p className="text-white text-sm font-medium">{item.activities}</p>
+                    <ChartPanel title="Waste flow trend">
+                      {reportData.trend.length === 0 ? (
+                        <ChartEmpty message="No waste flow trend data is available for this period." />
+                      ) : (
+                        <>
+                          <ChartContainer config={reportWasteFlowConfig} className="h-[240px] w-full">
+                            <BarChart data={reportData.trend} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
+                              <CartesianGrid stroke={chartPalette.grid} vertical={false} />
+                              <XAxis dataKey="label" tickLine={false} axisLine={false} tick={chartAxisTick} />
+                              <YAxis tickLine={false} axisLine={false} tick={chartAxisTick} />
+                              <ChartTooltip content={<ChartTooltipContent />} />
+                              <Bar dataKey="recoveredKg" fill="var(--color-recoveredKg)" radius={[4, 4, 0, 0]} />
+                              <Bar dataKey="landfillKg" fill="var(--color-landfillKg)" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                          </ChartContainer>
+                          <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
+                            <SeriesLabel color={chartPalette.primary} label="Recovered" />
+                            <SeriesLabel color={chartPalette.tertiary} label="Landfill" />
                           </div>
-                          <p className="text-white/50 text-xs mt-1">Last seen {new Date(item.lastSeen).toLocaleString()}</p>
-                        </div>
-                      ))
-                    )}
+                        </>
+                      )}
+                    </ChartPanel>
                   </div>
 
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-2">
-                    <p className="text-white text-lg font-heading italic">Highlights</p>
-                    {reportData.highlights.length === 0 ? (
-                      <DataEmpty title="No highlights" description="Highlights appear when enough activity is available." />
-                    ) : (
-                      reportData.highlights.map((item, index) => (
-                        <div key={`${item}-${index}`} className="rounded-xl border border-white/10 px-3 py-2">
-                          <p className="text-white/80 text-sm">{item}</p>
-                        </div>
-                      ))
-                    )}
+                  <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+                    <ListPanel title="Top actions">
+                      {reportData.topActions.length === 0 ? (
+                        <InlineEmpty>No activity data for this period.</InlineEmpty>
+                      ) : (
+                        reportData.topActions.map((item) => (
+                          <div key={item.action} className="flex items-center justify-between gap-3 border-b border-border py-2 last:border-0">
+                            <p className="text-sm capitalize text-secondary-foreground">{item.action}</p>
+                            <p className="text-sm font-medium tabular-nums text-foreground">{item.count}</p>
+                          </div>
+                        ))
+                      )}
+                    </ListPanel>
+
+                    <ListPanel title="Top contributors">
+                      {reportData.topContributors.length === 0 ? (
+                        <InlineEmpty>No actor data in this period.</InlineEmpty>
+                      ) : (
+                        reportData.topContributors.map((item) => (
+                          <div key={`${item.actor}-${item.lastSeen}`} className="border-b border-border py-2 last:border-0">
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="truncate text-sm text-secondary-foreground">{item.actor}</p>
+                              <p className="text-sm font-medium tabular-nums text-foreground">{item.activities}</p>
+                            </div>
+                            <p className="mt-1 text-xs text-muted-foreground">Last seen {new Date(item.lastSeen).toLocaleString()}</p>
+                          </div>
+                        ))
+                      )}
+                    </ListPanel>
+
+                    <ListPanel title="Highlights">
+                      {reportData.highlights.length === 0 ? (
+                        <InlineEmpty>Highlights appear when enough activity is available.</InlineEmpty>
+                      ) : (
+                        reportData.highlights.map((item, index) => (
+                          <div key={`${item}-${index}`} className="border-b border-border py-2 last:border-0">
+                            <p className="text-sm text-secondary-foreground">{item}</p>
+                          </div>
+                        ))
+                      )}
+                    </ListPanel>
                   </div>
-                </div>
-              </>
-            )}
-          </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
         </section>
       )}
     </div>
   );
 };
+
+function SummaryCard({ label, value, detail }: { label: string; value: string | number; detail?: string }) {
+  return (
+    <div className="rounded-md border border-border p-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">{value}</p>
+      {detail && <p className="mt-1 text-sm text-secondary-foreground">{detail}</p>}
+    </div>
+  );
+}
+
+function SeriesLabel({ color, label }: { color: string; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span aria-hidden="true" className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: color }} />
+      {label}
+    </span>
+  );
+}
+
+function ListPanel({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-1">{children}</CardContent>
+    </Card>
+  );
+}
+
+function InlineEmpty({ children }: { children: ReactNode }) {
+  return <p className="py-4 text-sm text-muted-foreground">{children}</p>;
+}
 
 export default AnalyticsPage;
