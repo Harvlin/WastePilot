@@ -1,6 +1,9 @@
 package com.project.wastepilot.domain.entity;
 
+import com.project.wastepilot.domain.enums.UserRole;
 import jakarta.persistence.Column;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -27,4 +30,8 @@ public class AuthUserEntity extends AuditableEntity {
 
   @Column(nullable = false, length = 255)
   private String passwordHash;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 16)
+  private UserRole role = UserRole.OPERATOR;
 }

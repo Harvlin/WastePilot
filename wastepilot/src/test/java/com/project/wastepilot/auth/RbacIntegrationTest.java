@@ -54,13 +54,13 @@ class RbacIntegrationTest {
     operator.setFullName("Operator Bob");
     operator.setEmail("operator@wastepilot.dev");
     operator.setPasswordHash("hashedpass");
+    operator.setRole(UserRole.OPERATOR);
     operator = authUserRepository.save(operator);
 
     UserSettingsEntity settings = new UserSettingsEntity();
     settings.setUserId(operator.getId().toString());
     settings.setCompany("Test Corp");
     settings.setEmail(operator.getEmail());
-    settings.setRole(UserRole.OPERATOR);
     settings.setTimezone("UTC");
     settings.setDailyTokenBudget(1000);
     settings.setNotifyAnomalies(true);
@@ -85,13 +85,13 @@ class RbacIntegrationTest {
     supervisor.setFullName("Supervisor Alice");
     supervisor.setEmail("supervisor@wastepilot.dev");
     supervisor.setPasswordHash("hashedpass");
+    supervisor.setRole(UserRole.SUPERVISOR);
     supervisor = authUserRepository.save(supervisor);
 
     UserSettingsEntity settings = new UserSettingsEntity();
     settings.setUserId(supervisor.getId().toString());
     settings.setCompany("Test Corp");
     settings.setEmail(supervisor.getEmail());
-    settings.setRole(UserRole.SUPERVISOR);
     settings.setTimezone("UTC");
     settings.setDailyTokenBudget(1000);
     settings.setNotifyAnomalies(true);

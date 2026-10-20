@@ -63,13 +63,13 @@ public class CrossValidationIntegrationTest {
         supervisor.setFullName("Supervisor");
         supervisor.setEmail("sup@wastepilot.dev");
         supervisor.setPasswordHash("hashedpass");
+        supervisor.setRole(UserRole.SUPERVISOR);
         supervisor = authUserRepository.save(supervisor);
 
         UserSettingsEntity settings = new UserSettingsEntity();
         settings.setUserId(supervisor.getId().toString());
         settings.setCompany("Test Corp");
         settings.setEmail(supervisor.getEmail());
-        settings.setRole(UserRole.SUPERVISOR);
         settings.setTimezone("UTC");
         settings.setDailyTokenBudget(1000);
         settings.setNotifyAnomalies(true);

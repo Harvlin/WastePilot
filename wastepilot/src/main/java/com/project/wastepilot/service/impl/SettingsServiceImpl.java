@@ -4,7 +4,6 @@ import com.project.wastepilot.domain.dto.settings.UpdateUserSettingsRequest;
 import com.project.wastepilot.domain.dto.settings.UserSettingsResponse;
 import com.project.wastepilot.domain.entity.AuthUserEntity;
 import com.project.wastepilot.domain.entity.UserSettingsEntity;
-import com.project.wastepilot.domain.enums.UserRole;
 import com.project.wastepilot.exception.ApiException;
 import com.project.wastepilot.mappers.SettingsMapper;
 import com.project.wastepilot.repository.AuthUserRepository;
@@ -36,7 +35,7 @@ public class SettingsServiceImpl implements SettingsService {
     String userId = resolveCurrentUserId();
     UserSettingsEntity settings = userSettingsRepository.findByUserId(userId)
         .orElseGet(() -> userSettingsRepository.save(createDefaultSettings(userId)));
-    return settingsMapper.toResponse(settings);
+    return toResponse(settings, userId);
   }
 
   @Override
@@ -46,23 +45,12 @@ public class SettingsServiceImpl implements SettingsService {
     UserSettingsEntity settings = userSettingsRepository.findByUserId(userId)
         .orElseGet(() -> userSettingsRepository.save(createDefaultSettings(userId)));
 
-    UserRole previousRole = settings.getRole();
     settingsMapper.update(settings, request);
     settings.setCompany(settings.getCompany().trim());
     settings.setEmail(settings.getEmail().trim().toLowerCase());
-    String updatedRoleStr = request.role();
-    if (updatedRoleStr == null || updatedRoleStr.isBlank()) {
-      settings.setRole(previousRole == null ? UserRole.OPERATOR : previousRole);
-    } else {
-      try {
-        settings.setRole(UserRole.valueOf(updatedRoleStr.trim().toUpperCase()));
-      } catch (IllegalArgumentException e) {
-        settings.setRole(UserRole.OPERATOR);
-      }
-    }
     settings.setTimezone(validateTimezone(settings.getTimezone()));
     UserSettingsEntity saved = userSettingsRepository.save(settings);
-    return settingsMapper.toResponse(saved);
+    return toResponse(saved, userId);
   }
 
   @Override
@@ -76,7 +64,6 @@ public class SettingsServiceImpl implements SettingsService {
     settings.setUserId(user.getId().toString());
     settings.setCompany("WastePilot Workspace");
     settings.setEmail(user.getEmail());
-    settings.setRole(UserRole.OPERATOR);
     settings.setTimezone(DEFAULT_TIMEZONE);
     settings.setDailyTokenBudget(DEFAULT_DAILY_TOKEN_BUDGET);
     settings.setNotifyAnomalies(true);
@@ -94,13 +81,18 @@ public class SettingsServiceImpl implements SettingsService {
     settings.setUserId(userId);
     settings.setCompany("WastePilot Workspace");
     settings.setEmail(user.getEmail());
-    settings.setRole(UserRole.OPERATOR);
     settings.setTimezone(DEFAULT_TIMEZONE);
     settings.setDailyTokenBudget(DEFAULT_DAILY_TOKEN_BUDGET);
     settings.setNotifyAnomalies(true);
     settings.setNotifyRecommendations(true);
     settings.setNotifyOverdueBatches(true);
     return settings;
+  }
+
+  private UserSettingsResponse toResponse(UserSettingsEntity settings, String userId) {
+    AuthUserEntity user = authUserRepository.findById(parseUserUuid(userId))
+        .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "User not found."));
+    return settingsMapper.toResponse(settings, user.getRole().name());
   }
 
   private String resolveCurrentUserId() {

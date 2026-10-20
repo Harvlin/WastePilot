@@ -11,15 +11,15 @@ import org.mapstruct.NullValuePropertyMappingStrategy;
 
 @Mapper(componentModel = "spring")
 public interface SettingsMapper {
-    @Mapping(target = "companyName", source = "company")
-    @Mapping(target = "notifyInsights", source = "notifyRecommendations")
-    UserSettingsResponse toResponse(UserSettingsEntity entity);
+    @Mapping(target = "companyName", source = "entity.company")
+    @Mapping(target = "notifyInsights", source = "entity.notifyRecommendations")
+    @Mapping(target = "role", source = "role")
+    UserSettingsResponse toResponse(UserSettingsEntity entity, String role);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "company", source = "companyName")
     @Mapping(target = "notifyRecommendations", source = "notifyInsights")
     @Mapping(target = "notifyOverdueBatches", ignore = true)
-    @Mapping(target = "role", ignore = true)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "userId", ignore = true)
     void update(@MappingTarget UserSettingsEntity target, UpdateUserSettingsRequest source);

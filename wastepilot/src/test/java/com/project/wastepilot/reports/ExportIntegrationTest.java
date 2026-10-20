@@ -48,13 +48,13 @@ public class ExportIntegrationTest {
         operator.setFullName("Operator");
         operator.setEmail("op@wastepilot.dev");
         operator.setPasswordHash("hashedpass");
+        operator.setRole(UserRole.OPERATOR);
         operator = authUserRepository.save(operator);
 
         UserSettingsEntity settings = new UserSettingsEntity();
         settings.setUserId(operator.getId().toString());
         settings.setCompany("Test Corp");
         settings.setEmail(operator.getEmail());
-        settings.setRole(UserRole.OPERATOR);
         settings.setTimezone("UTC");
         settings.setDailyTokenBudget(1000);
         settings.setNotifyAnomalies(true);

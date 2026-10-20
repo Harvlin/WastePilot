@@ -72,6 +72,39 @@ class AuthControllerIntegrationTest {
   }
 
   @Test
+  void roleComesFromAuthUsersForLoginMeAndRefresh() throws Exception {
+    SignupRequest signupRequest = new SignupRequest("Sari Supervisor", "sari@wastepilot.dev", "superSecret123");
+    mockMvc.perform(post("/api/v1/auth/signup")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(signupRequest)))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.user.role").value("OPERATOR"));
+
+    var user = authUserRepository.findByEmailIgnoreCase("sari@wastepilot.dev").orElseThrow();
+    user.setRole(com.project.wastepilot.domain.enums.UserRole.SUPERVISOR);
+    authUserRepository.save(user);
+
+    MvcResult login = mockMvc.perform(post("/api/v1/auth/login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(new LoginRequest("sari@wastepilot.dev", "superSecret123"))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.user.role").value("SUPERVISOR"))
+        .andReturn();
+    Map<?, ?> body = objectMapper.readValue(login.getResponse().getContentAsString(), Map.class);
+
+    mockMvc.perform(get("/api/v1/auth/me")
+            .header("Authorization", "Bearer " + body.get("accessToken")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.role").value("SUPERVISOR"));
+
+    mockMvc.perform(post("/api/v1/auth/refresh")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(new RefreshTokenRequest((String) body.get("refreshToken")))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.user.role").value("SUPERVISOR"));
+  }
+
+  @Test
   void duplicateEmailShouldReturnConflict() throws Exception {
     SignupRequest request = new SignupRequest("Same User", "same@wastepilot.dev", "superSecret123");
 

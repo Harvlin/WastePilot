@@ -59,7 +59,7 @@ class SettingsControllerIntegrationTest {
     Map<String, Object> updatePayload = Map.of(
         "companyName", "Pilot Circular",
         "email", "ops@pilot.circular",
-        "role", "Operations Lead",
+        "role", "SUPERVISOR",
         "timezone", "Asia/Jakarta",
         "dailyTokenBudget", 18000,
         "notifyAnomalies", true,
@@ -77,6 +77,11 @@ class SettingsControllerIntegrationTest {
         .andExpect(jsonPath("$.timezone").value("Asia/Jakarta"))
         .andExpect(jsonPath("$.dailyTokenBudget").value(18000))
         .andExpect(jsonPath("$.notifyInsights").value(false));
+
+    mockMvc.perform(get("/api/v1/auth/me")
+            .header("Authorization", "Bearer " + token))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.role").value("OPERATOR"));
   }
 
   @Test
@@ -123,7 +128,7 @@ class SettingsControllerIntegrationTest {
             .header("Authorization", "Bearer " + token)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(updatePayload)))
-        .andExpect(status().isBadRequest())
+        .andExpect(status().isUnprocessableEntity())
         .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
   }
 

@@ -172,9 +172,8 @@ class OperationsControllerIntegrationTest {
         .andExpect(status().isCreated());
 
     AuthUserEntity user = authUserRepository.findByEmailIgnoreCase(email).get();
-    UserSettingsEntity settings = userSettingsRepository.findByUserId(user.getId().toString()).get();
-    settings.setRole(UserRole.SUPERVISOR);
-    userSettingsRepository.save(settings);
+    user.setRole(UserRole.SUPERVISOR);
+    authUserRepository.save(user);
 
     MvcResult loginResult = mockMvc.perform(post("/api/v1/auth/login")
             .contentType(MediaType.APPLICATION_JSON)
