@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import BootLoadingScreen from "@/components/BootLoadingScreen";
 import { AuthProvider } from "@/features/auth/auth-context";
+import { internalApiRuntimeConfig } from "@/lib/api/internal-api";
 
 const Index = lazy(() => import("./pages/Index.tsx"));
 const Auth = lazy(() => import("./pages/Auth.tsx"));
@@ -26,8 +27,8 @@ const FloorViewPage = lazy(() => import("@/pages/internal/FloorViewPage"));
 const queryClient = new QueryClient();
 
 const AppRouteFallback = () => (
-  <div className="min-h-screen bg-black flex items-center justify-center">
-    <p className="text-sm font-body text-[hsl(var(--palette-light-green))]/80">Loading workspace...</p>
+  <div className="  min-h-screen bg-background flex items-center justify-center">
+      <p className="text-sm font-body text-muted-foreground">Loading workspace...</p>
   </div>
 );
 
@@ -65,6 +66,20 @@ const App = () => {
       window.cancelAnimationFrame(animationFrameId);
     };
   }, [showBootLoading]);
+
+  if (internalApiRuntimeConfig.configurationError) {
+    return (
+      <main role="alert" className="flex min-h-screen items-center justify-center bg-background p-6">
+        <section className="max-w-xl rounded-lg border border-destructive/40 bg-white p-6 text-foreground shadow-card">
+          <h1 className="text-lg font-semibold">Frontend API configuration error</h1>
+          <p className="mt-2 text-sm">{internalApiRuntimeConfig.configurationError}</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Correct the frontend environment configuration and rebuild the application.
+          </p>
+        </section>
+      </main>
+    );
+  }
 
   if (showBootLoading) {
     return <BootLoadingScreen progress={bootProgress} />;

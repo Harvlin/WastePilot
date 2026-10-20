@@ -2,11 +2,15 @@ import {
   ActivityLogEntry,
   AnalyticsPayload,
   Anomaly,
+  AuditChainVerification,
   AuditTrailEntry,
+  BatchStatus,
   BatchCloseSummary,
   BatchRedFlag,
   CircularInsight,
+  CrossValidationDiscrepancy,
   DashboardPayload,
+  InsightStatus,
   IntegrityOverview,
   InventoryLog,
   Material,
@@ -19,6 +23,7 @@ import {
   ReportsPayload,
   UserSettings,
   WasteLog,
+  WasteRecoveryStatus,
 } from "@/features/internal/types";
 import { CLOSE_VARIANCE_THRESHOLD } from "@/features/internal/constants";
 
@@ -77,7 +82,7 @@ const defaultInsightsStore: CircularInsight[] = [
     title: "Repurpose cotton offcuts",
     content: "Route cotton offcuts from Batch B-102 into tote-handle components for next Tuesday run.",
     impactCategory: "environment",
-    status: "new",
+    status: InsightStatus.New,
     createdAt: "2026-03-28T08:30:00Z",
   },
   {
@@ -85,7 +90,7 @@ const defaultInsightsStore: CircularInsight[] = [
     title: "Tune cutter calibration",
     content: "Reduce cutter speed by 6% in line A to drop edge-trim waste without affecting throughput.",
     impactCategory: "operations",
-    status: "applied",
+    status: InsightStatus.Applied,
     createdAt: "2026-03-27T13:40:00Z",
   },
   {
@@ -93,7 +98,7 @@ const defaultInsightsStore: CircularInsight[] = [
     title: "Shift supplier mix",
     content: "Increase SourceTex lot 14 share to 40%; it generated 18% less scrap than current baseline.",
     impactCategory: "cost",
-    status: "ignored",
+    status: InsightStatus.Ignored,
     createdAt: "2026-03-26T10:15:00Z",
   },
 ];
@@ -104,8 +109,9 @@ const defaultAnomaliesStore: Anomaly[] = [
     date: "2026-03-28",
     process: "Cutting Line A",
     zScore: 3.2,
+    detectionMode: "STATISTICAL_BASELINE",
     wasteKg: 42,
-    status: "new",
+    status: InsightStatus.New,
     note: "Waste spike detected above normal variance; inspect blade wear and pressure alignment.",
   },
   {
@@ -113,8 +119,9 @@ const defaultAnomaliesStore: Anomaly[] = [
     date: "2026-03-24",
     process: "Pressing Unit 2",
     zScore: 2.5,
+    detectionMode: "STATISTICAL_BASELINE",
     wasteKg: 27,
-    status: "applied",
+    status: InsightStatus.Applied,
     note: "Moisture imbalance likely from pre-heat drift; calibration patch applied.",
   },
 ];
@@ -130,7 +137,7 @@ let batchesStore: ProductionBatch[] = [
     startedAt: "2026-03-29T08:00:00Z",
     outputUnits: 350,
     wasteKg: 18,
-    status: "running",
+    status: BatchStatus.Running,
   },
   {
     id: "B-101",
@@ -138,7 +145,7 @@ let batchesStore: ProductionBatch[] = [
     startedAt: "2026-03-28T09:15:00Z",
     outputUnits: 210,
     wasteKg: 9,
-    status: "completed",
+    status: BatchStatus.Completed,
   },
 ];
 
@@ -174,7 +181,7 @@ let wasteStore: WasteLog[] = [
     reason: "Pattern edge cuts",
     aiSuggestedAction: "Use for drawstring pouches in accessory line.",
     isRepurposed: true,
-    recoveryStatus: "pending",
+    recoveryStatus: WasteRecoveryStatus.Pending,
     timestamp: "2026-03-29T11:20:00Z",
   },
   {
@@ -186,7 +193,7 @@ let wasteStore: WasteLog[] = [
     reason: "Unrecoverable blend",
     aiSuggestedAction: "Isolate by blend in next run to improve recyclability.",
     isRepurposed: false,
-    recoveryStatus: "not-applicable",
+    recoveryStatus: WasteRecoveryStatus.NotApplicable,
     timestamp: "2026-03-28T12:10:00Z",
   },
 ];
@@ -388,7 +395,7 @@ function buildBatchCloseSummary(batchId: string, outputUnitsOverride?: number): 
   const variancePercent = plannedInputKg > 0
     ? round(((actualInputKg - plannedInputKg) / plannedInputKg) * 100, 2)
     : 0;
-  const overdue = batch.status === "running" && hoursSince(batch.startedAt) > OVERDUE_HOURS;
+  const overdue = batch.status === BatchStatus.Running && hoursSince(batch.startedAt) > OVERDUE_HOURS;
 
   const hasInventorySignal = inventoryStore.some((item) => item.type === "OUT" && item.batchId === batchId);
   const hasWasteSignal = wasteForBatch.length > 0;
@@ -479,7 +486,7 @@ function computeBatchFinalScore(summary: BatchCloseSummary) {
 
 function computeIntegrityOverviewInternal(): IntegrityOverview {
   const scoredBatchIds = batchesStore
-    .filter((batch) => batch.status === "completed")
+    .filter((batch) => batch.status === BatchStatus.Completed)
     .map((batch) => batch.id);
 
   const summaries = scoredBatchIds.map((batchId) => buildBatchCloseSummary(batchId));
@@ -487,7 +494,7 @@ function computeIntegrityOverviewInternal(): IntegrityOverview {
     ? Math.round(summaries.reduce((sum, item) => sum + item.confidenceScore, 0) / summaries.length)
     : 100;
 
-  const overdueBatchClosures = batchesStore.filter((batch) => batch.status === "running" && hoursSince(batch.startedAt) > OVERDUE_HOURS).length;
+  const overdueBatchClosures = batchesStore.filter((batch) => batch.status === BatchStatus.Running && hoursSince(batch.startedAt) > OVERDUE_HOURS).length;
   const activeStoreFlags = redFlagStore.filter((flag) => !flag.resolvedAt).length;
   const activeSummaryFlags = summaries.reduce((sum, item) => sum + item.redFlags.length, 0);
 
@@ -525,7 +532,7 @@ function computeCircularScoreFromCurrentData() {
 
   const integrity = computeIntegrityOverviewInternal();
   const qualityFactor = clamp(integrity.averageConfidenceScore / 100, 0.5, 1);
-  const penalty = integrity.openRedFlags * 0.8 + anomaliesStore.filter((item) => item.status === "new").length * 0.6;
+  const penalty = integrity.openRedFlags * 0.8 + anomaliesStore.filter((item) => item.status === InsightStatus.New).length * 0.6;
 
   return {
     value: round(clamp(Math.min(base, cap) * qualityFactor - penalty, 0, 100), 1),
@@ -592,7 +599,7 @@ function computeTrendCircularScore(inputKg: number, wasteKg: number, recoveredKg
 }
 
 function normalizeActionLabel(action: string) {
-  return action.replaceAll("_", " ");
+  return action.replace(/_/g, " ");
 }
 
 function buildReportHighlights(payload: ReportsPayload) {
@@ -831,7 +838,7 @@ export async function createBatch(input: Omit<ProductionBatch, "id" | "startedAt
   const newBatch: ProductionBatch = {
     id: `B-${100 + batchesStore.length + 1}`,
     startedAt: new Date().toISOString(),
-    status: "running",
+    status: BatchStatus.Running,
     ...input,
   };
 
@@ -891,10 +898,12 @@ export async function createInventoryLog(input: Omit<InventoryLog, "id" | "times
   return newItem;
 }
 
-export async function createWasteLog(input: Omit<WasteLog, "id" | "timestamp">) {
+export async function createWasteLog(input: Omit<WasteLog, "id" | "timestamp" | "recoveryStatus">) {
   await delay(300);
 
-  const recoveryStatus = input.destination === "dispose" ? "not-applicable" : "pending";
+  const recoveryStatus = input.destination === "dispose"
+    ? WasteRecoveryStatus.NotApplicable
+    : WasteRecoveryStatus.Pending;
 
   const newItem: WasteLog = {
     id: `W-${wasteStore.length + 1}`,
@@ -915,7 +924,7 @@ export async function createWasteLog(input: Omit<WasteLog, "id" | "timestamp">) 
   });
 
   const scopedBatch = batchesStore.find((item) => item.id === newItem.batchId);
-  if (scopedBatch?.status === "completed") {
+  if (scopedBatch?.status === BatchStatus.Completed) {
     addAuditTrail({
       batchId: newItem.batchId,
       field: "wasteLog",
@@ -942,7 +951,7 @@ export async function recoverWasteToInventory(input: { wasteLogId: string }) {
     throw new Error("Dispose logs cannot be converted to recovered inventory.");
   }
 
-  if (wasteLog.recoveryStatus === "converted") {
+  if (wasteLog.recoveryStatus === WasteRecoveryStatus.Converted) {
     throw new Error("This waste log has already been converted to inventory.");
   }
 
@@ -967,7 +976,7 @@ export async function recoverWasteToInventory(input: { wasteLogId: string }) {
 
   const updatedWasteLog: WasteLog = {
     ...wasteLog,
-    recoveryStatus: "converted",
+    recoveryStatus: WasteRecoveryStatus.Converted,
     recoveryInventoryLogId: inventoryLog.id,
     recoveredAt: nowIso(),
     isRepurposed: true,
@@ -988,8 +997,8 @@ export async function recoverWasteToInventory(input: { wasteLogId: string }) {
   addAuditTrail({
     batchId: updatedWasteLog.batchId,
     field: "recoveryStatus",
-    oldValue: wasteLog.recoveryStatus ?? "pending",
-    newValue: "converted",
+    oldValue: wasteLog.recoveryStatus,
+    newValue: WasteRecoveryStatus.Converted,
     editedBy: "operator.session",
     reason: "Recovered waste converted to inventory IN.",
   });
@@ -1017,7 +1026,7 @@ export async function closeBatch(input: {
     throw new Error("Batch not found.");
   }
 
-  if (batch.status !== "running") {
+  if (batch.status !== BatchStatus.Running) {
     throw new Error("This batch is already closed.");
   }
 
@@ -1033,7 +1042,7 @@ export async function closeBatch(input: {
   const previousOutput = batch.outputUnits;
   const nextCloseReason = input.closeReason?.trim() || "Confirmed by operator.";
 
-  batch.status = "completed";
+  batch.status = BatchStatus.Completed;
   batch.outputUnits = input.outputUnits;
   batch.wasteKg = preview.wasteTotalKg;
   batch.closedAt = nowIso();
@@ -1089,6 +1098,22 @@ export async function fetchAuditTrail(batchId?: string): Promise<AuditTrailEntry
 export async function fetchIntegrityOverview(): Promise<IntegrityOverview> {
   await delay(220);
   return computeIntegrityOverviewInternal();
+}
+
+export async function fetchAuditChainVerification(): Promise<AuditChainVerification> {
+  await delay(220);
+  return {
+    valid: true,
+    entriesChecked: auditTrailStore.length,
+    headSequence: auditTrailStore.length,
+    firstInvalidSequence: null,
+    message: "Audit chain verified.",
+  };
+}
+
+export async function fetchCrossValidationDiscrepancies(): Promise<CrossValidationDiscrepancy[]> {
+  await delay(220);
+  return [];
 }
 
 export async function fetchPatternReview(): Promise<PatternReviewEntry[]> {
@@ -1188,16 +1213,16 @@ export async function fetchAnalytics(): Promise<AnalyticsPayload> {
     .reverse();
 
   const landfillShareTrend = summarySamples.map((sample, index) => ({
-    week: `W${index + 1}`,
+    batchLabel: `Batch ${index + 1}`,
     share: round(sample.landfillShare * 100, 1),
   }));
   const landfillIntensityTrend = summarySamples.map((sample, index) => ({
-    week: `W${index + 1}`,
+    batchLabel: `Batch ${index + 1}`,
     kgPerUnit: round(sample.landfillIntensity, 3),
   }));
 
   const circularityTrend = summarySamples.map((sample, index) => ({
-    week: `W${index + 1}`,
+    batchLabel: `Batch ${index + 1}`,
     score: computeBatchFinalScore(sample),
   }));
 
@@ -1209,7 +1234,7 @@ export async function fetchAnalytics(): Promise<AnalyticsPayload> {
   };
 
   return {
-    circularityTrend: circularityTrend.length ? circularityTrend : [{ week: "W1", score: 72 }],
+    circularityTrend: circularityTrend.length ? circularityTrend : [{ batchLabel: "Batch 1", score: 72 }],
     wasteBreakdown: [
       { category: "Reusable", value: round((wasteByDestination.Reusable / totalWaste) * 100, 1) },
       { category: "Repair", value: round((wasteByDestination.Repair / totalWaste) * 100, 1) },
@@ -1221,8 +1246,8 @@ export async function fetchAnalytics(): Promise<AnalyticsPayload> {
       { material: "Elastic", efficiency: 61 },
       { material: "Dye", efficiency: 72 },
     ],
-    landfillShareTrend: landfillShareTrend.length ? landfillShareTrend : [{ week: "W1", share: 24 }],
-    landfillIntensityTrend: landfillIntensityTrend.length ? landfillIntensityTrend : [{ week: "W1", kgPerUnit: 0.03 }],
+    landfillShareTrend: landfillShareTrend.length ? landfillShareTrend : [{ batchLabel: "Batch 1", share: 24 }],
+    landfillIntensityTrend: landfillIntensityTrend.length ? landfillIntensityTrend : [{ batchLabel: "Batch 1", kgPerUnit: 0.03 }],
   };
 }
 

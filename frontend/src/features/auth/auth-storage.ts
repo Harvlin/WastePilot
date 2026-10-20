@@ -1,4 +1,5 @@
 export const AUTH_SESSION_STORAGE_KEY = "wastepilot_auth_session";
+export const AUTH_UNAUTHORIZED_EVENT = "wastepilot:unauthorized";
 
 export interface AuthUser {
   id: string;

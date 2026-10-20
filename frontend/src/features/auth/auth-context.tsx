@@ -1,26 +1,17 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { internalApi } from "@/lib/api/internal-api";
+import { ApiRequestError } from "@/lib/api/internal-api";
 import type { ForgotPasswordInput, ResetPasswordInput } from "@/lib/api/internal-api";
+import type { AuthContextValue } from "@/features/auth/auth-context-store";
+import { AuthContext } from "@/features/auth/auth-context-store";
 import {
+  AUTH_UNAUTHORIZED_EVENT,
   AuthSession,
   AuthUser,
   clearStoredAuthSession,
   getStoredAuthSession,
   setStoredAuthSession,
 } from "@/features/auth/auth-storage";
-
-interface AuthContextValue {
-  user: AuthUser | null;
-  isAuthenticated: boolean;
-  isBootstrapping: boolean;
-  login: (input: { email: string; password: string }) => Promise<void>;
-  signup: (input: { fullName: string; email: string; password: string }) => Promise<void>;
-  logout: () => Promise<void>;
-  forgotPassword: (input: ForgotPasswordInput) => Promise<void>;
-  resetPassword: (input: ResetPasswordInput) => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null);
@@ -57,9 +48,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const validSession: AuthSession = { ...stored, user };
         setStoredAuthSession(validSession);
         setSession(validSession);
-      } catch {
-        clearStoredAuthSession();
-        setSession(null);
+      } catch (error) {
+        if (error instanceof ApiRequestError && error.status === 401) {
+          clearStoredAuthSession();
+          setSession(null);
+        } else {
+          setSession(stored);
+        }
       } finally {
         setIsBootstrapping(false);
       }
@@ -72,8 +67,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const onStorage = () => {
       setSession(getStoredAuthSession());
     };
+    const onUnauthorized = () => {
+      clearStoredAuthSession();
+      setSession(null);
+    };
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, onUnauthorized);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, onUnauthorized);
+    };
   }, []);
 
   const login = useCallback(async (input: { email: string; password: string }) => {
@@ -117,12 +120,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }), [session, isBootstrapping, login, signup, logout, forgotPassword, resetPassword]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within AuthProvider");
-  }
-  return context;
 }

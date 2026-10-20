@@ -1,7 +1,19 @@
 export type CircularGrade = "A" | "B" | "C";
-export type InsightStatus = "new" | "applied" | "ignored";
+export enum BatchStatus {
+  Running = "running",
+  Completed = "completed",
+}
+export enum InsightStatus {
+  New = "new",
+  Applied = "applied",
+  Ignored = "ignored",
+}
 export type WasteDestination = "reuse" | "repair" | "dispose";
-export type WasteRecoveryStatus = "not-applicable" | "pending" | "converted";
+export enum WasteRecoveryStatus {
+  NotApplicable = "not-applicable",
+  Pending = "pending",
+  Converted = "converted",
+}
 
 export interface CircularMetric {
   id: string;
@@ -36,7 +48,9 @@ export interface Anomaly {
   id: string;
   date: string;
   process: string;
-  zScore: number;
+  zScore: number | null;
+  detectionMode: "STATISTICAL_BASELINE" | "PROVISIONAL_THRESHOLD";
+  provisionalThresholdKg?: number | null;
   wasteKg: number;
   status: InsightStatus;
   note: string;
@@ -48,7 +62,7 @@ export interface ProductionBatch {
   startedAt: string;
   outputUnits: number;
   wasteKg: number;
-  status: "running" | "completed";
+  status: BatchStatus;
   closedAt?: string;
   closedBy?: string;
   closeReason?: string;
@@ -75,7 +89,7 @@ export interface WasteLog {
   reason: string;
   aiSuggestedAction: string;
   isRepurposed: boolean;
-  recoveryStatus?: WasteRecoveryStatus;
+  recoveryStatus: WasteRecoveryStatus;
   recoveryInventoryLogId?: string;
   recoveredAt?: string;
   timestamp: string;
@@ -203,11 +217,28 @@ export interface PatternReviewEntry {
 }
 
 export interface AnalyticsPayload {
-  circularityTrend: Array<{ week: string; score: number }>;
+  circularityTrend: Array<{ batchLabel: string; score: number }>;
   wasteBreakdown: WasteBreakdownPoint[];
   efficiencyByMaterial: Array<{ material: string; efficiency: number }>;
-  landfillShareTrend: Array<{ week: string; share: number }>;
-  landfillIntensityTrend: Array<{ week: string; kgPerUnit: number }>;
+  landfillShareTrend: Array<{ batchLabel: string; share: number }>;
+  landfillIntensityTrend: Array<{ batchLabel: string; kgPerUnit: number }>;
+}
+
+export interface AuditChainVerification {
+  valid: boolean;
+  entriesChecked: number;
+  headSequence: number;
+  firstInvalidSequence: number | null;
+  message: string;
+}
+
+export interface CrossValidationDiscrepancy {
+  batchId: string;
+  materialName: string;
+  manualTotalKg: number;
+  sensorTotalKg: number;
+  relativeDiscrepancyPercent: number;
+  note: string;
 }
 
 export type ReportPeriod = "weekly" | "monthly";

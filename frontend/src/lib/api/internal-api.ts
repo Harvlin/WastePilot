@@ -1,9 +1,11 @@
 import {
   ActivityLogEntry,
   AnalyticsPayload,
+  AuditChainVerification,
   AuditTrailEntry,
   BatchCloseSummary,
   CircularInsight,
+  CrossValidationDiscrepancy,
   DashboardPayload,
   IntegrityOverview,
   InventoryLog,
@@ -20,6 +22,7 @@ import {
 } from "@/features/internal/types";
 import * as mock from "@/features/internal/mock-api";
 import {
+  AUTH_UNAUTHORIZED_EVENT,
   AuthSession,
   AuthUser,
   clearStoredAuthSession,
@@ -33,7 +36,9 @@ export interface InsightsPayload {
     id: string;
     date: string;
     process: string;
-    zScore: number;
+    zScore: number | null;
+    detectionMode: "STATISTICAL_BASELINE" | "PROVISIONAL_THRESHOLD";
+    provisionalThresholdKg?: number | null;
     wasteKg: number;
     status: CircularInsight["status"];
     note: string;
@@ -42,7 +47,7 @@ export interface InsightsPayload {
 
 export type CreateBatchInput = Omit<ProductionBatch, "id" | "startedAt" | "status">;
 export type CreateInventoryInput = Omit<InventoryLog, "id" | "timestamp">;
-export type CreateWasteInput = Omit<WasteLog, "id" | "timestamp">;
+export type CreateWasteInput = Omit<WasteLog, "id" | "timestamp" | "recoveryStatus">;
 export interface CloseBatchInput {
   batchId: string;
   outputUnits: number;
@@ -78,15 +83,17 @@ export interface SignupInput {
   password: string;
 }
 
-type RequestErrorKind = "http" | "network" | "timeout";
+type RequestErrorKind = "http" | "network" | "timeout" | "client";
 
-class ApiRequestError extends Error {
+export class ApiRequestError extends Error {
   constructor(
     message: string,
     readonly kind: RequestErrorKind,
     readonly status?: number,
+    readonly code?: string,
   ) {
     super(message);
+    this.name = "ApiRequestError";
   }
 }
 
@@ -117,6 +124,8 @@ export const SPRING_API_ENDPOINTS = {
   settings: "/api/v1/settings",
   activityLogs: "/api/v1/integrity/activity-logs",
   auditTrail: "/api/v1/integrity/audit-trail",
+  auditChainVerification: "/api/v1/integrity/audit-trail/verify",
+  crossValidation: "/api/v1/integrity/cross-validation",
   integrityOverview: "/api/v1/integrity/overview",
   patternReview: "/api/v1/integrity/pattern-review",
   authLogin: "/api/v1/auth/login",
@@ -183,6 +192,8 @@ export interface InternalApi {
   fetchFloorViewBatches(): Promise<FloorViewBatchResponse[]>;
   fetchActivityLogs(batchId?: string): Promise<ActivityLogEntry[]>;
   fetchAuditTrail(batchId?: string): Promise<AuditTrailEntry[]>;
+  fetchAuditChainVerification(): Promise<AuditChainVerification>;
+  fetchCrossValidationDiscrepancies(): Promise<CrossValidationDiscrepancy[]>;
   fetchIntegrityOverview(): Promise<IntegrityOverview>;
   fetchPatternReview(): Promise<PatternReviewEntry[]>;
   fetchMaterials(): Promise<Material[]>;
@@ -263,6 +274,8 @@ class MockInternalApi implements InternalApi {
   fetchFloorViewBatches = async () => []; // Mock returns empty array for now
   fetchActivityLogs = mock.fetchActivityLogs;
   fetchAuditTrail = mock.fetchAuditTrail;
+  fetchAuditChainVerification = mock.fetchAuditChainVerification;
+  fetchCrossValidationDiscrepancies = mock.fetchCrossValidationDiscrepancies;
   fetchIntegrityOverview = mock.fetchIntegrityOverview;
   fetchPatternReview = mock.fetchPatternReview;
   fetchMaterials = mock.fetchMaterials;
@@ -303,7 +316,9 @@ export function subscribeInternalApiStatus(listener: (status: InternalApiStatus)
     fallbackActive: fallbackOperations.size > 0,
     fallbackOperations: Array.from(fallbackOperations).sort(),
   });
-  return () => statusListeners.delete(listener);
+  return () => {
+    statusListeners.delete(listener);
+  };
 }
 
 class SpringBootInternalApi implements InternalApi {
@@ -363,6 +378,16 @@ class SpringBootInternalApi implements InternalApi {
   }
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
+    const method = (init?.method ?? "GET").toUpperCase();
+    if (method !== "GET" && this.options.fallbackApi && fallbackOperations.size > 0) {
+      throw new ApiRequestError(
+        "Writes are disabled while demo/offline fallback data is active. Restore the backend connection and reload this section before trying again.",
+        "client",
+        undefined,
+        "DEMO_MODE_WRITE_BLOCKED",
+      );
+    }
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.options.timeoutMs);
 
@@ -387,18 +412,28 @@ class SpringBootInternalApi implements InternalApi {
         const fallback = `Request failed with status ${response.status}`;
         const text = await response.text();
         let message = text || fallback;
+        let code: string | undefined;
         try {
-          const parsed = JSON.parse(text) as { message?: string };
-          if (parsed?.message) {
+          const parsed = JSON.parse(text) as { code?: unknown; message?: unknown };
+          if (typeof parsed?.message === "string" && parsed.message.trim()) {
             message = parsed.message;
+          }
+          if (typeof parsed?.code === "string" && parsed.code.trim()) {
+            code = parsed.code;
           }
         } catch {
           // keep original message
         }
-        if (response.status === 401 || response.status === 403) {
+        if (response.status === 401) {
           clearStoredAuthSession();
+          window.dispatchEvent(new Event(AUTH_UNAUTHORIZED_EVENT));
+        } else if (response.status === 403) {
+          message = message === fallback || message === text
+            ? "You don't have permission to perform this action."
+            : message;
+          code ??= "FORBIDDEN";
         }
-        throw new ApiRequestError(message, "http", response.status);
+        throw new ApiRequestError(message, "http", response.status, code);
       }
 
       if (response.status === 204) {
@@ -542,6 +577,22 @@ class SpringBootInternalApi implements InternalApi {
     );
   }
 
+  async fetchAuditChainVerification() {
+    return this.withFallback(
+      "fetchAuditChainVerification",
+      () => this.request<AuditChainVerification>(SPRING_API_ENDPOINTS.auditChainVerification),
+      this.options.fallbackApi ? () => this.options.fallbackApi!.fetchAuditChainVerification() : undefined,
+    );
+  }
+
+  async fetchCrossValidationDiscrepancies() {
+    return this.withFallback(
+      "fetchCrossValidationDiscrepancies",
+      () => this.request<CrossValidationDiscrepancy[]>(SPRING_API_ENDPOINTS.crossValidation),
+      this.options.fallbackApi ? () => this.options.fallbackApi!.fetchCrossValidationDiscrepancies() : undefined,
+    );
+  }
+
   async fetchIntegrityOverview() {
     return this.withFallback(
       "fetchIntegrityOverview",
@@ -653,7 +704,31 @@ class SpringBootInternalApi implements InternalApi {
   async fetchAnalytics() {
     return this.withFallback(
       "fetchAnalytics",
-      () => this.request<AnalyticsPayload>(SPRING_API_ENDPOINTS.analytics),
+      async () => {
+        const response = await this.request<{
+          circularityTrend: Array<{ week: string; score: number }>;
+          wasteBreakdown: AnalyticsPayload["wasteBreakdown"];
+          efficiencyByMaterial: AnalyticsPayload["efficiencyByMaterial"];
+          landfillShareTrend: Array<{ week: string; share: number }>;
+          landfillIntensityTrend: Array<{ week: string; kgPerUnit: number }>;
+        }>(SPRING_API_ENDPOINTS.analytics);
+        const batchLabel = (label: string) => label.replace(/^W(?=\d+$)/, "Batch ");
+        return {
+          ...response,
+          circularityTrend: response.circularityTrend.map(({ week, ...point }) => ({
+            ...point,
+            batchLabel: batchLabel(week),
+          })),
+          landfillShareTrend: response.landfillShareTrend.map(({ week, ...point }) => ({
+            ...point,
+            batchLabel: batchLabel(week),
+          })),
+          landfillIntensityTrend: response.landfillIntensityTrend.map(({ week, ...point }) => ({
+            ...point,
+            batchLabel: batchLabel(week),
+          })),
+        };
+      },
       this.options.fallbackApi ? () => this.options.fallbackApi!.fetchAnalytics() : undefined,
     );
   }
@@ -703,14 +778,26 @@ class SpringBootInternalApi implements InternalApi {
   }
 
   async saveSettings(input: UserSettings) {
+    const writableSettings = {
+      companyName: input.companyName,
+      email: input.email,
+      timezone: input.timezone,
+      notifyAnomalies: input.notifyAnomalies,
+      notifyInsights: input.notifyInsights,
+      dailyTokenBudget: input.dailyTokenBudget,
+    };
     return this.request<UserSettings>(SPRING_API_ENDPOINTS.settings, {
       method: "PUT",
-      body: JSON.stringify(input),
+      body: JSON.stringify(writableSettings),
     });
   }
 }
 
-const provider = (import.meta.env.VITE_INTERNAL_API_PROVIDER as string | undefined)?.toLowerCase() ?? "mock";
+const configuredProvider = (import.meta.env.VITE_INTERNAL_API_PROVIDER as string | undefined)?.trim().toLowerCase();
+const provider = configuredProvider || "spring";
+const configurationError = provider === "spring" || provider === "mock"
+  ? undefined
+  : `Invalid VITE_INTERNAL_API_PROVIDER value "${provider}". Use "spring" or "mock".`;
 const springBaseUrl = (import.meta.env.VITE_SPRING_API_BASE_URL as string | undefined) ?? "http://localhost:8080";
 const springTimeoutMs = parseTimeoutMs(
   import.meta.env.VITE_SPRING_API_TIMEOUT_MS as string | undefined,
@@ -719,7 +806,7 @@ const springTimeoutMs = parseTimeoutMs(
 const springFallbackToMock = parseBooleanEnv(
   import.meta.env.VITE_SPRING_FALLBACK_TO_MOCK as string | undefined,
   false,
-);
+) && import.meta.env.DEV;
 
 const mockApi = new MockInternalApi();
 
@@ -728,6 +815,7 @@ export const internalApiRuntimeConfig = {
   springBaseUrl,
   springTimeoutMs,
   springFallbackToMock,
+  configurationError,
 } as const;
 
 export const internalApi: InternalApi = provider === "spring"
@@ -735,4 +823,8 @@ export const internalApi: InternalApi = provider === "spring"
       timeoutMs: springTimeoutMs,
       fallbackApi: springFallbackToMock ? mockApi : undefined,
     })
-  : mockApi;
+  : provider === "mock"
+    ? mockApi
+    : new SpringBootInternalApi(springBaseUrl, {
+        timeoutMs: springTimeoutMs,
+      });
