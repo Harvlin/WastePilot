@@ -1,5 +1,7 @@
 package com.project.wastepilot.controller;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import com.project.wastepilot.domain.dto.ai.AnomalyResponse;
 import com.project.wastepilot.domain.dto.ai.InsightResponse;
 import com.project.wastepilot.domain.dto.ai.UpdateStatusRequest;
@@ -30,6 +32,7 @@ public class InsightsController {
 
   /** PATCH /api/v1/ai/insights/{id}/status — update insight status (new/applied/ignored) */
   @PatchMapping("/insights/{id}/status")
+  @PreAuthorize("hasRole('SUPERVISOR')")
   public InsightResponse updateInsightStatus(
       @PathVariable UUID id,
       @Valid @RequestBody UpdateStatusRequest request
@@ -45,6 +48,7 @@ public class InsightsController {
 
   /** PATCH /api/v1/ai/anomalies/{id}/status — update anomaly status */
   @PatchMapping("/anomalies/{id}/status")
+  @PreAuthorize("hasRole('SUPERVISOR')")
   public AnomalyResponse updateAnomalyStatus(
       @PathVariable UUID id,
       @Valid @RequestBody UpdateStatusRequest request
