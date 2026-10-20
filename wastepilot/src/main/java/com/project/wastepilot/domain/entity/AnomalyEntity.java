@@ -34,8 +34,14 @@ public class AnomalyEntity {
     @Column(nullable = false, length = 120)
     private String process;
 
-    @Column(nullable = false, precision = 8, scale = 2)
+    @Column(precision = 8, scale = 2)
     private BigDecimal zScore;
+
+    @Column(name = "detection_mode", nullable = false, length = 32)
+    private String detectionMode;
+
+    @Column(name = "provisional_threshold_kg", precision = 14, scale = 3)
+    private BigDecimal provisionalThresholdKg;
 
     @Column(nullable = false, precision = 14, scale = 3)
     private BigDecimal wasteKg;

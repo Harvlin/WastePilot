@@ -12,6 +12,7 @@ import java.util.List;
 @Repository
 public interface AnomalyRepository extends JpaRepository<AnomalyEntity, UUID> {
   List<AnomalyEntity> findAllByOrderByTimestampDesc();
+  Optional<AnomalyEntity> findTopByOrderByTimestampDesc();
   List<AnomalyEntity> findByStatus(InsightStatus status);
   boolean existsByBatchIdAndMaterialNameAndDateAndStatus(UUID batchId, String materialName, String date, InsightStatus status);
 }

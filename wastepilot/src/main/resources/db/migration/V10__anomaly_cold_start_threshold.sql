@@ -1,0 +1,3 @@
+ALTER TABLE anomalies MODIFY z_score DECIMAL(8,2) NULL;
+ALTER TABLE anomalies ADD COLUMN detection_mode VARCHAR(32) NOT NULL DEFAULT 'STATISTICAL_BASELINE';
+ALTER TABLE anomalies ADD COLUMN provisional_threshold_kg DECIMAL(14, 3) NULL;

@@ -81,6 +81,8 @@ public class InsightsServiceImpl implements InsightsService {
         e.getDate(),
         e.getProcess(),
         e.getZScore(),
+        e.getDetectionMode(),
+        e.getProvisionalThresholdKg(),
         e.getWasteKg(),
         e.getStatus().toValue(),
         e.getNote()

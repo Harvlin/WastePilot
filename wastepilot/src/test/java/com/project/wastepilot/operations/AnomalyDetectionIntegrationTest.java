@@ -76,6 +76,7 @@ class AnomalyDetectionIntegrationTest {
   void shouldGenerateAnomalyWhenWasteIsHigh() {
     BatchEntity batch = new BatchEntity();
     batch.setTemplateName("Test Template");
+    batch.setPlannedInputKg(BigDecimal.ZERO);
     batch.setStartedAt(Instant.now());
     batch.setOutputUnits(BigDecimal.valueOf(100));
     batch.setWasteKg(BigDecimal.ZERO);
@@ -150,6 +151,7 @@ class AnomalyDetectionIntegrationTest {
 
     BatchEntity batch = new BatchEntity();
     batch.setTemplateName("Test Template");
+    batch.setPlannedInputKg(BigDecimal.ZERO);
     batch.setStartedAt(Instant.now());
     batch.setOutputUnits(BigDecimal.valueOf(100));
     batch.setWasteKg(BigDecimal.ZERO);

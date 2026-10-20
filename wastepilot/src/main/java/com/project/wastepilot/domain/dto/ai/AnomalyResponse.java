@@ -7,6 +7,8 @@ public record AnomalyResponse(
     String date,
     String process,
     BigDecimal zScore,
+    String detectionMode,
+    BigDecimal provisionalThresholdKg,
     BigDecimal wasteKg,
     String status,
     String note
