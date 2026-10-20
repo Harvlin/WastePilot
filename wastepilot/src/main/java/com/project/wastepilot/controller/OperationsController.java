@@ -1,5 +1,7 @@
 package com.project.wastepilot.controller;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import com.project.wastepilot.domain.dto.operations.BatchCloseSummaryResponse;
 import com.project.wastepilot.domain.dto.operations.BatchResponse;
 import com.project.wastepilot.domain.dto.operations.CloseBatchRequest;
@@ -65,11 +67,13 @@ public class OperationsController {
   }
 
   @PostMapping("/batch-close")
+  @PreAuthorize("hasRole('SUPERVISOR')")
   public BatchCloseSummaryResponse closeBatch(@Valid @RequestBody CloseBatchRequest request) {
     return operationsService.closeBatch(request);
   }
 
   @org.springframework.web.bind.annotation.PatchMapping("/batches/{batchId}/output-units")
+  @PreAuthorize("hasRole('SUPERVISOR')")
   public BatchResponse updateBatchOutputUnits(
       @PathVariable String batchId,
       @Valid @RequestBody com.project.wastepilot.domain.dto.operations.UpdateOutputUnitsRequest request

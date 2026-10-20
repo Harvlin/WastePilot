@@ -10,4 +10,6 @@ import java.util.List;
 @Repository
 public interface RedFlagRepository extends JpaRepository<RedFlagEntity, UUID> {
   long countByResolvedFalse();
+  /** Fetch only open flags for a specific batch — replaces findAll() + filter in buildSummaryFlags. */
+  List<RedFlagEntity> findByRelatedBatchIdAndResolvedFalse(UUID relatedBatchId);
 }

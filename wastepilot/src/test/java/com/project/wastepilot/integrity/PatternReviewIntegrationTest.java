@@ -7,24 +7,27 @@ import static org.hamcrest.Matchers.hasSize;
 
 import com.project.wastepilot.domain.entity.AuthUserEntity;
 import com.project.wastepilot.domain.entity.BatchEntity;
+import com.project.wastepilot.domain.entity.InventoryLogEntity;
 import com.project.wastepilot.domain.entity.UserSettingsEntity;
 import com.project.wastepilot.domain.enums.BatchStatus;
+import com.project.wastepilot.domain.enums.InventoryType;
 import com.project.wastepilot.domain.enums.UserRole;
 import com.project.wastepilot.repository.AuthUserRepository;
 import com.project.wastepilot.repository.BatchRepository;
+import com.project.wastepilot.repository.InventoryLogRepository;
+import com.project.wastepilot.repository.WasteLogRepository;
 import com.project.wastepilot.repository.UserSettingsRepository;
 import com.project.wastepilot.security.JwtService;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.mockito.Mockito;
-import org.mockito.ArgumentMatchers;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -43,14 +46,19 @@ class PatternReviewIntegrationTest {
   @Autowired
   private BatchRepository batchRepository;
 
-  @MockBean
-  private com.project.wastepilot.service.OperationsService operationsService;
+  @Autowired
+  private InventoryLogRepository inventoryLogRepository;
+
+  @Autowired
+  private WasteLogRepository wasteLogRepository;
 
   @Autowired
   private JwtService jwtService;
 
   @BeforeEach
   void setUp() {
+    inventoryLogRepository.deleteAll();
+    wasteLogRepository.deleteAll();
     batchRepository.deleteAll();
     userSettingsRepository.deleteAll();
     authUserRepository.deleteAll();
@@ -131,23 +139,32 @@ class PatternReviewIntegrationTest {
     settings.setNotifyOverdueBatches(true);
     userSettingsRepository.save(settings);
 
-    // Create 25 completed batches closed by this supervisor
+    List<InventoryLogEntity> inputLogs = new ArrayList<>();
     for (int i = 0; i < 25; i++) {
       BatchEntity batch = new BatchEntity();
       batch.setTemplateName("Template A");
+      batch.setPlannedInputKg(new BigDecimal("12.000"));
       batch.setStartedAt(Instant.now().minusSeconds(3600 * 48 + i * 3600));
       batch.setOutputUnits(new BigDecimal("100.000"));
       batch.setWasteKg(BigDecimal.ZERO);
       batch.setStatus(BatchStatus.completed);
       batch.setClosedBy(supervisor.getId().toString());
       batch.setClosedAt(Instant.now().minusSeconds(3600 * 24 + i * 3600));
-      batchRepository.save(batch);
+      BatchEntity savedBatch = batchRepository.save(batch);
+
+      InventoryLogEntity input = new InventoryLogEntity();
+      input.setBatch(savedBatch);
+      input.setMaterialName("Cotton");
+      input.setType(InventoryType.IN);
+      input.setQuantity(new BigDecimal("12.576"));
+      input.setUnit("kg");
+      input.setSource("manual");
+      input.setTimestamp(Instant.now());
+      inputLogs.add(input);
     }
+    inventoryLogRepository.saveAll(inputLogs);
 
     String token = jwtService.generateToken(supervisor.getId().toString(), UserRole.SUPERVISOR);
-
-    Mockito.when(operationsService.getBatchVariancePercent(ArgumentMatchers.anyString()))
-        .thenReturn(new BigDecimal("4.8"));
 
     // Act
     mockMvc.perform(get("/api/v1/integrity/pattern-review")

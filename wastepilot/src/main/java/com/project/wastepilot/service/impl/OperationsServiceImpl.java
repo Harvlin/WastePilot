@@ -1,5 +1,6 @@
 package com.project.wastepilot.service.impl;
 
+import com.project.wastepilot.config.WastePilotThresholds;
 import com.project.wastepilot.domain.dto.operations.BatchCloseSummaryResponse;
 import com.project.wastepilot.domain.dto.operations.BatchResponse;
 import com.project.wastepilot.domain.dto.operations.CloseBatchRequest;
@@ -10,14 +11,12 @@ import com.project.wastepilot.domain.dto.operations.InventoryLogResponse;
 import com.project.wastepilot.domain.dto.operations.OperationsPayloadResponse;
 import com.project.wastepilot.domain.dto.operations.RecoverWasteRequest;
 import com.project.wastepilot.domain.dto.operations.FloorViewBatchResponse;
-import com.project.wastepilot.domain.dto.operations.InventoryLogResponse;
 import com.project.wastepilot.domain.dto.operations.WasteLogResponse;
 import com.project.wastepilot.domain.dto.operations.WasteRecoveryResponse;
 import com.project.wastepilot.domain.entity.ActivityLogEntity;
 import com.project.wastepilot.domain.entity.AuditTrailEntity;
 import com.project.wastepilot.domain.entity.BatchEntity;
 import com.project.wastepilot.domain.entity.InventoryLogEntity;
-import com.project.wastepilot.domain.entity.RedFlagEntity;
 import com.project.wastepilot.domain.entity.TemplateEntity;
 import com.project.wastepilot.domain.entity.WasteLogEntity;
 import com.project.wastepilot.domain.enums.BatchStatus;
@@ -28,21 +27,17 @@ import com.project.wastepilot.domain.enums.RedFlagSeverity;
 import com.project.wastepilot.domain.enums.WasteDestination;
 import com.project.wastepilot.exception.ApiException;
 import com.project.wastepilot.repository.ActivityLogRepository;
-import com.project.wastepilot.repository.AuditTrailRepository;
 import com.project.wastepilot.repository.BatchRepository;
 import com.project.wastepilot.repository.InventoryLogRepository;
-import com.project.wastepilot.repository.RedFlagRepository;
 import com.project.wastepilot.repository.TemplateRepository;
 import com.project.wastepilot.repository.WasteLogRepository;
 import com.project.wastepilot.security.SecurityUtils;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.Duration;
 import java.time.Instant;
-import java.util.Comparator;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import com.project.wastepilot.service.OperationsService;
@@ -56,27 +51,24 @@ import org.springframework.transaction.annotation.Transactional;
 public class OperationsServiceImpl implements OperationsService {
   private static final BigDecimal ONE_THOUSANDTH = new BigDecimal("0.001");
   private static final BigDecimal ZERO = BigDecimal.ZERO;
-  private static final int CLOSE_VARIANCE_THRESHOLD = 5;
-  private static final Duration OVERDUE_HOURS = Duration.ofHours(24);
-
-  private record RecoveryMeta(UUID inventoryLogId, Instant recoveredAt) {}
 
   private final BatchRepository batchRepository;
   private final InventoryLogRepository inventoryLogRepository;
   private final WasteLogRepository wasteLogRepository;
   private final TemplateRepository templateRepository;
   private final ActivityLogRepository activityLogRepository;
-  private final AuditTrailRepository auditTrailRepository;
-  private final RedFlagRepository redFlagRepository;
+  private final AuditChainService auditChainService;
+  private final BatchMetricsService batchMetricsService;
+  private final FloorViewService floorViewService;
   private final AnomalyDetectionService anomalyDetectionService;
   private final InsightGenerationService insightGenerationService;
-  private final ConcurrentHashMap<UUID, RecoveryMeta> recoveryMeta = new ConcurrentHashMap<>();
+  private final WastePilotThresholds thresholds;
 
   @Override
   @Transactional(readOnly = true)
   public OperationsPayloadResponse getOperationsPayload() {
-    List<BatchResponse> batches = batchRepository.findAll().stream()
-        .sorted(Comparator.comparing(BatchEntity::getStartedAt).reversed())
+    // Use findTop50 to bound the operations panel table — full history is available via the batch detail view.
+    List<BatchResponse> batches = batchRepository.findTop50ByOrderByStartedAtDesc().stream()
         .map(this::toBatchResponse)
         .toList();
     List<InventoryLogResponse> inventoryLogs = inventoryLogRepository.findTop200ByOrderByTimestampDesc().stream()
@@ -91,8 +83,17 @@ public class OperationsServiceImpl implements OperationsService {
   @Override
   @Transactional
   public BatchResponse createBatch(CreateBatchRequest request) {
+    String templateName = request.templateName().trim();
+    TemplateEntity template = templateRepository.findByNameIgnoreCase(templateName).orElse(null);
+    BigDecimal plannedInputKg = template == null
+        ? request.outputUnits().multiply(new BigDecimal("0.08")).max(new BigDecimal("12"))
+        : template.getLines().stream()
+            .map(line -> line.getQuantity())
+            .reduce(ZERO, BigDecimal::add);
+
     BatchEntity batch = new BatchEntity();
-    batch.setTemplateName(request.templateName().trim());
+    batch.setTemplateName(templateName);
+    batch.setPlannedInputKg(plannedInputKg);
     batch.setStartedAt(Instant.now());
     batch.setOutputUnits(request.outputUnits());
     batch.setWasteKg(request.wasteKg());
@@ -109,7 +110,13 @@ public class OperationsServiceImpl implements OperationsService {
     InventoryType type = parseInventoryType(request.type());
     BatchEntity batch = null;
     if (request.batchId() != null && !request.batchId().isBlank()) {
-      batch = resolveBatch(request.batchId());
+      UUID batchUuid = parseUuid(request.batchId(), "batchId");
+      batch = batchRepository.lockById(batchUuid)
+          .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "BATCH_NOT_FOUND", "Batch not found."));
+      if (batch.getStatus() != BatchStatus.running) {
+        throw new ApiException(HttpStatus.CONFLICT, "BATCH_ALREADY_CLOSED",
+            "Cannot add inventory to a batch that is not running.");
+      }
     }
     if (type == InventoryType.OUT && batch == null) {
       throw new ApiException(HttpStatus.BAD_REQUEST, "BATCH_REQUIRED", "Batch is required for inventory OUT logs.");
@@ -140,7 +147,13 @@ public class OperationsServiceImpl implements OperationsService {
   @Override
   @Transactional
   public WasteLogResponse createWasteLog(CreateWasteLogRequest request) {
-    BatchEntity batch = resolveBatch(request.batchId());
+    UUID batchUuid = parseUuid(request.batchId(), "batchId");
+    BatchEntity batch = batchRepository.lockById(batchUuid)
+        .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "BATCH_NOT_FOUND", "Batch not found."));
+    if (batch.getStatus() != BatchStatus.running) {
+      throw new ApiException(HttpStatus.CONFLICT, "BATCH_ALREADY_CLOSED",
+          "Cannot add waste to a batch that is not running.");
+    }
     WasteDestination destination = parseDestination(request.destination());
 
     WasteLogEntity entity = new WasteLogEntity();
@@ -191,9 +204,11 @@ public class OperationsServiceImpl implements OperationsService {
     inventoryLog.setTimestamp(Instant.now());
     InventoryLogEntity savedInventory = inventoryLogRepository.save(inventoryLog);
 
+    Instant recoveredAt = Instant.now();
     wasteLog.setRecoveryStatus(RecoveryStatus.converted);
+    wasteLog.setRecoveryInventoryLogId(savedInventory.getId());
+    wasteLog.setRecoveredAt(recoveredAt);
     wasteLogRepository.save(wasteLog);
-    recoveryMeta.put(wasteLog.getId(), new RecoveryMeta(savedInventory.getId(), Instant.now()));
 
     logActivity(
         EntityType.inventory,
@@ -219,7 +234,7 @@ public class OperationsServiceImpl implements OperationsService {
   @Transactional(readOnly = true)
   public BatchCloseSummaryResponse getBatchCloseSummary(String batchId) {
     BatchEntity batch = resolveBatch(batchId);
-    return buildBatchCloseSummary(batch, null);
+    return batchMetricsService.buildBatchCloseSummary(batch, null);
   }
 
   @Override
@@ -232,13 +247,14 @@ public class OperationsServiceImpl implements OperationsService {
       throw new ApiException(HttpStatus.CONFLICT, "BATCH_ALREADY_CLOSED", "This batch is already closed.");
     }
 
-    BatchCloseSummaryResponse preview = buildBatchCloseSummary(batch, request.outputUnits());
-    if (preview.variancePercent().abs().compareTo(BigDecimal.valueOf(CLOSE_VARIANCE_THRESHOLD)) > 0
+    BatchCloseSummaryResponse preview = batchMetricsService.buildBatchCloseSummary(batch, request.outputUnits());
+    int varianceGate = thresholds.getCloseVarianceThresholdPct();
+    if (preview.variancePercent().abs().compareTo(BigDecimal.valueOf(varianceGate)) > 0
         && (request.closeReason() == null || request.closeReason().trim().isEmpty())) {
       throw new ApiException(
           HttpStatus.BAD_REQUEST,
           "CLOSE_REASON_REQUIRED",
-          "Variance above " + CLOSE_VARIANCE_THRESHOLD + "% requires a close reason."
+          "Variance above " + varianceGate + "% requires a close reason."
       );
     }
 
@@ -267,7 +283,7 @@ public class OperationsServiceImpl implements OperationsService {
     
     insightGenerationService.evaluateAfterBatchClose(batch);
     
-    return buildBatchCloseSummary(batch, batch.getOutputUnits());
+    return batchMetricsService.buildBatchCloseSummary(batch, batch.getOutputUnits());
   }
 
   // Extracted to avoid N+1 query overhead in PatternReview logic.
@@ -275,7 +291,7 @@ public class OperationsServiceImpl implements OperationsService {
   @Transactional(readOnly = true)
   public BigDecimal getBatchVariancePercent(String batchId) {
     BatchEntity batch = resolveBatch(batchId);
-    return calculateVariancePercent(batch, batch.getOutputUnits());
+    return batchMetricsService.calculateVariancePercent(batch);
   }
 
   @Override
@@ -314,219 +330,19 @@ public class OperationsServiceImpl implements OperationsService {
   @Override
   @Transactional(readOnly = true)
   public int getOverdueBatchClosuresCount() {
-    Instant now = Instant.now();
-    return (int) batchRepository.findByStatusOrderByStartedAtDesc(BatchStatus.running).stream()
-        .filter(batch -> Duration.between(batch.getStartedAt(), now).compareTo(OVERDUE_HOURS) > 0)
-        .count();
+    return batchMetricsService.getOverdueBatchClosuresCount();
   }
 
   @Override
   @Transactional(readOnly = true)
   public int getOpenRedFlagsCount() {
-    return Math.toIntExact(redFlagRepository.countByResolvedFalse());
+    return batchMetricsService.getOpenRedFlagsCount();
   }
 
   @Override
   @Transactional(readOnly = true)
   public int getAverageConfidenceScoreForCompletedBatches() {
-    List<BatchEntity> completed = batchRepository.findByStatusOrderByStartedAtDesc(BatchStatus.completed);
-    if (completed.isEmpty()) {
-      return 100;
-    }
-    int sum = completed.stream()
-        .map(batch -> buildBatchCloseSummary(batch, batch.getOutputUnits()).confidenceScore())
-        .reduce(0, Integer::sum);
-    return Math.round((float) sum / completed.size());
-  }
-
-  private BatchCloseSummaryResponse buildBatchCloseSummary(BatchEntity batch, BigDecimal outputUnitsOverride) {
-    BigDecimal outputUnits = outputUnitsOverride == null ? batch.getOutputUnits() : outputUnitsOverride;
-
-    BigDecimal variancePercent = calculateVariancePercent(batch, outputUnits);
-
-    List<WasteLogEntity> wasteLogs = wasteLogRepository.findByBatchIdOrderByTimestampDesc(batch.getId());
-    BigDecimal wasteTotalKg = wasteLogs.isEmpty()
-        ? batch.getWasteKg().max(ZERO)
-        : wasteLogs.stream().map(WasteLogEntity::getQuantityKg).reduce(ZERO, BigDecimal::add);
-    BigDecimal reuseKg = sumWasteByDestination(wasteLogs, WasteDestination.reuse);
-    BigDecimal repairKg = sumWasteByDestination(wasteLogs, WasteDestination.repair);
-    BigDecimal disposeKg = sumWasteByDestination(wasteLogs, WasteDestination.dispose);
-    BigDecimal landfillShare = wasteTotalKg.compareTo(ZERO) > 0
-        ? scale(disposeKg.divide(wasteTotalKg, 6, RoundingMode.HALF_UP), 4)
-        : ZERO;
-        
-    // Calculate input values for display in the summary
-    TemplateEntity template = templateRepository.findByNameIgnoreCase(batch.getTemplateName()).orElse(null);
-    BigDecimal plannedInputKg = template == null
-        ? outputUnits.multiply(new BigDecimal("0.08")).max(new BigDecimal("12"))
-        : template.getLines().stream()
-            .map(line -> line.getQuantity())
-            .reduce(ZERO, BigDecimal::add);
-            
-    List<InventoryLogEntity> inLogs = inventoryLogRepository.findByBatchIdOrderByTimestampDesc(batch.getId())
-        .stream().filter(log -> log.getType() == InventoryType.IN).toList();
-    BigDecimal measuredInputKg = inLogs.stream()
-        .map(InventoryLogEntity::getQuantity)
-        .reduce(BigDecimal.ZERO, BigDecimal::add);
-    boolean hasRealInput = !inLogs.isEmpty() && measuredInputKg.compareTo(BigDecimal.ZERO) > 0;
-    String actualInputSource = hasRealInput ? "measured" : "estimated";
-    BigDecimal actualInputKg = hasRealInput ? measuredInputKg : plannedInputKg;
-
-    BigDecimal landfillIntensity = outputUnits.compareTo(ZERO) > 0
-        ? scale(disposeKg.divide(outputUnits, 6, RoundingMode.HALF_UP), 4)
-        : scale(disposeKg, 4);
-
-    boolean overdue = batch.getStatus() == BatchStatus.running
-        && Duration.between(batch.getStartedAt(), Instant.now()).compareTo(OVERDUE_HOURS) > 0;
-    boolean hasInventorySignal = inventoryLogRepository.findByBatchIdOrderByTimestampDesc(batch.getId()).stream()
-        .anyMatch(log -> log.getType() == InventoryType.OUT);
-    boolean hasWasteSignal = !wasteLogs.isEmpty();
-    boolean hasOutputSignal = outputUnits.compareTo(ZERO) > 0;
-    BigDecimal completeness = BigDecimal.valueOf((hasInventorySignal ? 1 : 0) + (hasWasteSignal ? 1 : 0) + (hasOutputSignal ? 1 : 0))
-        .divide(BigDecimal.valueOf(3), 6, RoundingMode.HALF_UP);
-    BigDecimal timeliness = overdue ? new BigDecimal("0.72") : BigDecimal.ONE;
-    List<String> entityIds = new java.util.ArrayList<>();
-    entityIds.add(batch.getId().toString());
-    inventoryLogRepository.findByBatchIdOrderByTimestampDesc(batch.getId()).forEach(log -> entityIds.add(log.getId().toString()));
-    wasteLogRepository.findByBatchIdOrderByTimestampDesc(batch.getId()).forEach(log -> entityIds.add(log.getId().toString()));
-
-    List<AuditTrailEntity> auditEntries = auditTrailRepository.findByEntityIdIn(entityIds);
-    int meaningfulReasons = 0;
-    for (AuditTrailEntity entry : auditEntries) {
-        String reason = entry.getReason();
-        if (reason != null && !reason.isBlank() && reason.length() >= 10) {
-            meaningfulReasons++;
-        }
-    }
-    BigDecimal auditIntegrity = auditEntries.isEmpty() ? BigDecimal.ONE
-        : new BigDecimal(meaningfulReasons).divide(new BigDecimal(auditEntries.size()), 4, RoundingMode.HALF_UP);
-    int confidenceScore = BigDecimal.valueOf(100)
-        .multiply(completeness.multiply(new BigDecimal("0.5"))
-            .add(timeliness.multiply(new BigDecimal("0.3")))
-            .add(auditIntegrity.multiply(new BigDecimal("0.2"))))
-        .setScale(0, RoundingMode.HALF_UP)
-        .intValue();
-    String confidenceLevel = confidenceScore >= 85 ? "high" : confidenceScore >= 65 ? "medium" : "low";
-
-    List<BatchCloseSummaryResponse.BatchRedFlagResponse> redFlags = buildSummaryFlags(batch, variancePercent, landfillShare, overdue);
-
-    return new BatchCloseSummaryResponse(
-        batch.getId().toString(),
-        batch.getTemplateName(),
-        batch.getStartedAt(),
-        overdue,
-        scale(plannedInputKg, 3),
-        scale(actualInputKg, 3),
-        actualInputSource,
-        scale(outputUnits, 3),
-        scale(wasteTotalKg, 3),
-        scale(reuseKg, 3),
-        scale(repairKg, 3),
-        scale(disposeKg, 3),
-        landfillIntensity,
-        variancePercent,
-        confidenceLevel,
-        confidenceScore,
-        new BatchCloseSummaryResponse.ConfidenceBreakdown(scale(completeness, 3), scale(timeliness, 3), scale(auditIntegrity, 3)),
-        redFlags,
-        landfillShare
-    );
-  }
-
-  private BigDecimal calculateVariancePercent(BatchEntity batch, BigDecimal outputUnits) {
-    TemplateEntity template = templateRepository.findByNameIgnoreCase(batch.getTemplateName()).orElse(null);
-    BigDecimal plannedInputKg = template == null
-        ? outputUnits.multiply(new BigDecimal("0.08")).max(new BigDecimal("12"))
-        : template.getLines().stream()
-            .map(line -> line.getQuantity())
-            .reduce(ZERO, BigDecimal::add);
-
-    List<InventoryLogEntity> inLogs = inventoryLogRepository.findByBatchIdOrderByTimestampDesc(batch.getId())
-        .stream().filter(log -> log.getType() == InventoryType.IN).toList();
-    BigDecimal measuredInputKg = inLogs.stream()
-        .map(InventoryLogEntity::getQuantity)
-        .reduce(BigDecimal.ZERO, BigDecimal::add);
-    boolean hasRealInput = !inLogs.isEmpty() && measuredInputKg.compareTo(BigDecimal.ZERO) > 0;
-    BigDecimal actualInputKg = hasRealInput ? measuredInputKg : plannedInputKg;
-
-    return plannedInputKg.compareTo(ZERO) > 0
-        ? scale(actualInputKg.subtract(plannedInputKg).multiply(new BigDecimal("100")).divide(plannedInputKg, 6, RoundingMode.HALF_UP), 2)
-        : ZERO;
-  }
-
-  private List<BatchCloseSummaryResponse.BatchRedFlagResponse> buildSummaryFlags(
-      BatchEntity batch,
-      BigDecimal variancePercent,
-      BigDecimal landfillShare,
-      boolean overdue
-  ) {
-    List<BatchCloseSummaryResponse.BatchRedFlagResponse> persistedFlags = redFlagRepository.findAll().stream()
-        .filter(flag -> !flag.isResolved() && batch.getId().equals(flag.getRelatedBatchId()))
-        .map(flag -> toRedFlagResponse(flag, "system"))
-        .toList();
-
-    List<BatchCloseSummaryResponse.BatchRedFlagResponse> generatedFlags = new java.util.ArrayList<>();
-    if (variancePercent.abs().compareTo(BigDecimal.valueOf(CLOSE_VARIANCE_THRESHOLD)) > 0) {
-      generatedFlags.add(new BatchCloseSummaryResponse.BatchRedFlagResponse(
-          "RF-S-" + batch.getId() + "-variance",
-          batch.getId().toString(),
-          "medium",
-          "variance",
-          "Variance " + variancePercent.stripTrailingZeros().toPlainString() + "% requires reviewer justification on close.",
-          Instant.now(),
-          null,
-          null
-      ));
-    }
-    if (landfillShare.compareTo(new BigDecimal("0.4")) > 0) {
-      generatedFlags.add(new BatchCloseSummaryResponse.BatchRedFlagResponse(
-          "RF-S-" + batch.getId() + "-landfill",
-          batch.getId().toString(),
-          "high",
-          "landfill-risk",
-          "Landfill share exceeds 40%. Batch score cap will be applied.",
-          Instant.now(),
-          null,
-          null
-      ));
-    }
-    if (overdue) {
-      generatedFlags.add(new BatchCloseSummaryResponse.BatchRedFlagResponse(
-          "RF-S-" + batch.getId() + "-overdue",
-          batch.getId().toString(),
-          "medium",
-          "overdue-close",
-          "Batch close is overdue and will reduce confidence.",
-          Instant.now(),
-          null,
-          null
-      ));
-    }
-    generatedFlags.addAll(persistedFlags);
-    return generatedFlags;
-  }
-
-  private BatchCloseSummaryResponse.BatchRedFlagResponse toRedFlagResponse(RedFlagEntity flag, String resolvedBy) {
-    String type = flag.getSeverity() == RedFlagSeverity.high ? "landfill-risk"
-        : flag.getSeverity() == RedFlagSeverity.medium ? "variance"
-        : "overdue-close";
-    return new BatchCloseSummaryResponse.BatchRedFlagResponse(
-        flag.getId().toString(),
-        flag.getRelatedBatchId() == null ? "" : flag.getRelatedBatchId().toString(),
-        flag.getSeverity().name(),
-        type,
-        flag.getMessage(),
-        flag.getCreatedAt(),
-        flag.getResolvedAt(),
-        resolvedBy
-    );
-  }
-
-  private BigDecimal sumWasteByDestination(List<WasteLogEntity> wasteLogs, WasteDestination destination) {
-    return wasteLogs.stream()
-        .filter(log -> log.getDestination() == destination)
-        .map(WasteLogEntity::getQuantityKg)
-        .reduce(ZERO, BigDecimal::add);
+    return batchMetricsService.getAverageConfidenceScoreForCompletedBatches();
   }
 
   private BatchResponse toBatchResponse(BatchEntity batch) {
@@ -557,7 +373,6 @@ public class OperationsServiceImpl implements OperationsService {
   }
 
   private WasteLogResponse toWasteLogResponse(WasteLogEntity entity) {
-    RecoveryMeta meta = recoveryMeta.get(entity.getId());
     return new WasteLogResponse(
         entity.getId().toString(),
         entity.getBatch().getId().toString(),
@@ -566,8 +381,8 @@ public class OperationsServiceImpl implements OperationsService {
         entity.getDestination().name(),
         "Operator input",
         normalizeRecoveryStatus(entity.getRecoveryStatus()),
-        meta == null ? null : meta.inventoryLogId().toString(),
-        meta == null ? null : meta.recoveredAt(),
+        entity.getRecoveryInventoryLogId() == null ? null : entity.getRecoveryInventoryLogId().toString(),
+        entity.getRecoveredAt(),
         entity.getAiSuggestedAction(),
         entity.getRecoveryStatus() == RecoveryStatus.converted,
         entity.getTimestamp()
@@ -593,33 +408,7 @@ public class OperationsServiceImpl implements OperationsService {
   @Override
   @Transactional(readOnly = true)
   public List<FloorViewBatchResponse> getFloorView() {
-    return batchRepository.findByStatusOrderByStartedAtDesc(BatchStatus.running).stream()
-        .map(batch -> {
-          long runningMinutes = Duration.between(batch.getStartedAt(), Instant.now()).toMinutes();
-          // Variance calculation logic is private calculateVariancePercent(BatchEntity, BigDecimal outputUnits)
-          // Since it's running, outputUnits might be 0, so we pass ZERO
-          BigDecimal variance = calculateVariancePercent(batch, ZERO);
-          BigDecimal absVariance = variance.abs();
-          
-          String health;
-          if (absVariance.compareTo(new BigDecimal("3")) < 0) {
-            health = "green";
-          } else if (absVariance.compareTo(new BigDecimal("5")) < 0) {
-            health = "amber";
-          } else {
-            health = "red";
-          }
-          
-          return new FloorViewBatchResponse(
-              batch.getId().toString(),
-              batch.getTemplateName(),
-              batch.getStartedAt(),
-              runningMinutes,
-              variance,
-              health
-          );
-        })
-        .toList();
+    return floorViewService.getFloorView();
   }
 
   @Override
@@ -696,8 +485,8 @@ public class OperationsServiceImpl implements OperationsService {
     trail.setNewValue(newValue);
     trail.setActor(resolveActor());
     trail.setReason(reason == null || reason.isBlank() ? null : reason.trim());
-    trail.setTimestamp(Instant.now());
-    auditTrailRepository.save(trail);
+    trail.setTimestamp(Instant.now().truncatedTo(ChronoUnit.MICROS));
+    auditChainService.append(trail);
   }
 
   private String resolveActor() {
@@ -712,4 +501,3 @@ public class OperationsServiceImpl implements OperationsService {
     return value.setScale(scale, RoundingMode.HALF_UP);
   }
 }
-

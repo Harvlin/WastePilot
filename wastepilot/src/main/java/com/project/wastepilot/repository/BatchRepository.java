@@ -18,6 +18,8 @@ public interface BatchRepository extends JpaRepository<BatchEntity, UUID> {
   List<BatchEntity> findByStatusOrderByStartedAtDesc(BatchStatus status);
   List<BatchEntity> findByStartedAtBetweenOrderByStartedAtAsc(Instant from, Instant to);
   List<BatchEntity> findByClosedAtBetweenOrderByClosedAtAsc(Instant from, Instant to);
+  /** Returns the most recent 50 batches for the operations panel table (avoids full-table scan). */
+  List<BatchEntity> findTop50ByOrderByStartedAtDesc();
 
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("select b from BatchEntity b where b.id = :id")

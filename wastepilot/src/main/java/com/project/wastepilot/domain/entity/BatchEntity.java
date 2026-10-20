@@ -22,6 +22,9 @@ public class BatchEntity extends AuditableEntity {
     @Column(name = "template_name", nullable = false, length = 160)
     private String templateName;
 
+    @Column(name = "planned_input_kg", nullable = false, precision = 14, scale = 3)
+    private BigDecimal plannedInputKg;
+
     @Column(name = "started_at", nullable = false)
     private Instant startedAt;
 

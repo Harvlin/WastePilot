@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.util.UUID;
 import java.util.Optional;
 import java.util.List;
+import java.util.Collection;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -15,9 +16,11 @@ import jakarta.persistence.LockModeType;
 @Repository
 public interface WasteLogRepository extends JpaRepository<WasteLogEntity, UUID> {
   List<WasteLogEntity> findByBatchIdOrderByTimestampDesc(UUID batchId);
+  List<WasteLogEntity> findByBatchIdInOrderByTimestampDesc(Collection<UUID> batchIds);
   List<WasteLogEntity> findTop200ByOrderByTimestampDesc();
   List<WasteLogEntity> findAllByOrderByTimestampDesc();
   List<WasteLogEntity> findByTimestampBetweenOrderByTimestampAsc(Instant from, Instant to);
+  List<WasteLogEntity> findByTimestampAfterOrderByTimestampDesc(Instant after);
 
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("select w from WasteLogEntity w where w.id = :id")

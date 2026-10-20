@@ -119,6 +119,7 @@ public class CrossValidationIntegrationTest {
     private BatchEntity createBatch() {
         BatchEntity batch = new BatchEntity();
         batch.setTemplateName("Test Template");
+        batch.setPlannedInputKg(new BigDecimal("12.000"));
         batch.setStatus(BatchStatus.completed);
         batch.setStartedAt(Instant.now().minusSeconds(3600));
         batch.setClosedAt(Instant.now());

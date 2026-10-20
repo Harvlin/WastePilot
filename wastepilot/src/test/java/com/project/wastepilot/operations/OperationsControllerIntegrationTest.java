@@ -17,8 +17,8 @@ import com.project.wastepilot.repository.WasteLogRepository;
 import com.project.wastepilot.repository.AuthUserRepository;
 import com.project.wastepilot.repository.UserSettingsRepository;
 import com.project.wastepilot.domain.enums.UserRole;
-import com.project.wastepilot.domain.entity.UserSettingsEntity;
 import com.project.wastepilot.domain.entity.AuthUserEntity;
+import java.math.BigDecimal;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -130,13 +130,20 @@ class OperationsControllerIntegrationTest {
         .andReturn();
     String wasteId = objectMapper.readTree(wasteResult.getResponse().getContentAsString()).get("id").asText();
 
-    mockMvc.perform(post("/api/v1/operations/waste-logs/recover")
+    MvcResult recoveryResult = mockMvc.perform(post("/api/v1/operations/waste-logs/recover")
             .header("Authorization", "Bearer " + token)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(Map.of("wasteLogId", wasteId))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.wasteLog.recoveryStatus").value("converted"))
-        .andExpect(jsonPath("$.inventoryLog.type").value("IN"));
+        .andExpect(jsonPath("$.wasteLog.recoveryInventoryLogId").isNotEmpty())
+        .andExpect(jsonPath("$.wasteLog.recoveredAt").isNotEmpty())
+        .andExpect(jsonPath("$.inventoryLog.type").value("IN"))
+        .andReturn();
+    String recoveryInventoryLogId = objectMapper.readTree(recoveryResult.getResponse().getContentAsString())
+        .path("wasteLog")
+        .path("recoveryInventoryLogId")
+        .asText();
 
     mockMvc.perform(get("/api/v1/operations/batch-close/summary/" + batchId)
             .header("Authorization", "Bearer " + token))
@@ -159,7 +166,9 @@ class OperationsControllerIntegrationTest {
             .header("Authorization", "Bearer " + token))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.batches[0].id").value(batchId))
-        .andExpect(jsonPath("$.wasteLogs[0].id").value(wasteId));
+        .andExpect(jsonPath("$.wasteLogs[0].id").value(wasteId))
+        .andExpect(jsonPath("$.wasteLogs[0].recoveryInventoryLogId").value(recoveryInventoryLogId))
+        .andExpect(jsonPath("$.wasteLogs[0].recoveredAt").isNotEmpty());
 
     mockMvc.perform(get("/api/v1/integrity/activity-logs")
             .header("Authorization", "Bearer " + token))
@@ -170,6 +179,58 @@ class OperationsControllerIntegrationTest {
             .header("Authorization", "Bearer " + token))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.averageConfidenceScore").isNumber());
+  }
+
+  @Test
+  void closeReasonGateIsStrictlyAboveFivePercentVariance() throws Exception {
+    String token = signupAndGetToken("close-boundary@wastepilot.dev");
+
+    assertCloseGateResult(token, new BigDecimal("104.99"), true);
+    assertCloseGateResult(token, new BigDecimal("105.00"), true);
+    assertCloseGateResult(token, new BigDecimal("105.01"), false);
+  }
+
+  private void assertCloseGateResult(String token, BigDecimal measuredInput, boolean closeSucceeds) throws Exception {
+    MvcResult batchResult = mockMvc.perform(post("/api/v1/operations/batches")
+            .header("Authorization", "Bearer " + token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(Map.of(
+                "templateName", "Close boundary test",
+                "outputUnits", 1250,
+                "wasteKg", 0
+            ))))
+        .andExpect(status().isOk())
+        .andReturn();
+    String batchId = objectMapper.readTree(batchResult.getResponse().getContentAsString()).get("id").asText();
+
+    mockMvc.perform(post("/api/v1/operations/inventory-logs")
+            .header("Authorization", "Bearer " + token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(Map.of(
+                "batchId", batchId,
+                "materialName", "Cotton",
+                "type", "IN",
+                "quantity", measuredInput,
+                "unit", "kg",
+                "source", "Manual"
+            ))))
+        .andExpect(status().isOk());
+
+    var closeRequest = post("/api/v1/operations/batch-close")
+        .header("Authorization", "Bearer " + token)
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(objectMapper.writeValueAsString(Map.of(
+            "batchId", batchId,
+            "outputUnits", 1250
+        )));
+
+    if (closeSucceeds) {
+      mockMvc.perform(closeRequest).andExpect(status().isOk());
+    } else {
+      mockMvc.perform(closeRequest)
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("CLOSE_REASON_REQUIRED"));
+    }
   }
 
   private String signupAndGetToken(String email) throws Exception {
@@ -192,4 +253,3 @@ class OperationsControllerIntegrationTest {
     return objectMapper.readTree(loginResult.getResponse().getContentAsString()).get("accessToken").asText();
   }
 }
-
