@@ -2,6 +2,8 @@ package com.project.wastepilot.operations;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,6 +15,8 @@ import com.project.wastepilot.domain.entity.BatchEntity;
 import com.project.wastepilot.domain.enums.BatchStatus;
 import com.project.wastepilot.domain.enums.UserRole;
 import com.project.wastepilot.repository.AuditTrailRepository;
+import com.project.wastepilot.repository.AuditChainHeadRepository;
+import com.project.wastepilot.service.impl.AuditChainService;
 import com.project.wastepilot.repository.AuthUserRepository;
 import com.project.wastepilot.repository.BatchRepository;
 import com.project.wastepilot.security.JwtService;
@@ -49,6 +53,9 @@ class AuditTrailIntegrationTest {
   private AuditTrailRepository auditTrailRepository;
 
   @Autowired
+  private AuditChainHeadRepository auditChainHeadRepository;
+
+  @Autowired
   private JwtService jwtService;
 
   @Autowired
@@ -60,6 +67,10 @@ class AuditTrailIntegrationTest {
   @BeforeEach
   void setUp() {
     auditTrailRepository.deleteAll();
+    var chainHead = auditChainHeadRepository.findById(1L).orElseThrow();
+    chainHead.setLastSequence(0);
+    chainHead.setLastHash(AuditChainService.GENESIS_HASH);
+    auditChainHeadRepository.save(chainHead);
     wasteLogRepository.deleteAll();
     inventoryLogRepository.deleteAll();
     batchRepository.deleteAll();
@@ -78,6 +89,7 @@ class AuditTrailIntegrationTest {
 
     BatchEntity batch = new BatchEntity();
     batch.setTemplateName("Template A");
+    batch.setPlannedInputKg(new BigDecimal("12.000"));
     batch.setStartedAt(Instant.now().minusSeconds(3600));
     batch.setOutputUnits(new BigDecimal("100.000"));
     batch.setWasteKg(BigDecimal.ZERO);
@@ -100,6 +112,34 @@ class AuditTrailIntegrationTest {
     assertThat(log.getActor()).doesNotContain("|reason=");
     assertThat(log.getActor()).isEqualTo(supervisor.getId().toString());
     assertThat(log.getReason()).isEqualTo("Final count on batch closure.");
+
+    mockMvc.perform(get("/api/v1/integrity/audit-trail/verify")
+            .header("Authorization", "Bearer " + token))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.valid").value(true))
+        .andExpect(jsonPath("$.entriesChecked").value(1));
+
+    log.setReason("tampered");
+    auditTrailRepository.save(log);
+    mockMvc.perform(get("/api/v1/integrity/audit-trail/verify")
+            .header("Authorization", "Bearer " + token))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.valid").value(false))
+        .andExpect(jsonPath("$.firstInvalidSequence").value(1));
+  }
+
+  @Test
+  void operatorCannotVerifyAuditChain() throws Exception {
+    AuthUserEntity operator = new AuthUserEntity();
+    operator.setFullName("Operator One");
+    operator.setEmail("operator-one@wastepilot.dev");
+    operator.setPasswordHash("hashedpass");
+    operator = authUserRepository.save(operator);
+    String token = jwtService.generateToken(operator.getId().toString(), UserRole.OPERATOR);
+
+    mockMvc.perform(get("/api/v1/integrity/audit-trail/verify")
+            .header("Authorization", "Bearer " + token))
+        .andExpect(status().isForbidden());
   }
 
   @Test
@@ -114,6 +154,7 @@ class AuditTrailIntegrationTest {
 
     BatchEntity batch = new BatchEntity();
     batch.setTemplateName("Template A");
+    batch.setPlannedInputKg(new BigDecimal("12.000"));
     batch.setStartedAt(Instant.now().minusSeconds(3600));
     batch.setOutputUnits(new BigDecimal("100.000"));
     batch.setWasteKg(BigDecimal.ZERO);
@@ -148,6 +189,7 @@ class AuditTrailIntegrationTest {
 
     BatchEntity batch = new BatchEntity();
     batch.setTemplateName("Template A");
+    batch.setPlannedInputKg(new BigDecimal("12.000"));
     batch.setStartedAt(Instant.now().minusSeconds(3600));
     batch.setOutputUnits(new BigDecimal("100.000"));
     batch.setWasteKg(BigDecimal.ZERO);
@@ -176,6 +218,7 @@ class AuditTrailIntegrationTest {
 
     BatchEntity batch = new BatchEntity();
     batch.setTemplateName("Template A");
+    batch.setPlannedInputKg(new BigDecimal("12.000"));
     batch.setStartedAt(Instant.now().minusSeconds(3600));
     batch.setOutputUnits(new BigDecimal("100.000"));
     batch.setWasteKg(BigDecimal.ZERO);
@@ -203,6 +246,7 @@ class AuditTrailIntegrationTest {
 
     BatchEntity batch = new BatchEntity();
     batch.setTemplateName("Template A");
+    batch.setPlannedInputKg(new BigDecimal("12.000"));
     batch.setStartedAt(Instant.now().minusSeconds(3600));
     batch.setOutputUnits(new BigDecimal("100.000"));
     batch.setWasteKg(BigDecimal.ZERO);

@@ -1,5 +1,6 @@
 package com.project.wastepilot.integrity;
 
+import com.project.wastepilot.config.WastePilotThresholds;
 import com.project.wastepilot.domain.entity.BatchEntity;
 import com.project.wastepilot.domain.entity.InventoryLogEntity;
 import com.project.wastepilot.domain.enums.BatchStatus;
@@ -13,11 +14,13 @@ import com.project.wastepilot.repository.InventoryLogRepository;
 import com.project.wastepilot.repository.WasteLogRepository;
 import com.project.wastepilot.service.OperationsService;
 import com.project.wastepilot.service.impl.IntegrityServiceImpl;
+import com.project.wastepilot.service.impl.AuditChainService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
@@ -28,6 +31,8 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 /**
@@ -43,6 +48,8 @@ class IntegrityServiceUnitTest {
   @Mock private WasteLogRepository wasteLogRepository;
   @Mock private BatchRepository batchRepository;
   @Mock private OperationsService operationsService;
+  @Mock private AuditChainService auditChainService;
+  @Spy private WastePilotThresholds thresholds = new WastePilotThresholds();
 
   @InjectMocks
   private IntegrityServiceImpl integrityService;
@@ -53,6 +60,7 @@ class IntegrityServiceUnitTest {
     BatchEntity b = new BatchEntity();
     b.setId(UUID.randomUUID());
     b.setTemplateName("T1");
+    b.setPlannedInputKg(new BigDecimal("100"));
     b.setStatus(BatchStatus.completed);
     b.setStartedAt(Instant.now().minusSeconds(3600));
     b.setClosedAt(Instant.now());
@@ -60,16 +68,6 @@ class IntegrityServiceUnitTest {
     b.setOutputUnits(BigDecimal.TEN);
     b.setWasteKg(BigDecimal.ZERO);
     return b;
-  }
-
-  /** Returns a BigDecimal variance that IS suspicious (within [4.5, 5.0] band). */
-  private static BigDecimal suspiciousVariance() {
-    return new BigDecimal("4.8");
-  }
-
-  /** Returns a BigDecimal variance that is NOT suspicious (clearly below band). */
-  private static BigDecimal normalVariance() {
-    return new BigDecimal("2.0");
   }
 
   private static InventoryLogEntity inventoryLog(BatchEntity batch, String material,
@@ -84,6 +82,14 @@ class IntegrityServiceUnitTest {
     log.setUnit("kg");
     log.setTimestamp(Instant.now());
     return log;
+  }
+
+  private static List<InventoryLogEntity> inputLogs(List<BatchEntity> batches, int suspiciousCount) {
+    List<InventoryLogEntity> logs = new ArrayList<>();
+    for (int i = 0; i < batches.size(); i++) {
+      logs.add(inventoryLog(batches.get(i), "Cotton", "manual", i < suspiciousCount ? "104.8" : "102"));
+    }
+    return logs;
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -104,8 +110,8 @@ class IntegrityServiceUnitTest {
 
     when(batchRepository.findByStatusOrderByStartedAtDesc(BatchStatus.completed))
         .thenReturn(batches);
-    when(operationsService.getBatchVariancePercent(any()))
-        .thenReturn(suspiciousVariance());
+    when(inventoryLogRepository.findByBatch_IdInAndType(any(), eq(InventoryType.IN)))
+        .thenReturn(inputLogs(batches, 5));
 
     List<PatternReviewEntry> results = integrityService.getPatternReview();
 
@@ -150,8 +156,8 @@ class IntegrityServiceUnitTest {
     when(batchRepository.findByStatusOrderByStartedAtDesc(BatchStatus.completed))
         .thenReturn(batches);
     // All suspicious
-    when(operationsService.getBatchVariancePercent(any()))
-        .thenReturn(suspiciousVariance());
+    when(inventoryLogRepository.findByBatch_IdInAndType(any(), eq(InventoryType.IN)))
+        .thenReturn(inputLogs(batches, 25));
 
     List<PatternReviewEntry> results = integrityService.getPatternReview();
 
@@ -176,9 +182,8 @@ class IntegrityServiceUnitTest {
         .thenReturn(batches);
 
     // 3 suspicious, 2 normal: 3/5 = 0.60 → at boundary, should flag (>=)
-    when(operationsService.getBatchVariancePercent(any()))
-        .thenReturn(suspiciousVariance(), suspiciousVariance(), suspiciousVariance(),
-            normalVariance(), normalVariance());
+    when(inventoryLogRepository.findByBatch_IdInAndType(any(), eq(InventoryType.IN)))
+        .thenReturn(inputLogs(batches, 3));
 
     List<PatternReviewEntry> results = integrityService.getPatternReview();
 
@@ -201,9 +206,8 @@ class IntegrityServiceUnitTest {
         .thenReturn(batches);
 
     // 2 suspicious, 3 normal: 2/5 = 0.40 < 0.60 → should NOT flag
-    when(operationsService.getBatchVariancePercent(any()))
-        .thenReturn(suspiciousVariance(), suspiciousVariance(),
-            normalVariance(), normalVariance(), normalVariance());
+    when(inventoryLogRepository.findByBatch_IdInAndType(any(), eq(InventoryType.IN)))
+        .thenReturn(inputLogs(batches, 2));
 
     List<PatternReviewEntry> results = integrityService.getPatternReview();
 
@@ -244,8 +248,8 @@ class IntegrityServiceUnitTest {
 
   @BeforeEach
   void stubCrossValidationRepos() {
-    // By default, return a completed batch list in cross-validation tests.
-    // Individual tests override as needed.
+    lenient().when(inventoryLogRepository.findByBatch_IdInAndType(any(), eq(InventoryType.IN)))
+        .thenReturn(List.of());
   }
 
   /**

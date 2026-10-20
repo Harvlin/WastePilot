@@ -41,4 +41,13 @@ public class AuditTrailEntity {
 
     @Column(length = 500)
     private String reason;
+
+    @Column(name = "chain_sequence", unique = true)
+    private Long chainSequence;
+
+    @Column(name = "previous_hash", length = 64)
+    private String previousHash;
+
+    @Column(name = "entry_hash", length = 64)
+    private String entryHash;
 }

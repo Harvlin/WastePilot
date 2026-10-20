@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.wastepilot.domain.dto.auth.SignupRequest;
 import com.project.wastepilot.repository.ActivityLogRepository;
 import com.project.wastepilot.repository.AuditTrailRepository;
+import com.project.wastepilot.repository.AuditChainHeadRepository;
 import com.project.wastepilot.repository.BatchRepository;
 import com.project.wastepilot.repository.InventoryLogRepository;
 import com.project.wastepilot.repository.RedFlagRepository;
@@ -56,6 +57,9 @@ class OperationsControllerIntegrationTest {
   private AuditTrailRepository auditTrailRepository;
 
   @Autowired
+  private AuditChainHeadRepository auditChainHeadRepository;
+
+  @Autowired
   private RedFlagRepository redFlagRepository;
 
   @Autowired
@@ -67,6 +71,10 @@ class OperationsControllerIntegrationTest {
   @BeforeEach
   void setUp() {
     auditTrailRepository.deleteAll();
+    var chainHead = auditChainHeadRepository.findById(1L).orElseThrow();
+    chainHead.setLastSequence(0);
+    chainHead.setLastHash(com.project.wastepilot.service.impl.AuditChainService.GENESIS_HASH);
+    auditChainHeadRepository.save(chainHead);
     activityLogRepository.deleteAll();
     wasteLogRepository.deleteAll();
     inventoryLogRepository.deleteAll();

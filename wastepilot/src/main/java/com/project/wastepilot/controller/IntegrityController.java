@@ -1,7 +1,10 @@
 package com.project.wastepilot.controller;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import com.project.wastepilot.domain.dto.integrity.ActivityLogEntryResponse;
 import com.project.wastepilot.domain.dto.integrity.AuditTrailEntryResponse;
+import com.project.wastepilot.domain.dto.integrity.AuditChainVerificationResponse;
 import com.project.wastepilot.domain.dto.integrity.IntegrityOverviewResponse;
 import com.project.wastepilot.domain.dto.integrity.PatternReviewEntry;
 import com.project.wastepilot.domain.dto.integrity.CrossValidationDiscrepancy;
@@ -29,19 +32,26 @@ public class IntegrityController {
     return integrityService.getAuditTrail(batchId);
   }
 
+  @GetMapping("/audit-trail/verify")
+  @PreAuthorize("hasRole('SUPERVISOR')")
+  public AuditChainVerificationResponse verifyAuditChain() {
+    return integrityService.verifyAuditChain();
+  }
+
   @GetMapping("/overview")
   public IntegrityOverviewResponse getOverview() {
     return integrityService.getOverview();
   }
 
   @GetMapping("/pattern-review")
+  @PreAuthorize("hasRole('SUPERVISOR')")
   public List<PatternReviewEntry> getPatternReview() {
     return integrityService.getPatternReview();
   }
 
   @GetMapping("/cross-validation")
+  @PreAuthorize("hasRole('SUPERVISOR')")
   public List<CrossValidationDiscrepancy> getCrossValidationDiscrepancies() {
     return integrityService.getCrossValidationDiscrepancies();
   }
 }
-
