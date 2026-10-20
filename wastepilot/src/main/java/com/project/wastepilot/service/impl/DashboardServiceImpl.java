@@ -1,5 +1,6 @@
 package com.project.wastepilot.service.impl;
 
+import com.project.wastepilot.config.WastePilotThresholds;
 import com.project.wastepilot.domain.dto.dashboard.CircularMetricResponse;
 import com.project.wastepilot.domain.dto.dashboard.DashboardPayloadResponse;
 import com.project.wastepilot.domain.dto.dashboard.InsightPreviewResponse;
@@ -15,6 +16,7 @@ import com.project.wastepilot.repository.AnomalyRepository;
 import com.project.wastepilot.repository.InsightRepository;
 import com.project.wastepilot.repository.InventoryLogRepository;
 import com.project.wastepilot.repository.WasteLogRepository;
+import com.project.wastepilot.service.CircularScoreCalculator;
 import com.project.wastepilot.service.DashboardService;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -35,29 +37,37 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class DashboardServiceImpl implements DashboardService {
 
-  private static final BigDecimal ZERO = BigDecimal.ZERO;
   private static final int TREND_DAYS = 7;
   private static final int MAX_INSIGHTS_PREVIEW = 3;
+  /** Rolling window for the dashboard KPI aggregation — keeps the score meaningful for active operations. */
+  private static final int DASHBOARD_WINDOW_DAYS = 90;
 
   private final WasteLogRepository wasteLogRepository;
   private final InventoryLogRepository inventoryLogRepository;
   private final InsightRepository insightRepository;
   private final AnomalyRepository anomalyRepository;
+  private final CircularScoreCalculator circularScoreCalculator;
+  private final WastePilotThresholds thresholds;
 
   @Override
   @Transactional(readOnly = true)
   public DashboardPayloadResponse getDashboardPayload() {
-    List<WasteLogEntity> allWaste = wasteLogRepository.findAllByOrderByTimestampDesc();
-    List<InventoryLogEntity> allInventory = inventoryLogRepository.findAllByOrderByTimestampDesc();
+    // Use a 90-day rolling window instead of loading all-time records into memory.
+    Instant cutoff90 = Instant.now().minusSeconds(60L * 60 * 24 * DASHBOARD_WINDOW_DAYS);
+    List<WasteLogEntity> recentWaste = wasteLogRepository.findByTimestampAfterOrderByTimestampDesc(cutoff90);
+    List<InventoryLogEntity> recentInventory = inventoryLogRepository.findByTimestampAfterOrderByTimestampDesc(cutoff90);
 
-    CircularScore score = computeCircularScore(allWaste, allInventory);
-    List<CircularMetricResponse> metrics = buildMetrics(score, allInventory, allWaste);
-    List<WasteTrendPointResponse> wasteTrend = buildWasteTrend(allWaste, allInventory);
+    double[] scoreComponents = computeScoreComponents(recentWaste, recentInventory);
+    double circularScore = circularScoreCalculator.compute(
+        scoreComponents[0], scoreComponents[1], scoreComponents[2], scoreComponents[3]);
+
+    List<CircularMetricResponse> metrics = buildMetrics(scoreComponents, recentWaste);
+    List<WasteTrendPointResponse> wasteTrend = buildWasteTrend(recentWaste, recentInventory);
     List<InsightPreviewResponse> insights = buildInsightPreview();
     TopAnomalyResponse topAnomaly = buildTopAnomaly();
 
     return new DashboardPayloadResponse(
-        round(score.value(), 1),
+        BigDecimal.valueOf(circularScore).setScale(1, RoundingMode.HALF_UP).doubleValue(),
         metrics,
         wasteTrend,
         insights,
@@ -65,98 +75,69 @@ public class DashboardServiceImpl implements DashboardService {
     );
   }
 
-
-  private record CircularScore(double value, double materialInput, double totalWaste, double reuseRatePercent, double landfillSharePercent) {}
-
-  private CircularScore computeCircularScore(List<WasteLogEntity> waste, List<InventoryLogEntity> inventory) {
-    double totalWaste = waste.stream()
-        .mapToDouble(w -> w.getQuantityKg().doubleValue())
-        .sum();
-    double safeWaste = Math.max(totalWaste, 0.0001);
-
+  /**
+   * Returns [reuseKg, disposeKg, totalWasteKg, materialInputKg].
+   */
+  private double[] computeScoreComponents(List<WasteLogEntity> waste, List<InventoryLogEntity> inventory) {
+    double totalWaste = waste.stream().mapToDouble(w -> w.getQuantityKg().doubleValue()).sum();
     double reuseKg = waste.stream()
         .filter(w -> w.getDestination() == WasteDestination.reuse || w.getDestination() == WasteDestination.repair)
-        .mapToDouble(w -> w.getQuantityKg().doubleValue())
-        .sum();
+        .mapToDouble(w -> w.getQuantityKg().doubleValue()).sum();
     double disposeKg = waste.stream()
         .filter(w -> w.getDestination() == WasteDestination.dispose)
-        .mapToDouble(w -> w.getQuantityKg().doubleValue())
-        .sum();
-
+        .mapToDouble(w -> w.getQuantityKg().doubleValue()).sum();
     double materialInput = inventory.stream()
-            .filter(i -> i.getType() == InventoryType.IN)
-            .mapToDouble(i -> i.getQuantity().doubleValue())
-            .sum();
-
-    double recoveryRate = clamp(reuseKg / safeWaste, 0, 1);
-    double wasteEfficiency = clamp(1 - totalWaste / Math.max(materialInput, 0.0001), 0, 1);
-    double landfillShare = clamp(disposeKg / safeWaste, 0, 1);
-    double landfillAvoidance = 1 - landfillShare;
-
-    double base = 100 * (0.3 * recoveryRate + 0.25 * wasteEfficiency + 0.45 * landfillAvoidance);
-    double cap = resolveLandfillCap(landfillShare);
-    double score = clamp(Math.min(base, cap), 0, 100);
-
-    return new CircularScore(
-        round(score, 1),
-        round(materialInput, 1),
-        round(totalWaste, 1),
-        round(recoveryRate * 100, 1),
-        round(landfillShare * 100, 1)
-    );
+        .filter(i -> i.getType() == InventoryType.IN)
+        .mapToDouble(i -> i.getQuantity().doubleValue()).sum();
+    return new double[]{reuseKg, disposeKg, totalWaste, materialInput};
   }
 
-
-  private List<CircularMetricResponse> buildMetrics(CircularScore score, List<InventoryLogEntity> inventory, List<WasteLogEntity> waste) {
+  private List<CircularMetricResponse> buildMetrics(double[] components, List<WasteLogEntity> waste) {
+    // components: [reuseKg, disposeKg, totalWasteKg, materialInputKg]
+    double reuseKg    = components[0];
+    double totalWaste = components[2];
+    double inputKg    = components[3];
+    double reuseRatePct = totalWaste > 0 ? round(reuseKg / totalWaste * 100, 1) : 0.0;
     return List.of(
-        new CircularMetricResponse("m1", "Material Input", score.materialInput(), "kg", 0.0),
-        new CircularMetricResponse("m2", "Waste Output", score.totalWaste(), "kg", 0.0),
-        new CircularMetricResponse("m3", "Recovery Rate", score.reuseRatePercent(), "%", 0.0)
+        new CircularMetricResponse("m1", "Material Input", round(inputKg, 1), "kg", 0.0),
+        new CircularMetricResponse("m2", "Waste Output", round(totalWaste, 1), "kg", 0.0),
+        new CircularMetricResponse("m3", "Recovery Rate", reuseRatePct, "%", 0.0)
     );
   }
 
-
-  private List<WasteTrendPointResponse> buildWasteTrend(List<WasteLogEntity> allWaste, List<InventoryLogEntity> allInventory) {
+  private List<WasteTrendPointResponse> buildWasteTrend(
+      List<WasteLogEntity> recentWaste, List<InventoryLogEntity> recentInventory) {
     Instant now = Instant.now();
-    Instant cutoff = now.minusSeconds(60L * 60 * 24 * TREND_DAYS);
+    Instant trendCutoff = now.minusSeconds(60L * 60 * 24 * TREND_DAYS);
 
-    // Group waste by day-of-week label
-    Map<String, List<WasteLogEntity>> wasteByDay = allWaste.stream()
-        .filter(w -> w.getTimestamp().isAfter(cutoff))
+    Map<String, List<WasteLogEntity>> wasteByDay = recentWaste.stream()
+        .filter(w -> w.getTimestamp().isAfter(trendCutoff))
         .collect(Collectors.groupingBy(w -> dayLabel(w.getTimestamp())));
 
-    Map<String, List<InventoryLogEntity>> inventoryByDay = allInventory.stream()
-        .filter(i -> i.getTimestamp().isAfter(cutoff) && i.getType() == InventoryType.IN)
+    Map<String, List<InventoryLogEntity>> inventoryByDay = recentInventory.stream()
+        .filter(i -> i.getTimestamp().isAfter(trendCutoff) && i.getType() == InventoryType.IN)
         .collect(Collectors.groupingBy(i -> dayLabel(i.getTimestamp())));
 
-    // Walk the last 7 days in order: oldest → newest
     List<WasteTrendPointResponse> trend = new ArrayList<>();
     for (int dayOffset = TREND_DAYS - 1; dayOffset >= 0; dayOffset--) {
       Instant dayInstant = now.minusSeconds(60L * 60 * 24 * dayOffset);
       String label = dayLabel(dayInstant);
-
       List<WasteLogEntity> dayWaste = wasteByDay.getOrDefault(label, Collections.emptyList());
       List<InventoryLogEntity> dayInv = inventoryByDay.getOrDefault(label, Collections.emptyList());
-
       double input = dayInv.stream().mapToDouble(i -> i.getQuantity().doubleValue()).sum();
       double totalWaste = dayWaste.stream().mapToDouble(w -> w.getQuantityKg().doubleValue()).sum();
       double reused = dayWaste.stream()
           .filter(w -> w.getDestination() == WasteDestination.reuse || w.getDestination() == WasteDestination.repair)
-          .mapToDouble(w -> w.getQuantityKg().doubleValue())
-          .sum();
-
+          .mapToDouble(w -> w.getQuantityKg().doubleValue()).sum();
       trend.add(new WasteTrendPointResponse(label, round(input, 1), round(totalWaste, 1), round(reused, 1)));
     }
 
-    // If no real data exists, return empty list; frontend will handle the fallback display
     boolean hasAnyData = trend.stream().anyMatch(t -> t.input() > 0 || t.waste() > 0);
     return hasAnyData ? trend : Collections.emptyList();
   }
 
-
   private List<InsightPreviewResponse> buildInsightPreview() {
-    return insightRepository.findAllByOrderByTimestampDesc().stream()
-        .limit(MAX_INSIGHTS_PREVIEW)
+    return insightRepository.findTop3ByOrderByTimestampDesc().stream()
         .map(this::toInsightPreview)
         .toList();
   }
@@ -172,10 +153,8 @@ public class DashboardServiceImpl implements DashboardService {
     );
   }
 
-
   private TopAnomalyResponse buildTopAnomaly() {
-    return anomalyRepository.findAllByOrderByTimestampDesc().stream()
-        .findFirst()
+    return anomalyRepository.findTopByOrderByTimestampDesc()
         .map(this::toTopAnomaly)
         .orElse(null);
   }
@@ -186,28 +165,16 @@ public class DashboardServiceImpl implements DashboardService {
         entity.getDate(),
         entity.getProcess(),
         entity.getZScore(),
+        entity.getDetectionMode(),
+        entity.getProvisionalThresholdKg(),
         entity.getWasteKg(),
         entity.getStatus().name(),
         entity.getNote()
     );
   }
 
-
   private String dayLabel(Instant instant) {
-    return instant.atZone(ZoneOffset.UTC)
-        .getDayOfWeek()
-        .getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
-  }
-
-  private double resolveLandfillCap(double share) {
-    if (share > 0.4) return 55;
-    if (share > 0.3) return 70;
-    if (share > 0.2) return 80;
-    return 100;
-  }
-
-  private double clamp(double value, double min, double max) {
-    return Math.max(min, Math.min(max, value));
+    return instant.atZone(ZoneOffset.UTC).getDayOfWeek().getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
   }
 
   private double round(double value, int scale) {

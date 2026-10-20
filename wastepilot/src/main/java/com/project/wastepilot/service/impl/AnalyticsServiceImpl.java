@@ -16,14 +16,16 @@ import com.project.wastepilot.repository.BatchRepository;
 import com.project.wastepilot.repository.InventoryLogRepository;
 import com.project.wastepilot.repository.WasteLogRepository;
 import com.project.wastepilot.service.AnalyticsService;
+import com.project.wastepilot.service.CircularScoreCalculator;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -33,59 +35,77 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AnalyticsServiceImpl implements AnalyticsService {
 
-  private static final int WEEK_COUNT = 5;
-  private static final BigDecimal ZERO = BigDecimal.ZERO;
+  private static final int BATCH_COUNT = 5;
 
   private final WasteLogRepository wasteLogRepository;
   private final InventoryLogRepository inventoryLogRepository;
   private final BatchRepository batchRepository;
+  private final CircularScoreCalculator circularScoreCalculator;
 
   @Override
   @Transactional(readOnly = true)
   public AnalyticsPayloadResponse getAnalyticsPayload() {
-    List<WasteLogEntity> allWaste = wasteLogRepository.findAllByOrderByTimestampDesc();
-    List<InventoryLogEntity> allInventory = inventoryLogRepository.findAllByOrderByTimestampDesc();
+    // Fetch the specific completed batches we need for trend charts (capped at BATCH_COUNT).
     List<BatchEntity> completedBatches = batchRepository.findByStatusOrderByStartedAtDesc(BatchStatus.completed);
+    List<BatchEntity> trendSamples = latestCompletedBatches(completedBatches);
 
-    List<CircularityPoint> circularityTrend = buildCircularityTrend(completedBatches, allWaste, allInventory);
-    List<WasteBreakdownItem> wasteBreakdown = buildWasteBreakdown(allWaste);
-    List<EfficiencyItem> efficiencyByMaterial = buildEfficiencyByMaterial(allWaste, allInventory);
-    List<LandfillSharePoint> landfillShareTrend = buildLandfillShareTrend(completedBatches, allWaste);
-    List<LandfillIntensityPoint> landfillIntensityTrend = buildLandfillIntensityTrend(completedBatches, allWaste);
+    // Batch-fetch waste and inventory logs for just those batches — no unbounded all-table load.
+    // For breakdown and efficiency charts we use the global all-time data (bounded by completed batches).
+    List<WasteLogEntity> allWaste;
+    List<InventoryLogEntity> allInventoryIn;
+    if (trendSamples.isEmpty()) {
+      allWaste = List.of();
+      allInventoryIn = List.of();
+    } else {
+      Set<UUID> allCompletedIds = completedBatches.stream().map(BatchEntity::getId).collect(Collectors.toSet());
+      allWaste = wasteLogRepository.findByBatchIdInOrderByTimestampDesc(allCompletedIds);
+      allInventoryIn = inventoryLogRepository.findByBatch_IdInAndType(allCompletedIds, InventoryType.IN);
+    }
+
+    // Build maps keyed by batch ID for O(1) lookup inside trend loops.
+    Map<UUID, List<WasteLogEntity>> wasteByBatch = allWaste.stream()
+        .collect(Collectors.groupingBy(w -> w.getBatch().getId()));
+    Map<UUID, List<InventoryLogEntity>> inventoryByBatch = allInventoryIn.stream()
+        .collect(Collectors.groupingBy(i -> i.getBatch().getId()));
+
+    List<CircularityPoint>        circularityTrend     = buildCircularityTrend(trendSamples, wasteByBatch, inventoryByBatch);
+    List<WasteBreakdownItem>      wasteBreakdown       = buildWasteBreakdown(allWaste);
+    List<EfficiencyItem>          efficiencyByMaterial = buildEfficiencyByMaterial(allWaste);
+    List<LandfillSharePoint>      landfillShareTrend   = buildLandfillShareTrend(trendSamples, wasteByBatch);
+    List<LandfillIntensityPoint>  landfillIntensity    = buildLandfillIntensityTrend(trendSamples, wasteByBatch);
 
     return new AnalyticsPayloadResponse(
         circularityTrend,
         wasteBreakdown,
         efficiencyByMaterial,
         landfillShareTrend,
-        landfillIntensityTrend
+        landfillIntensity
     );
   }
 
 
   private List<CircularityPoint> buildCircularityTrend(
-      List<BatchEntity> completedBatches,
-      List<WasteLogEntity> allWaste,
-      List<InventoryLogEntity> allInventory
+      List<BatchEntity> samples,
+      Map<UUID, List<WasteLogEntity>> wasteByBatch,
+      Map<UUID, List<InventoryLogEntity>> inventoryByBatch
   ) {
-    List<BatchEntity> samples = completedBatches.stream()
-        .sorted(Comparator.comparing(BatchEntity::getClosedAt, Comparator.nullsLast(Comparator.naturalOrder())))
-        .limit(WEEK_COUNT)
-        .toList();
-
-    if (samples.isEmpty()) {
-      // No completed batches — return empty list; frontend renders no-data state.
-      return List.of();
-    }
+    if (samples.isEmpty()) return List.of();
 
     List<CircularityPoint> points = new ArrayList<>();
     for (int i = 0; i < samples.size(); i++) {
       BatchEntity batch = samples.get(i);
-      List<WasteLogEntity> batchWaste = allWaste.stream()
-          .filter(w -> batch.getId().equals(w.getBatch().getId()))
-          .toList();
-      double score = computeBatchCircularScore(batchWaste);
-      points.add(new CircularityPoint("W" + (i + 1), scale(score, 1)));
+      List<WasteLogEntity> batchWaste = wasteByBatch.getOrDefault(batch.getId(), List.of());
+      List<InventoryLogEntity> batchInv = inventoryByBatch.getOrDefault(batch.getId(), List.of());
+
+      double score = circularScoreCalculator.computeFromLogs(
+          batchWaste,
+          w -> w.getQuantityKg().doubleValue(),
+          w -> w.getDestination() == WasteDestination.reuse || w.getDestination() == WasteDestination.repair,
+          w -> w.getDestination() == WasteDestination.dispose,
+          batchInv,
+          i2 -> i2.getQuantity().doubleValue()
+      );
+      points.add(new CircularityPoint("Batch " + (i + 1), scale(score, 1)));
     }
     return points;
   }
@@ -95,185 +115,97 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     if (allWaste.isEmpty()) {
       return List.of(
           new WasteBreakdownItem("Reusable", BigDecimal.ZERO),
-          new WasteBreakdownItem("Repair", BigDecimal.ZERO),
+          new WasteBreakdownItem("Repair",   BigDecimal.ZERO),
           new WasteBreakdownItem("Landfill", BigDecimal.ZERO)
       );
     }
-
-    double total = Math.max(0.0001, allWaste.stream()
-        .mapToDouble(w -> w.getQuantityKg().doubleValue())
-        .sum());
-
-    double reuseKg = sumByDestination(allWaste, WasteDestination.reuse);
-    double repairKg = sumByDestination(allWaste, WasteDestination.repair);
-    double disposeKg = sumByDestination(allWaste, WasteDestination.dispose);
-
+    double total = Math.max(0.0001, allWaste.stream().mapToDouble(w -> w.getQuantityKg().doubleValue()).sum());
+    double reuseKg   = sumByDest(allWaste, WasteDestination.reuse);
+    double repairKg  = sumByDest(allWaste, WasteDestination.repair);
+    double disposeKg = sumByDest(allWaste, WasteDestination.dispose);
     return List.of(
-        new WasteBreakdownItem("Reusable", scale(reuseKg / total * 100, 1)),
-        new WasteBreakdownItem("Repair", scale(repairKg / total * 100, 1)),
+        new WasteBreakdownItem("Reusable", scale(reuseKg   / total * 100, 1)),
+        new WasteBreakdownItem("Repair",   scale(repairKg  / total * 100, 1)),
         new WasteBreakdownItem("Landfill", scale(disposeKg / total * 100, 1))
     );
   }
 
 
-  private List<EfficiencyItem> buildEfficiencyByMaterial(
-      List<WasteLogEntity> allWaste,
-      List<InventoryLogEntity> allInventory
-  ) {
-    // Group waste by material name
+  private List<EfficiencyItem> buildEfficiencyByMaterial(List<WasteLogEntity> allWaste) {
+    if (allWaste.isEmpty()) return List.of();
+
     Map<String, List<WasteLogEntity>> byMaterial = allWaste.stream()
         .collect(Collectors.groupingBy(WasteLogEntity::getMaterialName));
 
-    if (byMaterial.isEmpty()) {
-      return List.of();
-    }
-
     return byMaterial.entrySet().stream()
         .map(entry -> {
-          String material = entry.getKey();
-          List<WasteLogEntity> logs = entry.getValue();
-
-          double total = Math.max(0.0001, logs.stream()
+          double total    = Math.max(0.0001, entry.getValue().stream()
               .mapToDouble(w -> w.getQuantityKg().doubleValue()).sum());
-          double disposed = logs.stream()
+          double disposed = entry.getValue().stream()
               .filter(w -> w.getDestination() == WasteDestination.dispose)
               .mapToDouble(w -> w.getQuantityKg().doubleValue()).sum();
-
-          // Efficiency = 100% - landfill share
           double efficiency = clamp((1.0 - disposed / total) * 100, 0, 100);
-          return new EfficiencyItem(material, scale(efficiency, 1));
+          return new EfficiencyItem(entry.getKey(), scale(efficiency, 1));
         })
-        .sorted(Comparator.comparing(e -> e.material()))
+        .sorted(Comparator.comparing(EfficiencyItem::material))
         .limit(10)
         .toList();
   }
 
 
   private List<LandfillSharePoint> buildLandfillShareTrend(
-      List<BatchEntity> completedBatches,
-      List<WasteLogEntity> allWaste
+      List<BatchEntity> samples,
+      Map<UUID, List<WasteLogEntity>> wasteByBatch
   ) {
-    List<BatchEntity> samples = completedBatches.stream()
-        .sorted(Comparator.comparing(BatchEntity::getClosedAt, Comparator.nullsLast(Comparator.naturalOrder())))
-        .limit(WEEK_COUNT)
-        .toList();
-
-    if (samples.isEmpty()) {
-      // No completed batches — return empty list; frontend renders no-data state.
-      return List.of();
-    }
-
+    if (samples.isEmpty()) return List.of();
     List<LandfillSharePoint> points = new ArrayList<>();
     for (int i = 0; i < samples.size(); i++) {
-      BatchEntity batch = samples.get(i);
-      List<WasteLogEntity> batchWaste = allWaste.stream()
-          .filter(w -> batch.getId().equals(w.getBatch().getId()))
-          .toList();
+      List<WasteLogEntity> batchWaste = wasteByBatch.getOrDefault(samples.get(i).getId(), List.of());
       double share = computeLandfillShare(batchWaste) * 100;
-      points.add(new LandfillSharePoint("W" + (i + 1), scale(share, 1)));
+      points.add(new LandfillSharePoint("Batch " + (i + 1), scale(share, 1)));
     }
     return points;
   }
 
 
   private List<LandfillIntensityPoint> buildLandfillIntensityTrend(
-      List<BatchEntity> completedBatches,
-      List<WasteLogEntity> allWaste
+      List<BatchEntity> samples,
+      Map<UUID, List<WasteLogEntity>> wasteByBatch
   ) {
-    List<BatchEntity> samples = completedBatches.stream()
-        .sorted(Comparator.comparing(BatchEntity::getClosedAt, Comparator.nullsLast(Comparator.naturalOrder())))
-        .limit(WEEK_COUNT)
-        .toList();
-
-    if (samples.isEmpty()) {
-      // No completed batches — return empty list; frontend renders no-data state.
-      // Previously returned a hardcoded 0.030 stub value, removed in Minggu 3 audit.
-      return List.of();
-    }
-
+    if (samples.isEmpty()) return List.of();
     List<LandfillIntensityPoint> points = new ArrayList<>();
     for (int i = 0; i < samples.size(); i++) {
       BatchEntity batch = samples.get(i);
-      List<WasteLogEntity> batchWaste = allWaste.stream()
-          .filter(w -> batch.getId().equals(w.getBatch().getId()))
-          .toList();
-
-      double disposeKg = sumByDestination(batchWaste, WasteDestination.dispose);
+      List<WasteLogEntity> batchWaste = wasteByBatch.getOrDefault(batch.getId(), List.of());
+      double disposeKg   = sumByDest(batchWaste, WasteDestination.dispose);
       double outputUnits = batch.getOutputUnits() == null ? 0 : batch.getOutputUnits().doubleValue();
-      double intensity = outputUnits > 0 ? disposeKg / outputUnits : disposeKg;
-      points.add(new LandfillIntensityPoint("W" + (i + 1), scale(intensity, 3)));
+      double intensity   = outputUnits > 0 ? disposeKg / outputUnits : disposeKg;
+      points.add(new LandfillIntensityPoint("Batch " + (i + 1), scale(intensity, 3)));
     }
     return points;
   }
 
 
-  private double computeBatchCircularScore(List<WasteLogEntity> batchWaste) {
-    double total = Math.max(0.0001, batchWaste.stream().mapToDouble(w -> w.getQuantityKg().doubleValue()).sum());
-    double reuseKg = batchWaste.stream()
-        .filter(w -> w.getDestination() == WasteDestination.reuse || w.getDestination() == WasteDestination.repair)
-        .mapToDouble(w -> w.getQuantityKg().doubleValue()).sum();
-    double disposeKg = sumByDestination(batchWaste, WasteDestination.dispose);
-
-    double recoveryRate = clamp(reuseKg / total, 0, 1);
-    double landfillShare = clamp(disposeKg / total, 0, 1);
-    double landfillAvoidance = 1 - landfillShare;
-
-    // Formula weights (policy-defined, not empirically measured):
-    //   40% recovery rate (reuse+repair as fraction of total waste)
-    //   60% landfill avoidance (1 - landfill fraction)
-    double base = 100 * (0.4 * recoveryRate + 0.6 * landfillAvoidance);
-    double cap = resolveLandfillCap(landfillShare);
-    return clamp(Math.min(base, cap), 0, 100);
-  }
-
-  private double computeGlobalCircularScore(List<WasteLogEntity> allWaste, List<InventoryLogEntity> allInventory) {
-    double total = Math.max(0.0001, allWaste.stream().mapToDouble(w -> w.getQuantityKg().doubleValue()).sum());
-    double reuseKg = allWaste.stream()
-        .filter(w -> w.getDestination() == WasteDestination.reuse || w.getDestination() == WasteDestination.repair)
-        .mapToDouble(w -> w.getQuantityKg().doubleValue()).sum();
-    double disposeKg = sumByDestination(allWaste, WasteDestination.dispose);
-    double materialInput = Math.max(0.0001, allInventory.stream()
-        .filter(i -> i.getType() == InventoryType.IN)
-        .mapToDouble(i -> i.getQuantity().doubleValue()).sum());
-
-    double recoveryRate = clamp(reuseKg / total, 0, 1);
-    double wasteEfficiency = clamp(1 - total / materialInput, 0, 1);
-    double landfillShare = clamp(disposeKg / total, 0, 1);
-    double landfillAvoidance = 1 - landfillShare;
-
-    double base = 100 * (0.3 * recoveryRate + 0.25 * wasteEfficiency + 0.45 * landfillAvoidance);
-    double cap = resolveLandfillCap(landfillShare);
-    return clamp(Math.min(base, cap), 0, 100);
-  }
-
-  private double computeGlobalLandfillShare(List<WasteLogEntity> allWaste) {
-    return allWaste.isEmpty() ? 0.0 : computeLandfillShare(allWaste);
+  private List<BatchEntity> latestCompletedBatches(List<BatchEntity> completedBatches) {
+    return completedBatches.stream()
+        .sorted(Comparator.comparing(BatchEntity::getClosedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+        .limit(BATCH_COUNT)
+        .sorted(Comparator.comparing(BatchEntity::getClosedAt, Comparator.nullsLast(Comparator.naturalOrder())))
+        .toList();
   }
 
   private double computeLandfillShare(List<WasteLogEntity> waste) {
-    double total = Math.max(0.0001, waste.stream().mapToDouble(w -> w.getQuantityKg().doubleValue()).sum());
-    double disposed = sumByDestination(waste, WasteDestination.dispose);
+    double total    = Math.max(0.0001, waste.stream().mapToDouble(w -> w.getQuantityKg().doubleValue()).sum());
+    double disposed = sumByDest(waste, WasteDestination.dispose);
     return clamp(disposed / total, 0, 1);
   }
 
-
-  private double sumByDestination(List<WasteLogEntity> waste, WasteDestination destination) {
-    return waste.stream()
-        .filter(w -> w.getDestination() == destination)
-        .mapToDouble(w -> w.getQuantityKg().doubleValue())
-        .sum();
+  private double sumByDest(List<WasteLogEntity> waste, WasteDestination dest) {
+    return waste.stream().filter(w -> w.getDestination() == dest)
+        .mapToDouble(w -> w.getQuantityKg().doubleValue()).sum();
   }
 
-  private double resolveLandfillCap(double share) {
-    if (share > 0.4) return 55;
-    if (share > 0.3) return 70;
-    if (share > 0.2) return 80;
-    return 100;
-  }
-
-  private double clamp(double value, double min, double max) {
-    return Math.max(min, Math.min(max, value));
-  }
+  private double clamp(double v, double lo, double hi) { return Math.max(lo, Math.min(hi, v)); }
 
   private BigDecimal scale(double value, int scale) {
     return BigDecimal.valueOf(value).setScale(scale, RoundingMode.HALF_UP);
