@@ -1,57 +1,27 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
+import { authenticateAs } from "./helpers";
 
-test.describe('Core Shift Flow', () => {
-  test.use({ baseURL: 'http://localhost:5173' });
+test("operator completes the full shift workflow", async ({ page }) => {
+  await authenticateAs(page, "OPERATOR");
+  await page.goto("/operations");
 
-  test.beforeEach(async ({ page }) => {
-    // Fast login via mock credentials
-    await page.goto('/auth');
-    await page.locator('#auth-email').fill('operator@wastepilot.local');
-    await page.locator('#auth-password').fill('MockPass123!');
-    await page.locator('button[type="submit"]').click();
-    await expect(page).toHaveURL(/\/internal\/operations/);
-  });
+  await page.getByRole("button", { name: "Start Batch", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Inventory Input" })).toBeVisible();
 
-  test('completes full shift flow: start -> inventory -> waste -> close', async ({ page }) => {
-    // 1. Start Batch
-    await page.click('button:has-text("Start Batch")');
-    const templateSelect = page.locator('button:has-text("Select Template")');
-    if (await templateSelect.isVisible()) {
-        await templateSelect.click();
-        await page.click('text="Standard Production"');
-    }
-    await page.click('button:has-text("Confirm Start")');
-    
-    // Wait for batch to appear in the active list
-    await expect(page.locator('text="Active Batches"')).toBeVisible();
+  await page.getByRole("button", { name: "Add Log" }).click();
+  await expect(page.getByRole("heading", { name: "Waste Classification" })).toBeVisible();
 
-    // 2. Log Inventory
-    await page.click('button:has-text("Log Inventory")');
-    // Using simple text locators for robustness in mock mode
-    await page.fill('input[placeholder*="Quantity"]', '100');
-    await page.click('button:has-text("Submit")');
-    await expect(page.locator('text="Inventory logged successfully"')).toBeVisible({ timeout: 5000 }).catch(() => {});
+  await page.getByRole("button", { name: "Log Waste", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Batch Close Assistant" })).toBeVisible();
 
-    // 3. Log Waste
-    await page.click('button:has-text("Log Waste")');
-    await page.fill('input[placeholder*="Quantity"]', '5');
-    await page.click('button:has-text("Submit")');
-    await expect(page.locator('text="Waste logged successfully"')).toBeVisible({ timeout: 5000 }).catch(() => {});
+  const closeReason = page.locator('input[placeholder*="Reason"]');
+  if (await closeReason.isVisible()) {
+    await closeReason.fill("Verified final shift totals.");
+  }
 
-    // 4. Close Batch (requires SUPERVISOR or mock allows it)
-    const closeBtn = page.locator('button', { hasText: 'Close' }).first();
-    if (await closeBtn.isVisible()) {
-      await closeBtn.click();
-      // If variance is high, a reason might be required
-      const reasonInput = page.locator('textarea[placeholder*="reason"]');
-      if (await reasonInput.isVisible()) {
-        await reasonInput.fill('Routine closure verified.');
-      }
-      await page.click('button:has-text("Confirm Close")');
-    }
+  await page.getByRole("button", { name: "Confirm Batch Close" }).click();
+  await page.getByRole("button", { name: "Yes, close batch" }).click();
 
-    // 5. View Integrity Check
-    await page.goto('/internal/integrity');
-    await expect(page.locator('text="Integrity Overview"')).toBeVisible();
-  });
+  await expect(page.getByRole("heading", { name: "Activity Logs" })).toBeVisible();
+  await expect(page.getByText("Batch closed successfully with integrity snapshot.")).toBeVisible();
 });

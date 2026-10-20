@@ -1,37 +1,23 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
+import { authenticateAs } from "./helpers";
 
-test.describe('Role-Based Access Control (RBAC)', () => {
-  test.use({ baseURL: 'http://localhost:5173' });
+test("operator does not see supervisor-only pattern review", async ({ page }) => {
+  await authenticateAs(page, "OPERATOR");
+  await page.goto("/operations");
+  await page.getByRole("button", { name: /^5\. Integrity Check/ }).click();
 
-  test('OPERATOR cannot see supervisor-only elements', async ({ page }) => {
-    await page.goto('/auth');
-    await page.locator('#auth-email').fill('operator@wastepilot.local');
-    await page.locator('#auth-password').fill('OperatorPass1!');
-    await page.locator('button[type="submit"]').click();
-    await expect(page).toHaveURL(/\/internal\/operations/);
+  await expect(page.getByRole("heading", { name: "Activity Logs" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Pattern Review" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Audit Chain Verification" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Cross-validation" })).toHaveCount(0);
+});
 
-    // Operator should not see "Pattern Review" section on operations or integrity pages
-    await expect(page.locator('text="Pattern Review"')).not.toBeVisible();
+test("supervisor can see pattern review", async ({ page }) => {
+  await authenticateAs(page, "SUPERVISOR");
+  await page.goto("/operations");
+  await page.getByRole("button", { name: /^5\. Integrity Check/ }).click();
 
-    // The Close Batch button should ideally not be visible or be disabled
-    // If it is visible, verify they get a permission error on click (if mock mode supports it)
-    // For now, we assert Pattern Review is hidden as the primary supervisor check
-  });
-
-  test('SUPERVISOR can see supervisor-only elements', async ({ page }) => {
-    await page.goto('/auth');
-    await page.locator('#auth-email').fill('supervisor@wastepilot.local');
-    await page.locator('#auth-password').fill('SuperPass1!');
-    await page.locator('button[type="submit"]').click();
-    await expect(page).toHaveURL(/\/internal\/operations/);
-
-    // Supervisor should see Pattern Review (might need to navigate to Integrity tab/page depending on UI)
-    await page.goto('/internal/integrity');
-    
-    // In mock mode, the mock API should return Pattern Review data for supervisors
-    const patternReviewSection = page.locator('text="Pattern Review"');
-    if (await patternReviewSection.isVisible()) {
-      await expect(patternReviewSection).toBeVisible();
-    }
-  });
+  await expect(page.getByRole("heading", { name: "Activity Logs" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Audit Chain Verification" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Cross-validation" })).toBeVisible();
 });
