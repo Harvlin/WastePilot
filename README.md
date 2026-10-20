@@ -3,782 +3,504 @@
 # WastePilot
 
 ### Smart Circular Economy Platform for Manufacturing
-#### *Turning Waste Data Into Trustworthy Decisions*
+#### Turning waste and material records into operational insights
 
-<br/>
-
-[![Live Demo](https://img.shields.io/badge/🚀_Live_Demo-Visit_Site-success?style=for-the-badge)](https://waste-pilot.vercel.app/)
+[![Frontend Preview](https://img.shields.io/badge/Frontend_Preview-Visit_Site-success?style=for-the-badge)](https://waste-pilot.vercel.app/)
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github)](https://github.com/Harvlin/WastePilot)
 [![CI](https://img.shields.io/github/actions/workflow/status/Harvlin/WastePilot/ci.yml?style=for-the-badge&label=CI)](https://github.com/Harvlin/WastePilot/actions)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 
-<br/>
+**ITECHNO CUP 2026 — Web Development | SDG 9: Industry, Innovation and Infrastructure**
 
-> **Submission for ITECHNO CUP 2026, Web Development**
-> **Tema: SDG 9 — Industri, Inovasi, dan Infrastruktur**
->
-> **By WastePilot Team**
+**WastePilot Team**
 
 </div>
 
 ---
 
-## 📋 Daftar Isi
+## Contents
 
-- [Tentang Proyek](#-tentang-proyek)
-- [Fitur Unggulan](#-fitur-unggulan)
-- [Arsitektur Integritas Data, Diferensiator Inti](#️-arsitektur-integritas-data-diferensiator-inti)
-- [Strategi AI, Transparan dan Proporsional](#-strategi-ai-transparan-dan-proporsional)
-- [Demo & Screenshot](#-demo--screenshot)
-- [Teknologi](#️-teknologi)
-- [Arsitektur Sistem](#️-arsitektur-sistem)
-- [Rumus & Perhitungan](#-rumus--perhitungan)
-- [Instalasi & Setup](#️-instalasi--setup)
-- [Penggunaan](#-penggunaan)
-- [API Documentation](#-api-documentation)
-- [Testing](#-testing)
-- [Keamanan](#-keamanan)
-- [Observability & Reliability](#-observability--reliability)
-- [Diferensiasi Kompetitif](#-diferensiasi-kompetitif)
-- [Model Keberlanjutan Bisnis](#-model-keberlanjutan-bisnis)
-- [Kualitas Rekayasa & Proses Pengembangan](#-kualitas-rekayasa--proses-pengembangan)
-- [Roadmap](#️-roadmap)
-- [Tim Developer](#-tim-developer)
-- [Lisensi](#-lisensi)
+- [Product overview](#product-overview)
+- [Implemented capabilities](#implemented-capabilities)
+- [Roles and access](#roles-and-access)
+- [Metrics and integrity rules](#metrics-and-integrity-rules)
+- [AI and data handling](#ai-and-data-handling)
+- [Demo and screenshots](#demo-and-screenshots)
+- [Architecture and data model](#architecture-and-data-model)
+- [Technology stack](#technology-stack)
+- [Local setup](#local-setup)
+- [User workflows](#user-workflows)
+- [API overview](#api-overview)
+- [Testing and CI](#testing-and-ci)
+- [Security and known limitations](#security-and-known-limitations)
+- [Product direction](#product-direction)
+- [Team and license](#team-and-license)
 
 ---
 
-## 👥 Tim Developer
+## Product overview
 
-| Nama | Peran | GitHub |
-| :--- | :---- | :----: |
-| **Harvlin Maximillian** | Project Lead & Full Stack Developer | [GitHub](https://github.com/harvlin) |
-| **Kledya Abigail Sinaga** | UI/UX Designer | [GitHub](https://github.com/[username2]) |
-| **Jessline Aglecia** | Frontend Developer | [GitHub](https://github.com/[username3]) |
+WastePilot is a web application for recording material use and production waste in manufacturing workflows. It brings batch creation, material and waste logging, recovery tracking, supervisor review, and circularity analytics into one guided application.
 
----
+The primary shift workflow is:
 
-## 🎯 Tentang Proyek
+**Start Batch → Log Material → Log Waste → Close Batch → Integrity Check**
 
-### Deskripsi Singkat Ide
+The application is designed for small and mid-size manufacturers, with textile and garment production as an initial target context. It is an operational record-keeping and review tool; its indicators depend on the completeness and accuracy of the data entered. Repository code does not establish that WastePilot has been validated in a production factory, nor does it guarantee reductions in waste or environmental impact.
 
-WastePilot merupakan media pendamping berbasis platform web yang dibuat untuk membantu proses manufaktur menjadi lebih berkelanjutan melalui penerapan prinsip ekonomi sirkular. Platform ini menggabungkan aktivitas harian yang umumnya tersebar di banyak tools ke dalam satu alur kerja terpandu, mulai dari pembukaan batch, pencatatan material masuk, pencatatan material keluar, klasifikasi limbah, penutupan batch, hingga evaluasi integritas data dan insight perbaikan.
+For requirement-level behavior and additional implementation detail, see the [Product Requirements Document](docs/PRD.md).
 
-Platform ini berorientasi pada tindakan. Sistem tidak hanya menampilkan data, tetapi juga memberikan arahan tindakan prioritas melalui fitur **Mission Control** dan **Action Queue** agar keputusan operasional dapat dilakukan dengan lebih cepat dan tepat. WastePilot juga membantu meningkatkan integritas pengelolaan data sehingga informasi operasional dapat menjadi dasar pengambilan keputusan yang lebih terpercaya.
+### Product goals
 
-### Latar Belakang
+- Make shift-level material and waste records easier to capture consistently.
+- Give supervisors a review workflow for batch close, anomalies, and data discrepancies.
+- Expose the formulas and rules behind circularity metrics and automated signals.
+- Reduce manual invoice entry with optional AI-assisted OCR that requires human review.
+- Provide a foundation for future integrations without claiming that physical sensor deployments or multi-tenant operations are already supported.
 
-Perkembangan tren konsumerisme dari tahun ke tahun mendorong peningkatan aktivitas produksi berbagai jenis barang, mulai dari barang bermerek, kosmetik, hingga produk industri lainnya. Peningkatan kebutuhan dan produksi tersebut turut meningkatkan jumlah material yang digunakan serta limbah yang dihasilkan selama proses manufaktur.
+## Implemented capabilities
+
+| Area | Current behavior |
+| --- | --- |
+| Operations | Guided batch workflow for starting batches, recording inventory and waste, recovering eligible waste, and reviewing batch-close summaries. |
+| Materials and templates | CRUD screens and API endpoints for materials, production templates, and template material lines. |
+| Batch close | Variance, confidence, and red-flag summary. Final close is restricted to Supervisors; a reason is required when the absolute variance exceeds 5%. |
+| Floor View | Shows running batches and health colors. The view refreshes by periodic polling (about every 30 seconds), not by a real-time streaming connection. |
+| Invoice scan | Sends an invoice image to Gemini for structured extraction. Users can review and edit extracted lines before saving them. |
+| Dashboard | Circular Score, material input, waste output, recovery rate, a seven-day trend, up to three recent insights, and the latest anomaly. |
+| Analytics | Five datasets: per-batch circularity index, waste breakdown, efficiency by material, landfill share trend, and landfill intensity trend. The circularity trend uses up to five recent completed batches. |
+| Insights and anomalies | Deterministic rules and statistical checks generate review signals. They are not proof of misconduct and are not presented as model-generated AI output. |
+| Integrity | Activity logs, audit trail, integrity overview, anomaly review, pattern review, manual/OCR-versus-sensor cross-validation, and audit hash-chain verification. Some review actions are Supervisor-only. |
+| Reports | Weekly or monthly summaries with CSV and PDF export. Exported content has the limitations described under [Reports and exports](#reports-and-exports). |
+| Sensor prototype | An authenticated ingestion endpoint and a Python simulator for testing request shape. This does not certify or validate physical sensor hardware. |
+| Settings | Company, timezone, notification preferences, and token-budget settings. Notification delivery and end-to-end token-budget enforcement are not implemented. |
 
-Masalah muncul ketika limbah dan sisa material dari aktivitas produksi tidak dikelola secara disiplin. Minimnya kesadaran ekologis, kurangnya tanggung jawab dalam pengelolaan limbah, serta pencatatan yang belum terstruktur dapat meningkatkan risiko pemborosan sumber daya dan dampak lingkungan. Dalam kondisi tersebut, sistem ekonomi tradisional yang bersifat linear, yaitu mengambil sumber daya, memproduksi barang, lalu membuang sisa material setelah proses produksi, menjadi kurang berkelanjutan.
+## Roles and access
 
-Sebagai alternatif, **ekonomi sirkular** merupakan pendekatan industri yang menitikberatkan pada pengurangan penggunaan sumber daya alam baru, minimisasi limbah, serta pemanfaatan kembali material selama dan setelah proses produksi. Konsep ini tidak hanya berfokus pada pengelolaan limbah, tetapi juga mendorong integrasi proses produksi agar material dapat digunakan kembali secara berulang dan memiliki nilai yang lebih panjang dalam siklus produksi.
+The application uses two authenticated roles: `OPERATOR` and `SUPERVISOR`. Newly registered users default to `OPERATOR`; the self-service settings API does not allow users to change their role.
 
-WastePilot hadir untuk membantu mewujudkan penerapan ekonomi sirkular secara lebih nyata dalam aktivitas produksi, khususnya pada proses manufaktur perusahaan UMKM dan industri skala menengah.
+| Capability | Operator | Supervisor |
+| --- | :---: | :---: |
+| Dashboard, Analytics, Reports and exports | Yes | Yes |
+| Create batches; log inventory and waste; recover eligible waste | Yes | Yes |
+| View the batch-close summary | Yes | Yes |
+| Finalize a batch close | No | Yes |
+| Correct output units after close | No | Yes |
+| View the Floor View | Yes | Yes |
+| Use invoice OCR | Yes | Yes |
+| View activity logs, audit trail, integrity overview, insights and anomalies | Yes | Yes |
+| Change insight or anomaly status | No | Yes |
+| View Pattern Review and Cross-Validation | No | Yes |
+| Verify the audit hash chain | No | Yes |
+| Read or update personal settings | Yes | Yes |
 
-### Solusi yang Ditawarkan
+These restrictions are enforced by backend authorization, not only by hiding UI controls. The sensor endpoint uses a separate shared API key rather than either user role or a JWT.
 
-WastePilot merupakan platform pendamping operasional circular manufacturing yang mengintegrasikan aktivitas pencatatan dan pengelolaan material ke dalam satu sistem terpusat. Alur kerja dimulai dari **Start Batch → Log Material → Log Waste → Close Batch → Integrity Check**, sehingga proses operasional harian menjadi lebih terstandar dan mudah ditelusuri.
+## Metrics and integrity rules
 
-Selain pencatatan, WastePilot menyediakan mekanisme untuk meningkatkan integritas data melalui **Audit Trail, Reason Wajib, Anomaly Detection, Pattern Review, dan Cross-Validation**. Dengan demikian, sistem tidak hanya berfungsi sebagai media penyimpanan data, tetapi juga membantu memastikan bahwa data operasional dapat ditinjau, ditelusuri, dan digunakan sebagai dasar evaluasi.
+Circularity metrics are internal, policy-weighted indicators. They are not an industry-standard formula. Dashboard/Reports and Analytics intentionally use different formulas; changing or unifying them would be a separate business decision.
 
-Pendekatan ini dilengkapi dengan fitur **AI Vision Scan** untuk membantu input material dari invoice, **Live Factory Floor View** untuk memantau batch aktif, serta **Analytics & Insights** untuk memberikan gambaran tren kinerja dan peluang perbaikan. WastePilot juga memiliki fondasi IoT-ready melalui sensor ingestion endpoint dan simulator sensor yang dapat menjadi tahap awal menuju integrasi perangkat fisik di lingkungan produksi.
+### Dashboard and Reports: Composite Circularity Score
 
-Dengan ini, platform ini mengintegrasikan pencatatan material, pengelolaan waste, monitoring batch, integritas data, serta analitik ke dalam satu alur kerja operasional yang terpandu.
+```text
+Recovery Rate      = (reuse kg + repair kg) / total waste kg
+Waste Efficiency   = clamp(1 - total waste kg / material input kg, 0, 1)
+Landfill Share     = dispose kg / total waste kg
+Landfill Avoidance = 1 - Landfill Share
 
-### Tujuan Proyek
+Base Score = 100 × (
+    0.30 × Recovery Rate
+  + 0.25 × Waste Efficiency
+  + 0.45 × Landfill Avoidance
+)
+```
 
-#### 🎯 Tujuan Umum
+The score is capped according to landfill share: above 40% → maximum 55; above 30% → maximum 70; above 20% → maximum 80; at or below 20% → no additional cap. The result is bounded to 0–100.
 
-a. Membangun sistem operasional circular manufacturing yang terpusat, mudah digunakan, dan siap diintegrasikan ke back-end production.
+### Analytics: Per-batch Circularity Index
 
-b. Meningkatkan efisiensi operasional dan akurasi data produksi melalui otomatisasi pencatatan, pemantauan batch, serta analisis limbah secara real-time.
+```text
+Recovery Rate      = (reuse kg + repair kg) / total waste kg
+Landfill Avoidance = 1 - Landfill Share
 
-c. Mendorong penerapan industri berkelanjutan dengan menekan waste ke landfill, memaksimalkan pemanfaatan ulang material, dan menyediakan indikator kinerja lingkungan yang terukur.
+Base Index = 100 × (
+    0.40 × Recovery Rate
+  + 0.60 × Landfill Avoidance
+)
+```
 
-#### 🎯 Tujuan Khusus
+The same landfill-share caps apply. The chart uses up to the five most recently completed batches, ordered chronologically within that sample.
 
-a. Menstandarkan proses batch harian dari awal hingga penutupan dengan guardrails yang konsisten.
+### Other documented calculations
 
-b. Mempercepat proses input material menggunakan pendekatan OCR-ready dengan fallback saat layanan AI belum aktif.
+**Batch variance**
 
-c. Meningkatkan traceability melalui activity logs, audit trail, dan integrity overview.
+```text
+Planned input = sum of template line quantities
+                (without a template: max(output units × 0.08, 12))
+Actual input  = sum of inventory IN logs
+Variance %    = (actual input - planned input) × 100 / planned input
+```
 
-d. Menyediakan dasar pengambilan keputusan berbasis data melalui insight dan indikator operasional.
+When a batch has no inventory `IN` logs, the close summary may label its input as estimated. A close reason is required when the absolute variance exceeds 5%. Running batches older than 24 hours are considered overdue.
 
-e. Menyediakan evaluasi performa periodik melalui modul analytics dan laporan tren.
+**Confidence score**
 
-### Manfaat
+```text
+Completeness    = (has inventory OUT + has waste logs + output units > 0) / 3
+Timeliness      = 1.0, or 0.72 when batch close is overdue
+Audit Integrity = share of audit entries with a meaningful reason (at least 10 characters)
+                  (1.0 when there are no applicable entries)
 
-#### 👷 Bagi Operator Produksi
+Confidence = 100 × (
+    0.50 × Completeness
+  + 0.30 × Timeliness
+  + 0.20 × Audit Integrity
+)
+Levels: high ≥ 85, medium ≥ 65, low < 65
+```
 
-a. Alur kerja harian lebih jelas karena tersedia step-by-step workflow.
+**Anomaly detection**
 
-b. Risiko kesalahan input berkurang berkat validasi form dan aturan langkah kerja.
+- Uses a trailing 30-day baseline per material when at least two records and a non-zero standard deviation are available.
+- Uses population standard deviation and flags an upper-tail z-score greater than 2.5.
+- With too few records or zero variance, uses a configurable provisional cold-start threshold, defaulting to 10 kg. The fallback is provisional, not an empirically validated material limit.
 
-c. Pencatatan data menjadi lebih cepat melalui OCR dan template produksi.
+**Pattern Review** considers up to 20 recently completed batches per user, requires at least five samples, and flags when at least 60% of the sample has an absolute variance from 4.5% through 5.0%.
 
-#### 👨‍💼 Bagi Manajer Operasional
+**Cross-Validation** compares manual/OCR input with sensor input for the same batch and material, only when both sources are present. It flags a relative difference greater than 15%:
 
-a. Monitoring batch lebih mudah dengan indikator running, completed, dan overdue.
+```text
+Difference % = 100 × |manual kg - sensor kg| / max(manual kg, sensor kg)
+```
 
-b. Keputusan dapat dilakukan lebih cepat karena tersedia prioritas tindakan yang langsung dapat dieksekusi.
+**Floor View health** is based on absolute variance: green below 3%, amber from 3% up to but not including 5%, and red at 5% or above.
 
-c. Integritas data lebih terjaga untuk kebutuhan review internal dan handover shift.
+All anomaly, pattern, cross-validation, and red-flag results are review signals. They do not independently establish fraud, policy violations, or the physical correctness of a measurement.
 
-#### 🏭 Bagi Perusahaan
+## AI and data handling
 
-a. Transparansi kinerja circularity meningkat melalui dashboard dan periodic analytics.
+WastePilot distinguishes model output from deterministic application logic:
 
-b. Terdapat efisiensi biaya melalui pengurangan landfill dan optimalisasi recovery material.
+| Capability | Mechanism |
+| --- | --- |
+| Invoice scan | Gemini vision model extracts structured invoice lines. The result is a suggestion and must be reviewed by the user before saving. |
+| Anomaly detection | Statistical calculation with a documented provisional fallback threshold. |
+| Pattern Review and Cross-Validation | Deterministic calculations over stored records. |
+| Insights and suggested waste actions | Application rules and mappings; not generative-AI recommendations. |
 
-c. Tersedia fondasi digital yang siap dikembangkan menuju skala produksi dengan back-end enterprise.
+Invoice images are sent to Google Gemini for OCR. Review the provider's current data-handling and retention terms before uploading sensitive documents. A valid Gemini API key is needed for live extraction; a placeholder/mock key does not provide live OCR.
 
-### Nilai Utama WastePilot
+## Demo and screenshots
 
-WastePilot berfokus pada tiga nilai utama: **operational discipline, data integrity, dan circularity**. Ketiganya diwujudkan melalui alur kerja terpandu, pencatatan dan audit data yang terstruktur, serta pengelolaan material dan limbah yang mendukung pemanfaatan kembali.
+### Frontend preview
 
-Dengan pendekatan tersebut, WastePilot tidak hanya membantu perusahaan mengetahui berapa banyak waste yang dihasilkan, tetapi juga membantu mengidentifikasi kondisi yang perlu ditindaklanjuti dan menjadi dasar untuk meningkatkan efisiensi proses produksi.
+[Open the WastePilot frontend preview](https://waste-pilot.vercel.app/).
 
-### Target Pengguna
+The repository contains this frontend link, but does not establish current availability, a public backend URL, successful frontend-to-backend connectivity, or the deployment's secret configuration. Verify the live environment independently before relying on it.
 
-WastePilot ditujukan terutama bagi perusahaan manufaktur UMKM hingga skala menengah, khususnya sektor tekstil, garmen, dan produk berbasis material campuran yang membutuhkan sistem pencatatan waste dan material yang lebih terstruktur. Platform dirancang agar dapat digunakan secara bertahap, mulai dari pencatatan operasional manual hingga kesiapan integrasi sensor dan pengembangan smart manufacturing.
+### Repository screenshots
 
-### Value Proposition
-
-WastePilot menyatukan workflow operasional, pengelolaan waste, integritas data, dan analitik circular manufacturing dalam satu platform web yang berorientasi pada tindakan. Sistem membantu operator menjalankan proses secara konsisten, membantu supervisor menentukan prioritas tindakan, serta memberikan perusahaan fondasi data yang lebih terpercaya untuk mengevaluasi efisiensi material dan kinerja keberlanjutan.
-
----
-
-## ✨ Fitur Unggulan
-
-### Fitur Utama
-
-| Fitur | Deskripsi | Keunggulan |
-| :---- | :-------- | :--------- |
-| **Alur Operasional 5-Langkah** | Start Batch → Log Material → Log Waste → Close Batch → Integrity Check, dipandu step-by-step dengan enforcement aktif. | Tombol/aksi dinonaktifkan sampai prasyarat terpenuhi, bukan sekadar divalidasi setelah submit, mencegah kesalahan operator di lapangan. |
-| **Empat Lapis Pertahanan Integritas Data** | Audit Trail + Reason Wajib, Anomaly Detection (Z-Score), Pattern Review (Threshold Gaming Detection), Cross-Validation (manual vs sensor). | Diferensiator inti, mengasumsikan data manusia bisa dimanipulasi dan meresponsnya secara aktif, bukan pasif mencatat. Seluruh empat lapis telah teruji lewat integration test dan unit test. |
-| **AI Vision Scan** | Upload invoice → ekstraksi material/qty/unit otomatis via Gemini Vision API dengan JSON schema enforcement. | Satu-satunya fitur "AI" yang genuinely memanggil model AI, dilabeli jujur dan dipisahkan dari fitur rule-based lainnya. |
-| **Live Factory Floor View** | Seluruh batch aktif di semua line ditampilkan paralel dengan indikator kesehatan warna + ikon (aksesibel), diperbarui via polling berkala. | Visibilitas real-time lintas-line yang bisa diakses baik Operator maupun Supervisor, bukan cuma dashboard admin. |
-| **Sensor Ingestion (IoT-Ready)** | Endpoint `POST /sensors/ingest` dengan validasi bounds, dilengkapi simulator Python yang telah dijalankan dan diuji end-to-end terhadap backend produksi. | Membuktikan arsitektur software-first ini genuinely siap menerima data sensor fisik, bukan janji roadmap kosong, sudah didemonstrasikan berjalan. |
-| **RBAC Nyata (Bukan Kosmetik)** | Role `OPERATOR`/`SUPERVISOR` ditanamkan sebagai JWT claim, diberlakukan langsung di layer otorisasi Spring Security. | Operasi sensitif (close batch, resolve red flag, koreksi data, pattern review, cross-validation) hanya bisa diakses role yang tepat, teruji lewat test forbidden/allowed case. |
-
-### Fitur Tambahan
-
-- **Insights Rule-Based** — Rekomendasi eksplisit terprogram (tren landfill share naik, waste disproporsional per material) dengan label jujur `"(Rule-based recommendation)"` di response API, tidak pernah diklaim sebagai AI-generated tanpa dasar.
-- **Analytics & Export** — Circularity Trend, Landfill Intensity per unit, perbandingan antar-line/shift/periode, dengan export CSV/PDF (via OpenPDF) untuk pelaporan manajemen.
-- **Startup Security Fail-Fast** — Aplikasi menolak start di profile produksi jika `JWT_SECRET` masih menggunakan nilai default pengembangan, mencegah deployment dengan celah keamanan yang diketahui publik. Teruji dengan verifikasi bahwa profile lokal tetap berjalan normal.
-- **Password Reset Flow** — Alur lupa password standar dengan token sekali pakai.
-- **Maturity Level Indicator** — Menunjukkan posisi pabrik dalam jalur adopsi IoT (manual → sebagian sensor → sensor penuh) dengan langkah konkret untuk naik level.
-- **Demo Reset & Seed Data** — Mekanisme reset ke kondisi data demo yang konsisten, memastikan presentasi berjalan mulus dengan skenario yang sudah direhearsal.
-- **Resilience Fallback Mode** — Frontend selalu mencoba backend asli terlebih dahulu; hanya beralih ke mode mock untuk pembacaan non-kritikal jika terjadi kegagalan sementara, dengan indikator visual yang jelas dan tidak pernah diam-diam.
-
----
-
-## 🛡️ Arsitektur Integritas Data, Diferensiator Inti
-
-Ini adalah bagian yang paling membedakan WastePilot dari kompetitor sekelasnya. Alih-alih mempercayai satu mekanisme input, sistem melapisi empat pertahanan independen, seluruhnya telah diimplementasikan, diuji, dan diverifikasi:
-
-| Lapisan | Fungsi | Parameter Teknis | Status |
-| :------ | :----- | :--------------- | :----: |
-| **1. Audit Trail + Reason Wajib** | Akuntabilitas forensik pasca-kejadian, setiap koreksi data memerlukan alasan tertulis | Minimum 10 karakter, kolom `reason` khusus, endpoint koreksi RBAC-gated (`PATCH /operations/batches/{id}/output-units`) | ✅ Selesai & teruji |
-| **2. Anomaly Detection (Z-Score)** | Deteksi dini sebelum batch ditutup, lonjakan waste tidak wajar terdeteksi otomatis | Z-score > 2.5, baseline rolling 30 hari per material/line, trigger otomatis saat waste log dibuat | ✅ Selesai & teruji |
-| **3. Pattern Review (Threshold Gaming Detection)** | Deteksi pola tersembunyi lintas-waktu, operator yang variance-nya konsisten mepet di bawah ambang wajib-alasan | Window 20 batch terbaru, floor sample 5 batch, band 0.5 poin persentase, ambang kecurigaan 60% | ✅ Selesai & teruji |
-| **4. Cross-Validation** | Pencegahan via sumber data independen, begitu sensor terpasang, manusia bukan lagi satu-satunya sumber kebenaran | Tolerance 15%, hanya aktif jika kedua sumber (manual & sensor) tersedia untuk batch-material yang sama | ✅ Selesai & teruji |
-
-Seluruh sinyal dari lapisan 2–4 disajikan dengan **framing netral** ("perlu ditinjau", bukan "terbukti curang"), sebuah keputusan etis yang disengaja, mengingat sinyal statistik pada sampel kecil membawa risiko false positive nyata. Ini bukan hanya prinsip desain di atas kertas, telah diverifikasi langsung ke dalam teks pesan aktual di kode dan direview ulang untuk memastikan tidak ada framing yang menuduh di manapun dalam sistem.
-
----
-
-## 🤖 Strategi AI, Transparan dan Proporsional
-
-WastePilot membedakan secara eksplisit tiga jenis "kecerdasan" dalam sistemnya, dan tidak pernah mengaburkan batasnya, sebuah keputusan desain yang sengaja diambil untuk menghindari overclaim yang mudah dibantah evaluator teknikal:
-
-| Jenis | Fitur | Cara Kerja |
-| :---- | :---- | :--------- |
-| **Genuinely AI (LLM)** | AI Vision Scan | Panggilan nyata ke Gemini Vision API dengan JSON schema enforcement, error handling lengkap untuk kegagalan auth/rate-limit/timeout |
-| **Statistik murni** | Anomaly Detection, Pattern Review, Cross-Validation | Kalkulasi riil dari data historis/berpasangan, tanpa model AI sama sekali |
-| **Rule-based** | Insights/Recommendations | Aturan eksplisit terprogram, dilabeli sebagai `"(Rule-based recommendation)"` langsung di response API |
-
-Pendekatan ini menunjukkan bahwa tim memahami perbedaan mendasar antara ketiga pendekatan tersebut, sesuatu yang sering diabaikan produk kompetitor yang melabeli segala sesuatu sebagai "AI-powered" tanpa dasar teknis yang jelas.
-
----
-
-## 📸 Demo & Screenshot
-
-### Live Demo
-
-🔗 **[Kunjungi Website](https://waste-pilot.vercel.app/)**
-
-Backend telah dideploy publik dan terhubung penuh, **tidak ada indikator fallback mock aktif** dalam kondisi operasional normal. Seluruh secret produksi (`JWT_SECRET`, `GEMINI_API_KEY`) dikonfigurasi eksplisit sesuai fail-fast validator, bukan bergantung pada nilai default pengembangan.
-
-### Screenshot Aplikasi
+The following images are checked-in snapshots, not evidence of live data. They may not represent the current UI, and displayed values can be sample or historical content. The Floor View image shows an empty state.
 
 <div align="center">
-  <img src="page-preview/Dashboard.png" alt="Dashboard" width="800"/>
-  <p><em>Dashboard — Circular Score, Mission Control, Live Factory Floor View, dan Anomaly Highlight dalam satu command center.</em></p>
+  <img src="page-preview/Dashboard.png" alt="WastePilot dashboard screenshot" width="800"/>
+  <p><em>Dashboard snapshot with circularity and operational summaries.</em></p>
 
-  <img src="page-preview/HowToUse.png" alt="Operations" width="800"/>
-  <p><em>Operations — Panduan alur kerja shift harian dari Start Batch hingga Close Batch.</em></p>
+  <img src="page-preview/HowToUse.png" alt="How-to-use guide screenshot" width="800"/>
+  <p><em>How-to-use guide snapshot. The 8–15 minute onboarding estimate visible in the image has not been validated through measurement.</em></p>
 
-  <img src="page-preview/Scan.png" alt="AI Vision Scan" width="800"/>
-  <p><em>AI Vision Scan — Ekstraksi material dari invoice secara otomatis menggunakan Gemini Vision API.</em></p>
+  <img src="page-preview/Scan.png" alt="Invoice scan screenshot" width="800"/>
+  <p><em>Invoice scan flow; extracted lines are reviewed before they are saved.</em></p>
 
-  <img src="page-preview/FloorView.png" alt="Live Factory Floor View" width="800"/>
-  <p><em>Live Factory Floor View — Visibilitas real-time seluruh line produksi secara paralel.</em></p>
+  <img src="page-preview/FloorView.png" alt="Floor View empty-state screenshot" width="800"/>
+  <p><em>Floor View empty state when there are no running batches.</em></p>
 
-  <img src="page-preview/Insights.png" alt="Integrity and Insights" width="800"/>
-  <p><em>Integrity & Insights — Anomaly detection dan action queue untuk menindaklanjuti risiko integritas data.</em></p>
+  <img src="page-preview/Insights.png" alt="Insights and integrity screenshot" width="800"/>
+  <p><em>Insights and integrity review snapshot.</em></p>
 
-  <img src="page-preview/Analytics.png" alt="Analytics" width="800"/>
-  <p><em>Analytics — Tren historis Circularity Score dan Landfill Intensity untuk pengambilan keputusan jangka panjang, dengan opsi export CSV/PDF.</em></p>
+  <img src="page-preview/Analytics.png" alt="Analytics screenshot" width="800"/>
+  <p><em>Analytics snapshot. The circularity trend is limited to the five most recently completed batches.</em></p>
 
-  <img src="page-preview/Materials.png" alt="Materials" width="800"/>
-  <p><em>Materials — Inventory Log dan Waste Log untuk mencatat pergerakan material serta tujuan waste.</em></p>
+  <img src="page-preview/Materials.png" alt="Materials screenshot" width="800"/>
+  <p><em>Materials and waste logging snapshot.</em></p>
 
-  <img src="page-preview/Template.png" alt="Production Templates" width="800"/>
-  <p><em>Production Templates — Template material yang dapat digunakan kembali untuk memulai produksi secara konsisten.</em></p>
+  <img src="page-preview/Template.png" alt="Production templates screenshot" width="800"/>
+  <p><em>Production templates snapshot.</em></p>
 </div>
 
-### Video Demo
+**Video demo:** `[Video URL to be added]` — no published video URL is currently recorded in this repository.
 
-📹 **[Link Video Demo](https://[URL_VIDEO])** — walkthrough end-to-end 2-3 menit, disiapkan sebagai cadangan presentasi jika terjadi kendala jaringan saat demo langsung di babak final.
+## Architecture and data model
 
----
+```text
+React + TypeScript frontend
+       │ REST API / JWT
+       ▼
+Spring Boot API ─────── MySQL 8
+       ├─────────────── Google Gemini (invoice OCR)
+       └─────────────── Actuator / Prometheus endpoints
 
-## 🛠️ Teknologi
-
-### Tech Stack
-
-#### Frontend
-
-```
-Framework    : React 18.3 + TypeScript 5.8
-Build Tool   : Vite 5.4
-UI Library   : Tailwind CSS 3.4 + shadcn/ui (Radix primitives)
-Data Fetching: TanStack Query (React Query)
-Routing      : react-router-dom
-Testing      : Vitest (unit) + Playwright (E2E)
+Python sensor simulator ── shared-key HTTP request ──► sensor ingestion endpoint
 ```
 
-#### Backend
+The backend follows a controller → service → repository structure, with JPA entities, DTOs, MapStruct mappers, Spring Security, and Flyway-managed schema migrations.
 
-```
-Runtime      : Java 21
-Framework    : Spring Boot 3.3.6
-Security     : Spring Security + OAuth2 Resource Server (JWT)
-Database     : MySQL 8 (runtime) + H2 (test profile)
-ORM/Mapping  : Spring Data JPA + MapStruct
-Migration    : Flyway (8 migrasi berurutan, terdokumentasi)
-AI Vision    : Google Gemini Vision API
-PDF Export   : OpenPDF
-Observability: Spring Boot Actuator + Micrometer (Prometheus registry)
-Logging      : Logback (console, JSON terstruktur di profil produksi via Logstash Encoder)
-```
+### Main data entities
 
-#### DevOps & Tools
+| Entity/table | Purpose |
+| --- | --- |
+| `auth_users`, `password_reset_tokens`, `user_settings` | User credentials, reset tokens, profile and role settings. |
+| `materials`, `templates`, `template_lines` | Material catalogue, reusable production recipes, and planned material lines. |
+| `batches` | Production runs, status, output, and close information. |
+| `inventory_logs`, `waste_logs` | Material input/output records, waste destinations, and recovery state. |
+| `activity_logs`, `audit_trail` | Operational activity and reasoned field changes. |
+| `red_flags`, `insights`, `anomalies` | Review signals, deterministic recommendations, and statistical alerts. |
+| `ai_usage_logs`, `ai_job_runs` | AI usage and background-job records. |
 
-```
-Deployment   : Vercel (frontend), Docker-based (backend, publik)
-Containerize : Docker + Docker Compose (app, MySQL, Adminer)
-CI/CD        : GitHub Actions (test otomatis setiap push/PR, backend + frontend)
-Testing      : JUnit 5 + Spring Security Test + Testcontainers (backend), Vitest + Playwright (frontend)
-Sensor Sim   : Python (simulator IoT, teruji end-to-end terhadap backend produksi)
-```
+Database migrations currently run from V1 to V10: core schema; users; settings/timezone; waste recovery metadata; password reset tokens; anomaly and insight rules; role enum; audit reason; audit hash chain; and configurable anomaly cold-start threshold.
 
-### Alasan Pemilihan Teknologi
+Recovery metadata is persisted with the waste record. Audit entries are linked by hashes and checked against a chain head stored in the same database; this is tamper evidence, not protection against a privileged database administrator rewriting both the entries and the head.
 
-| Teknologi | Alasan Pemilihan |
-| :-------- | :--------------- |
-| **Spring Boot 3.3 + Java 21** | Framework backend matang untuk aplikasi enterprise-grade, dengan ekosistem Spring Security dan Spring Data JPA yang memudahkan implementasi RBAC granular dan akses database aman tanpa reinventing the wheel. |
-| **MySQL 8 + Flyway** | MySQL stabil untuk beban transaksional dengan banyak insert/update dari operator. Flyway memastikan skema database terversi dan terdokumentasi, krusial karena skema WastePilot berkembang bertahap (8 migrasi) seiring fitur baru, dan setiap perubahan bisa ditelusuri ulang untuk audit. |
-| **Spring Security + JWT** | Mendukung autentikasi stateless yang cocok untuk arsitektur API terpisah dari frontend, dan memungkinkan role diselipkan langsung sebagai claim di token, otorisasi granular per-endpoint tanpa query tambahan ke database di setiap request. |
-| **Google Gemini Vision API** | Mendukung structured output (JSON schema enforcement) sehingga hasil ekstraksi invoice bisa langsung dipetakan ke struktur data material tanpa parsing manual yang rawan error. |
-| **React 18 + TypeScript + Vite** | Ekosistem luas untuk dashboard interaktif dengan banyak state (form multi-step, polling real-time). TypeScript menjaga konsistensi tipe antara frontend dan kontrak API backend. Vite dipilih karena dev server jauh lebih cepat dibanding alternatif lama. |
-| **TanStack Query** | Menangani fetching, caching, dan polling data (misalnya Live Factory Floor View) tanpa state management manual yang rumit. |
-| **Docker + Docker Compose** | Memastikan lingkungan pengembangan dan produksi bisa direplikasi persis sama, mengurangi masalah klasik "jalan di laptop saya doang". |
-| **GitHub Actions** | Menjalankan test backend dan frontend otomatis setiap perubahan kode dikirim, mencegah bug lolos ke cabang utama tanpa terdeteksi. |
-| **Playwright & Vitest** | Terintegrasi native dengan ekosistem Vite yang sudah dipakai, Playwright untuk mensimulasikan klik pengguna sungguhan di alur kritikal (auth, core shift flow, RBAC), Vitest untuk unit test logic frontend. |
+## Technology stack
 
-### Dependencies Utama
+| Layer | Technologies |
+| --- | --- |
+| Frontend | React 18.3, TypeScript 5.8, Vite 5.4, Tailwind CSS 3.4, shadcn/ui/Radix, TanStack Query, React Router |
+| Frontend quality | Vitest, Testing Library, ESLint, Playwright |
+| Backend | Java 21, Spring Boot 3.3.6, Spring Security, OAuth2 Resource Server/JWT, Spring Data JPA, MapStruct |
+| Persistence | MySQL 8.4 at runtime, Flyway migrations, H2 for the backend test profile |
+| Integrations | Google Gemini Vision for OCR; Python sensor simulator |
+| Reports and observability | OpenPDF, Spring Boot Actuator, Micrometer Prometheus registry, Logback JSON encoder |
+| Local infrastructure and CI | Docker Compose, GitHub Actions |
 
-**Backend (`pom.xml`)**
-
-```xml
-<dependencies>
-    <dependency> <artifactId>spring-boot-starter-web</artifactId> </dependency>
-    <dependency> <artifactId>spring-boot-starter-security</artifactId> </dependency>
-    <dependency> <artifactId>spring-boot-starter-oauth2-resource-server</artifactId> </dependency>
-    <dependency> <artifactId>spring-boot-starter-data-jpa</artifactId> </dependency>
-    <dependency> <artifactId>spring-boot-starter-validation</artifactId> </dependency>
-    <dependency> <artifactId>spring-boot-starter-actuator</artifactId> </dependency>
-    <dependency> <artifactId>flyway-core</artifactId> </dependency>
-    <dependency> <artifactId>flyway-mysql</artifactId> </dependency>
-    <dependency> <artifactId>mysql-connector-j</artifactId> <scope>runtime</scope> </dependency>
-    <dependency> <artifactId>mapstruct</artifactId> </dependency>
-    <dependency> <artifactId>openpdf</artifactId> <version>2.0.3</version> </dependency>
-    <dependency> <artifactId>micrometer-registry-prometheus</artifactId> </dependency>
-    <dependency> <artifactId>logstash-logback-encoder</artifactId> <version>7.4</version> </dependency>
-    <dependency> <artifactId>testcontainers</artifactId> <scope>test</scope> </dependency>
-</dependencies>
-```
-
-**Frontend (`package.json`)**
-
-```json
-{
-  "dependencies": {
-    "react": "^18.3.1",
-    "typescript": "^5.8.3",
-    "tailwindcss": "^3.4.17"
-  },
-  "devDependencies": {
-    "vite": "^5.4.19",
-    "vitest": "^3.2.4",
-    "@playwright/test": "^1.57.0"
-  }
-}
-```
-
----
-
-## 🏗️ Arsitektur Sistem
-
-### System Architecture
-
-```
-┌─────────────────┐        ┌──────────────────────────────────┐
-│    Frontend       │  HTTP  │   Backend (Spring Boot 3.3)      │
-│  React 18 + TS    │◄──────►│   Controller → Service → Repo    │
-│  Vite, Tailwind    │  JWT   │   Clean layered architecture     │
-└─────────────────┘        └───────────────┬────────────────────┘
-                                            │
-                     ┌──────────────────────┼──────────────────────┐
-                     ▼                      ▼                      ▼
-              ┌─────────────┐      ┌─────────────────┐    ┌─────────────────┐
-              │   MySQL 8    │      │  Gemini Vision   │    │ Sensor Simulator │
-              │ (Flyway,     │      │  API (OCR)       │    │ (Python, teruji  │
-              │  8 migrasi)  │      │                  │    │  end-to-end)     │
-              └─────────────┘      └─────────────────┘    └─────────────────┘
-```
-
-- Frontend berkomunikasi dengan backend lewat REST API terautentikasi JWT.
-- Backend menyimpan seluruh data operasional ke MySQL dengan skema terversi lewat Flyway.
-- Untuk AI Vision Scan, backend memanggil Gemini Vision API secara langsung, tidak ada data invoice yang disimpan di pihak ketiga tanpa kontrol.
-- Simulator sensor mengirim data ke endpoint yang **persis sama** dengan yang dipakai sensor fisik nanti, telah diuji end-to-end terhadap backend produksi, membuktikan kesiapan integrasi IoT tanpa perlu hardware saat presentasi.
-
-### Database Schema (Ringkasan Migrasi)
-
-```
-V1  init_schema                         — skema inti (batches, materials, templates, logs)
-V2  auth_users                          — tabel autentikasi
-V3  user_settings_timezone              — pengaturan pengguna
-V4  waste_log_recovery_metadata         — metadata recovery waste
-V5  password_reset_tokens               — token reset password
-V6  anomaly_detection_and_insight_rules — tabel anomalies & insights
-V7  rbac_user_role_enum                 — migrasi role dari String ke Enum (dengan strategi migrasi data lama)
-V8  audit_trail_reason_column           — kolom reason khusus di audit_trail (menggantikan workaround lama)
-```
-
-### Folder Structure
-
-```
-WastePilot/
-├── wastepilot/                    # Backend (Spring Boot)
-│   ├── src/main/java/com/project/wastepilot/
-│   │   ├── controller/             # REST endpoints (Auth, Operations, Integrity, dll)
-│   │   ├── service/impl/           # Business logic (variance, confidence, anomaly, dll)
-│   │   ├── security/               # JWT, RBAC, CORS, fail-fast validator
-│   │   ├── domain/entity/          # JPA entities
-│   │   ├── domain/dto/             # Request/response contracts
-│   │   ├── mappers/                # Entity ↔ DTO (MapStruct)
-│   │   └── repository/             # Spring Data JPA repositories
-│   ├── src/main/resources/
-│   │   ├── db/migration/           # Flyway migrations
-│   │   └── application*.properties # Profile-based config (local/docker/prod)
-│   ├── src/test/                   # Integration & unit tests
-│   ├── Dockerfile
-│   └── docker-compose.yml
-├── frontend/                       # Frontend (React + Vite)
-│   ├── src/
-│   │   ├── pages/internal/         # Dashboard, Operations, Analytics, Floor View, dll
-│   │   ├── features/               # Auth context, mock layer
-│   │   ├── lib/api/                # internal-api.ts (client terpusat)
-│   │   └── mocks/                  # Fallback mock data
-│   └── e2e/                        # Playwright test (auth, core-shift-flow, rbac)
-├── tools/sensor-simulator/          # Simulator IoT (Python)
-└── .github/workflows/ci.yml         # CI pipeline
-```
-
----
-
-## 🧮 Rumus & Perhitungan
-
-Seluruh formula berikut diambil langsung dari source code dan telah diverifikasi konsisten dengan hasil integration test.
-
-### Circular Score (`DashboardServiceImpl.java`)
-
-```
-Recovery Rate      = reuseKg / totalWasteKg
-Waste Efficiency   = 1 − (totalWasteKg / materialInputKg)
-Landfill Avoidance = 1 − landfillShare
-
-Base Score = 100 × (0.30 × Recovery Rate + 0.25 × Waste Efficiency + 0.45 × Landfill Avoidance)
-
-Landfill Share Cap: >40% → maks 55 | >30% → maks 70 | >20% → maks 80 | ≤20% → tidak dibatasi
-```
-
-> *Bobot Landfill Avoidance sengaja paling berat (45%) untuk menekankan bahwa menghindari pembuangan ke landfill adalah prioritas tertinggi.*
-
-### Confidence Score (`OperationsServiceImpl.java`)
-
-```
-Completeness    = (sinyal inventory + sinyal waste + sinyal output) / 3
-Timeliness      = 1.0 (tepat waktu) atau 0.72 (batch close terlambat)
-Audit Integrity = rasio audit trail entry dengan reason bermakna (≥10 karakter) terhadap total entry
-
-Confidence Score = 100 × (0.50 × Completeness + 0.30 × Timeliness + 0.20 × Audit Integrity)
-```
-
-### Anomaly Detection (`AnomalyDetectionServiceImpl.java`)
-
-```
-Z-Score = (waste_aktual − rata-rata_30_hari) / standar_deviasi_30_hari
-Trigger jika Z-Score > 2.5
-```
-
-### Pattern Review (`IntegrityServiceImpl.java`)
-
-```
-Window analisis: 20 batch terbaru | Floor sample: 5 batch
-Band kecurigaan: 0.5 poin di bawah threshold variance (5%)
-Flag jika ≥60% batch dalam window jatuh di band tersebut
-```
-
-### Cross-Validation (`IntegrityServiceImpl.java`)
-
-```
-Relative Difference = |Σ(manual/OCR) − Σ(sensor)| / max(keduanya)
-Flag jika > 15%, hanya jika kedua sumber tersedia
-```
-
-### Landfill Intensity (`AnalyticsServiceImpl.java`)
-
-```
-Landfill Intensity = landfill_kg / output_unit
-```
-
----
-
-## ⚙️ Instalasi & Setup
+## Local setup
 
 ### Prerequisites
 
-- **Node.js** 18+ (20+ direkomendasikan), npm
-- **Java** 21
-- **Docker** (direkomendasikan, dibutuhkan untuk integration test via Testcontainers)
-- **Git**
+- Git
+- Node.js 20 LTS recommended and npm
+- Java 21 (for running or testing the backend outside Docker)
+- Docker with Docker Compose (recommended for the local backend and MySQL)
+- Python and `pip` (optional; only for the sensor simulator)
 
-### Langkah Instalasi
-
-#### 1️⃣ Clone Repository
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/Harvlin/WastePilot.git
 cd WastePilot
 ```
 
-#### 2️⃣ Setup Backend (Docker, direkomendasikan)
+### 2. Configure and start the backend
 
-```bash
+From the repository root:
+
+```powershell
 cd wastepilot
-cp .env.example .env
+Copy-Item .env.example .env
 ```
 
-Edit `.env`, isi minimal:
+On macOS/Linux, use `cp .env.example .env` instead. Edit `wastepilot/.env` and replace the placeholders. At minimum, Compose requires strong values for:
 
 ```env
-JWT_SECRET=<generate dengan: openssl rand -base64 32>
-GEMINI_API_KEY=<dari https://aistudio.google.com/app/apikey>
+DB_PASSWORD=<strong application database password>
+DB_ROOT_PASSWORD=<strong MySQL root password>
+JWT_SECRET=<strong random secret>
+SENSOR_INGEST_API_KEY=<strong shared prototype key>
 ```
 
-> ⚠️ **Penting:** aplikasi akan **menolak start** di profile produksi/docker jika `JWT_SECRET` masih memakai nilai default, ini fail-safe yang disengaja dan telah diverifikasi tidak mengganggu profile lokal.
+`GEMINI_API_KEY` is needed for live invoice OCR, but not for the rest of the application. Do not commit `.env` or share credentials. Docker/production profiles reject unsafe or missing JWT and sensor-key configuration.
+
+Start the services from `wastepilot/`:
 
 ```bash
 docker compose up -d --build
 ```
 
-Backend berjalan di `http://localhost:8088`. Adminer (DB viewer) di `http://localhost:8888`.
+With the default Compose port mappings, the backend is at `http://localhost:8088`, MySQL is bound to `127.0.0.1:3307`, and Adminer is at `http://localhost:8888`.
 
-#### 3️⃣ Setup Frontend
+### 3. Configure and start the frontend
+
+In another terminal, from the repository root:
+
+```powershell
+cd frontend
+Copy-Item .env.example .env
+```
+
+On macOS/Linux, use `cp .env.example .env`. The example selects the Spring API provider and points to `http://localhost:8080`; when using the default Docker Compose setup, change `VITE_SPRING_API_BASE_URL` in `frontend/.env` to `http://localhost:8088`.
+
+Then install and run:
 
 ```bash
-cd frontend
-cp .env.example .env
-npm install
+npm ci
 npm run dev
 ```
 
-Frontend berjalan di `http://localhost:5173`.
+The Vite development server is normally available at `http://localhost:5173`. The example enables fallback to mock data for eligible reads if the backend is unavailable. Check the UI's fallback indicator; do not assume that a write performed while using mock data was persisted by the backend.
 
-#### 4️⃣ Setup Sensor Simulator (opsional, untuk demo IoT)
+### 4. Optional: run the sensor simulator
 
-```bash
-cd tools/sensor-simulator
-pip install -r requirements.txt
-python simulator.py --config config.json
-```
-
-#### 5️⃣ Seed Data untuk Demo
+Create an active batch in WastePilot, then configure the simulator's `config.json` with its batch ID and the Compose endpoint `http://localhost:8088/api/v1/sensors/ingest`. Install its Python dependency from `tools/sensor-simulator/`:
 
 ```bash
-# Gunakan mekanisme reset demo bawaan untuk kembali ke kondisi data yang konsisten
-# sebelum melakukan presentasi/demo langsung
+python -m pip install requests
 ```
 
----
+In PowerShell, provide the same shared key as `wastepilot/.env` in the simulator terminal:
 
-## 🚀 Penggunaan
-
-### Menjalankan Aplikasi
-
-```bash
-# Backend
-cd wastepilot && ./mvnw spring-boot:run
-
-# Frontend — development
-cd frontend && npm run dev
-
-# Frontend — production build
-npm run build
-
-# Test
-./mvnw test              # backend
-npm run test             # frontend unit
-npm run test:e2e         # frontend E2E (Playwright)
-
-# Linting
-npm run lint
+```powershell
+$env:SENSOR_INGEST_API_KEY = "<the configured shared key>"
+python simulator.py
 ```
 
-### User Guide
+The simulator key is a deployment-level prototype credential, not an individual sensor identity. The repository does not include an automatic demo-data seed or reset mechanism; create records through the application workflow.
 
-#### Untuk Operator Produksi
+## User workflows
 
-1. **Login** — Masuk dengan akun terdaftar; sistem menampilkan nama dan peran (OPERATOR) di top bar.
-2. **Start Batch** — Buka Operations, pilih Template, isi Output Units dan Estimated Waste, tekan Start Batch.
-3. **Log Material** — Catat pergerakan stok IN/OUT manual, atau otomatis lewat AI Vision Scan (upload invoice) maupun sensor.
-4. **Log Waste** — Catat limbah per batch dengan tujuan reuse/repair/dispose; auto-convert ke inventory jika reuse.
-5. **Close Batch** — Tinjau ringkasan otomatis di Batch Close Assistant (berbasis data riil sepenuhnya); isi alasan jika variance melebihi ambang.
-6. **Integrity Check** — Tinjau Activity Log dan Audit Trail sebelum serah terima shift.
+### Operator
 
-#### Untuk Supervisor
+1. Sign in with an Operator account.
+2. Open **Operations**, select a template, enter output units and estimated waste, and start a batch.
+3. Record inventory `IN`/`OUT` and waste entries. Material input can be entered manually, reviewed from an invoice scan, or sent through the sensor endpoint.
+4. Record each waste destination as reuse, repair, or disposal. Eligible reuse/repair entries can be recovered into inventory once.
+5. Review the batch-close summary and ask a Supervisor to finalize the batch.
+6. Review activity and audit history as needed during shift handover.
 
-1. **Mission Control** — Tinjau daftar tugas prioritas (red flag, anomali, rekomendasi baru) di Dashboard.
-2. **Resolve Anomaly & Red Flag** — Buka Insights, tandai anomali yang sudah ditangani.
-3. **Pattern Review & Cross-Validation** — Buka Integrity untuk meninjau sinyal pola mencurigakan atau selisih data manual vs sensor, disajikan netral, bukan tuduhan.
-4. **Koreksi Data** — Lakukan koreksi resmi pasca-close lewat endpoint khusus dengan alasan wajib, tercatat permanen di Audit Trail dengan nilai sebelum-sesudah.
-5. **Analytics & Export** — Tinjau tren mingguan/bulanan, ekspor laporan CSV/PDF untuk manajemen.
+### Supervisor
 
----
+1. Review dashboard priorities, insights, anomalies, and batch red flags.
+2. Review the close summary and finalize the batch. A reason is required when absolute variance exceeds 5%.
+3. Triage insight and anomaly statuses and review Pattern Review or Cross-Validation signals.
+4. Make a permitted post-close output-unit correction with a reason; changes are recorded in the audit trail.
+5. Review Analytics and Reports and export CSV or PDF.
 
-## 📚 API Documentation
+Red flags are review conditions on batches, not separate entities with an independent resolve endpoint.
 
-### Base URL
+## API overview
 
-```
-Production:  https://[domain-backend-publik]/api/v1
-Development: http://localhost:8088/api/v1
-```
+The API base path is `/api/v1`. Docker Compose exposes it locally at `http://localhost:8088/api/v1`. The direct Spring Boot default is port `8080`; no production backend URL is configured in this repository.
 
-### Endpoints
+The list below summarizes routes found in the current controllers. It is not a substitute for the request/response DTOs. The historical `docs/frontend-first-prep/02-api-contracts.md` can describe proposed or nonexistent routes; consult current controllers and DTOs for exact contracts.
 
-#### Authentication
+| Area | Routes | Access |
+| --- | --- | --- |
+| Authentication | `POST /auth/signup`, `/auth/register` (signup alias), `/auth/login`, `/auth/refresh`, `/auth/forgot-password`, `/auth/reset-password`; `GET /auth/me` | Signup/login/refresh/reset routes public; `/me` authenticated |
+| Dashboard | `GET /dashboard` | Authenticated |
+| Operations | `GET /operations`; `POST /operations/batches`, `/operations/inventory-logs`, `/operations/waste-logs`, `/operations/waste-logs/recover`; `GET /operations/batch-close/summary/{batchId}`, `/operations/floor-view` | Authenticated |
+| Batch close | `POST /operations/batch-close`; `PATCH /operations/batches/{batchId}/output-units` | Supervisor |
+| Sensor ingestion | `POST /sensors/ingest` | `X-Sensor-API-Key` shared key, not JWT |
+| Integrity | `GET /integrity/activity-logs`, `/audit-trail`, `/overview` | Authenticated |
+| Integrity review | `GET /integrity/audit-trail/verify`, `/pattern-review`, `/cross-validation` | Supervisor |
+| OCR and review signals | `POST /ai/ocr`; `GET /ai/insights`, `/ai/anomalies`; `PATCH /ai/insights/{id}/status`, `/ai/anomalies/{id}/status` | Reads/OCR authenticated; status changes Supervisor |
+| Materials | `GET/POST /materials`; `PUT/DELETE /materials/{id}` | Authenticated |
+| Templates | `GET/POST /templates`; `PUT/DELETE /templates/{id}` | Authenticated |
+| Analytics and reports | `GET /analytics`; `GET /reports?period=weekly\|monthly`; `GET /reports/export?format=csv\|pdf&period=...` | Authenticated |
+| Settings | `GET/PUT /settings` | Authenticated; role is not self-editable |
+| Operations endpoints | `GET /actuator/health`, `/actuator/info`, `/actuator/metrics`, `/actuator/prometheus` | Health is public; other listed actuator endpoints require authentication |
+| API documentation | `/v3/api-docs/**`, `/swagger-ui/**` | Public in the current security configuration |
 
-```http
-POST /auth/signup
-POST /auth/login
-POST /auth/refresh
-GET  /auth/me
-```
+Use a bearer access token for authenticated routes. The sensor endpoint instead requires the configured `X-Sensor-API-Key`. Some responses include structured error codes; validation and authorization failures should be handled using their returned HTTP status and error payload.
 
-#### Operations
-
-```http
-GET    /operations
-POST   /operations/batches
-POST   /operations/inventory-logs
-POST   /operations/waste-logs
-POST   /operations/waste-logs/recover
-GET    /operations/batch-close/summary/{batchId}
-POST   /operations/batch-close
-PATCH  /operations/batches/{batchId}/output-units   [SUPERVISOR]
-GET    /operations/floor-view
-```
-
-#### Sensors
-
-```http
-POST /sensors/ingest
-```
-
-#### Integrity
-
-```http
-GET /integrity/activity-logs
-GET /integrity/audit-trail
-GET /integrity/overview
-GET /integrity/pattern-review        [SUPERVISOR]
-GET /integrity/cross-validation      [SUPERVISOR]
-```
-
-#### Insights & Anomalies
-
-```http
-GET   /insights
-PATCH /insights/{id}/status
-GET   /anomalies
-PATCH /anomalies/{id}/status         [SUPERVISOR]
-```
-
-#### Materials & Templates
-
-```http
-GET/POST/PUT/DELETE /materials
-GET/POST/PUT/DELETE /templates
-```
-
-#### Analytics & Reports
-
-```http
-GET /analytics/*
-GET /reports/*
-GET /reports/export?format=csv|pdf
-```
-
-#### Ops
-
-```http
-GET /actuator/health
-GET /actuator/info
-GET /actuator/metrics
-```
-
-### Example Request
+Example login request:
 
 ```javascript
-// Login
-const response = await fetch('https://[domain-backend]/api/v1/auth/login', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
+const response = await fetch("http://localhost:8088/api/v1/auth/login", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
-    email: 'operator@wastepilot.id',
-    password: 'password123'
-  })
+    email: "<registered-user-email>",
+    password: "<account-password>",
+  }),
 });
 ```
 
-📖 Dokumentasi kontrak API lengkap tersedia di `docs/frontend-first-prep/02-api-contracts.md`.
+## Testing and CI
 
----
+### Run the checks locally
 
-## 🧪 Testing
-
-### Running Tests
+Backend tests use an in-memory H2 database. On macOS/Linux:
 
 ```bash
-# Backend — unit + integration (Testcontainers-backed)
-cd wastepilot && ./mvnw test
+cd wastepilot
+./mvnw -B -ntp test
+```
 
-# Frontend — unit tests
-cd frontend && npm run test
+On Windows, use the Maven wrapper batch file:
 
-# Frontend — E2E (Playwright)
+```powershell
+cd wastepilot
+.\mvnw.cmd -B -ntp test
+```
+
+Frontend commands, run from `frontend/`:
+
+```bash
+npm ci
+npm run lint
+npm run test
+npm run build
 npm run test:e2e
 ```
 
-### Cakupan Test
+The backend test profile uses Hibernate schema generation with Flyway disabled; passing those tests does not validate the MySQL Flyway migrations. The Testcontainers dependency is present, but the current backend test suite uses H2 and does not start Testcontainers.
 
-| Jenis | Cakupan | Status |
-| :---- | :------ | :----: |
-| **Backend Integration Test** | Auth, RBAC, Operations, Materials, Templates, Settings, Sensor Ingestion, Refresh Token, Pattern Review, Cross-Validation | ✅ Lulus |
-| **Backend Unit Test** | Variance/confidence calculation, boundary condition Pattern Review & Cross-Validation, edge case pembagian nol | ✅ Lulus |
-| **Frontend E2E (Playwright)** | `auth.spec.ts`, `core-shift-flow.spec.ts`, `rbac.spec.ts`, tiga alur dengan risiko tertinggi jika gagal saat demo | ✅ Stabil, dijalankan berulang sebelum submission |
-| **CI** | Backend dan frontend test dijalankan otomatis di setiap push/PR via `.github/workflows/ci.yml` | ✅ Aktif |
-| **Manual Rehearsal** | Alur demo end-to-end direhearsal berulang kali di lingkungan yang identik dengan presentasi final | ✅ Selesai |
+Playwright end-to-end tests cover authentication, the core shift flow, and RBAC. CI builds the E2E frontend with `VITE_INTERNAL_API_PROVIDER=mock`; these tests exercise the mock-backed UI and do not verify connection to a live backend or production services.
 
----
+### GitHub Actions
 
-## 🔐 Keamanan
+`.github/workflows/ci.yml` runs on pushes and pull requests targeting `main` or `master`. It runs backend tests, frontend lint/unit tests/build, and Playwright E2E. The E2E job runs after the backend and frontend jobs and uploads Playwright artifacts when it fails.
 
-- **JWT + Refresh Token** dengan TTL terkonfigurasi terpisah untuk access dan refresh token.
-- **RBAC diberlakukan nyata** di layer Spring Security, bukan sekadar label UI, diuji untuk kasus allowed dan forbidden.
-- **Startup Fail-Fast** — aplikasi menolak start di profile produksi jika `JWT_SECRET` masih default, mencegah deployment dengan kunci penandatanganan yang diketahui publik. Deployment produksi telah dikonfigurasi dengan secret asli, bukan nilai default.
-- **Rate limiting** pada endpoint autentikasi untuk mencegah brute force.
-- **Password hashing** dengan BCrypt.
-- **Validasi bounds** pada endpoint sensor ingestion untuk menolak data fisik yang tidak masuk akal.
-- **Actuator terbatas** — hanya `/health`, `/info`, `/metrics` yang diekspos, tidak ada surface actuator penuh yang berpotensi membocorkan detail internal.
+## Security and known limitations
 
----
+### Security controls in the repository
 
-## 📊 Observability & Reliability
+- JWT access and refresh tokens, with BCrypt password hashing.
+- Authentication rate limiting and temporary account lockout after repeated failed login attempts.
+- Backend Spring Security role checks for Supervisor-only operations.
+- Fail-fast validation of JWT and sensor credentials for Docker/production profiles.
+- File type and size validation for invoice images.
+- Sensor ingestion bounds validation plus a constant-time checked shared API key.
+- Health is public; other listed Actuator endpoints require authentication. Actual exposure still depends on runtime profile and deployment.
 
-- **Spring Boot Actuator + Micrometer** (Prometheus registry) untuk metrics produksi.
-- **Structured JSON logging** di profil produksi via Logstash Logback Encoder, logging human-readable dipertahankan untuk pengembangan lokal.
-- **CI otomatis** menjalankan seluruh test suite di setiap perubahan kode.
-- **Resilience pattern** — frontend selalu mencoba backend asli lebih dulu, fallback ke mock untuk pembacaan non-kritikal saja jika gagal sementara, dengan indikator visual eksplisit.
+### Known limitations
 
----
+- **No multi-tenant isolation.** The current application is a single logical tenant; users are not isolated by organization or factory.
+- **Password reset delivery is incomplete.** There is no email provider in the repository to deliver reset tokens.
+- **Notification preferences are not notifications.** Settings are stored, but no delivery channel is implemented.
+- **Token budget enforcement is not verified end-to-end.** A daily token-budget setting and usage records exist; enforcement should not be assumed.
+- **Shared sensor credential.** The prototype key does not provide per-device identity, rotation, or revocation.
+- **Audit-chain trust boundary.** The chain head and audit entries share a database, so a privileged database writer could rewrite both.
+- **Analytics and exports have known bounds.** Analytics circularity trend is limited to five completed batches. CSV export has placeholder trend columns and an approximate summary transaction count; PDF export includes a summary and highlights rather than charts.
+- **Backend migration coverage.** The H2 test profile does not execute Flyway migrations against MySQL.
+- **Demo data and images.** No built-in demo seed/reset is provided; checked-in screenshots may be stale and their displayed values are not live.
+- **Provider dependency.** Invoice OCR requires a working Gemini credential and service availability; OCR output still requires human review.
 
-## 🏆 Diferensiasi Kompetitif
+## Product direction
 
-| | Enterprise MES | EHS/Waste Compliance | **WastePilot** |
-| :-- | :------------- | :------------------- | :------------- |
-| Biaya & implementasi | Tinggi, butuh tim IT | Tinggi, kontrak tahunan | Rendah, self-served, onboarding hitungan menit |
-| Kesiapan IoT | Penuh sejak awal | Bervariasi | Bertahap, **terbukti via simulator kerja yang teruji end-to-end** |
-| Pertahanan integritas data | Bagian sistem besar | Untuk kepatuhan regulasi | **Empat lapis eksplisit, saling melengkapi, seluruhnya teruji** |
-| Transparansi AI | Bervariasi | Bervariasi | **Eksplisit membedakan AI/statistik/rule-based di level API response** |
-| Proses rekayasa | Tidak terlihat evaluator | Tidak terlihat evaluator | **Terdokumentasi terbuka, audit internal, temuan, perbaikan yang tercatat** |
+The current product scope is operational batch capture, Supervisor review, data-integrity signals, OCR-assisted invoice entry, and basic reporting. The following are future directions, not current capabilities:
 
----
+- Multi-tenant organization and factory isolation.
+- A pilot with physical sensor hardware beyond the local simulator.
+- Notification delivery and fully enforced AI token budgets.
+- More complete CSV/PDF reporting and formal compliance exports.
+- Validated CO₂ impact factors and quantitative CO₂e reporting.
+- ERP/MES integrations and forecasting.
 
-## 💼 Model Keberlanjutan Bisnis
+The possible SaaS pricing model and target-market assumptions have not been validated. This README does not make comparative cost, onboarding-time, or competitor claims.
 
-WastePilot dirancang untuk berkembang menjadi layanan SaaS multi-tenant dengan model harga berjenjang berdasarkan jumlah line produksi dan tingkat integrasi sensor yang digunakan. Fondasi RBAC yang sudah diberlakukan secara nyata (bukan kosmetik) menjadi basis teknis yang siap diperluas menuju isolasi data multi-tenant penuh pada fase pengembangan berikutnya. Target adopsi awal: pabrik tekstil/garmen skala menengah yang membutuhkan disiplin pencatatan waste yang terpercaya namun belum siap berinvestasi pada sistem MES enterprise.
+## Team and license
 
----
+| Name | Role | GitHub |
+| --- | --- | --- |
+| Harvlin Maximillian | Project Lead and Full Stack Developer | [harvlin](https://github.com/harvlin) |
+| Kledya Abigail Sinaga | UI/UX Designer | Profile link not provided |
+| Jessline Aglecia | Frontend Developer | Profile link not provided |
 
-## 🔬 Kualitas Rekayasa & Proses Pengembangan
-
-Sepanjang pengembangan, tim secara konsisten menerapkan proses **audit-perbaiki-verifikasi**: setiap klaim fitur diperiksa langsung terhadap kode, ditemukan celahnya jika ada, diperbaiki, dan diverifikasi ulang sebelum dianggap selesai. Proses ini menemukan dan memperbaiki beberapa masalah nyata sebelum sempat terlihat oleh evaluator, termasuk:
-
-- Kalkulasi yang awalnya berupa formula pendekatan, digantikan dengan agregasi data riil dari inventory log.
-- Komponen confidence score yang sempat di-hardcode, digantikan perhitungan nyata dari kondisi audit trail.
-- Sebuah workaround yang menyelundupkan data reason ke kolom lain, dimigrasikan penuh ke kolom khusus dengan strategi pembersihan data historis yang terdokumentasi.
-- Data chart analytics yang sempat mengandung nilai fabricated, dibersihkan menjadi hasil kosong yang jujur ketika data historis genuinely belum cukup.
-
-Dokumen ini secara sengaja mencatat proses tersebut secara terbuka sebagai bukti kematangan rekayasa, bukan sesuatu yang perlu disembunyikan dari evaluator.
-
----
-
-## 🗺️ Roadmap
-
-- Full multi-tenant SaaS architecture, membangun di atas fondasi RBAC yang sudah ada.
-- Pilot sensor fisik dengan pabrik mitra, melampaui simulator.
-- Perluasan cross-validation ke pasangan data lain (misalnya konsistensi antar-operator).
-- Format pelaporan kepatuhan lingkungan formal sesuai regulasi daerah.
-- Estimasi dampak CO2 kuantitatif setelah faktor konversi tervalidasi per jenis material.
-
----
-
-## 📄 Lisensi
-
-Proyek ini dilisensikan di bawah [MIT License](LICENSE), lihat file LICENSE untuk detail lebih lanjut.
-
----
+WastePilot is licensed under the [MIT License](LICENSE).
 
 <div align="center">
 
-**Made with ❤️ by WastePilot Team for ITECHNO CUP 2026**
+**Made by the WastePilot Team for ITECHNO CUP 2026**
 
 </div>
