@@ -13,5 +13,8 @@ public record SensorIngestRequest(
     @NotNull @DecimalMin("0.001") @DecimalMax("99999") BigDecimal quantity,
     @NotBlank String unit,
     @NotBlank String sensorType,
+    /** Per-device identifier. Optional for backwards compatibility; if provided, must match a
+     *  configured per-device key (wastepilot.sensor.device-keys.{deviceId}=key). */
+    String deviceId,
     Instant timestamp
 ) {}

@@ -8,6 +8,7 @@ import com.project.wastepilot.domain.enums.InventoryType;
 import com.project.wastepilot.repository.InventoryLogRepository;
 import com.project.wastepilot.service.OperationsService;
 import com.project.wastepilot.service.SensorService;
+import com.project.wastepilot.security.SensorApiKeyValidator;
 import java.math.RoundingMode;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
@@ -22,11 +23,18 @@ public class SensorServiceImpl implements SensorService {
 
     private final OperationsService operationsService;
     private final InventoryLogRepository inventoryLogRepository;
+    private final SensorApiKeyValidator sensorApiKeyValidator;
 
     @Override
     @Transactional
-    public InventoryLogResponse ingest(SensorIngestRequest request) {
+    public InventoryLogResponse ingest(String sensorApiKey, SensorIngestRequest request) {
+        sensorApiKeyValidator.validate(request.deviceId(), sensorApiKey);
         BatchEntity batch = operationsService.resolveRunningBatch(request.batchId());
+
+        String source = "sensor";
+        if (request.deviceId() != null && !request.deviceId().isBlank()) {
+            source = "sensor:" + request.deviceId().trim();
+        }
 
         InventoryLogEntity logEntity = new InventoryLogEntity();
         logEntity.setBatch(batch);
@@ -34,11 +42,12 @@ public class SensorServiceImpl implements SensorService {
         logEntity.setType(InventoryType.IN);
         logEntity.setQuantity(request.quantity().setScale(3, RoundingMode.HALF_UP));
         logEntity.setUnit(request.unit());
-        logEntity.setSource("sensor");
+        logEntity.setSource(source);
         logEntity.setTimestamp(request.timestamp() != null ? request.timestamp() : Instant.now());
 
         InventoryLogEntity saved = inventoryLogRepository.save(logEntity);
-        log.info("Ingested sensor data for batch {}: {} {}", batch.getId(), request.quantity(), request.unit());
+        log.info("Ingested sensor data for batch {} from device '{}': {} {}",
+                batch.getId(), request.deviceId(), request.quantity(), request.unit());
         
         return toInventoryLogResponse(saved);
     }

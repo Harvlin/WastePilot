@@ -6,11 +6,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.project.wastepilot.domain.dto.auth.SignupRequest;
 import com.project.wastepilot.domain.dto.sensor.SensorIngestRequest;
 import com.project.wastepilot.domain.entity.BatchEntity;
 import com.project.wastepilot.domain.enums.BatchStatus;
-import com.project.wastepilot.repository.AuthUserRepository;
 import com.project.wastepilot.repository.BatchRepository;
 import com.project.wastepilot.repository.InventoryLogRepository;
 import com.project.wastepilot.repository.WasteLogRepository;
@@ -26,7 +24,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -54,9 +51,6 @@ class SensorControllerIntegrationTest {
   @Autowired
   private InsightRepository insightRepository;
   
-  @Autowired
-  private AuthUserRepository authUserRepository;
-
   @BeforeEach
   void setUp() {
     anomalyRepository.deleteAll();
@@ -64,26 +58,13 @@ class SensorControllerIntegrationTest {
     wasteLogRepository.deleteAll();
     inventoryLogRepository.deleteAll();
     batchRepository.deleteAll();
-    authUserRepository.deleteAll();
-  }
-
-  private String signupAndGetToken() throws Exception {
-    SignupRequest signupRequest = new SignupRequest("Sensor Test", "sensor@wastepilot.dev", "superSecret123");
-    MvcResult signupResult = mockMvc.perform(post("/api/v1/auth/signup")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(signupRequest)))
-        .andExpect(status().isCreated())
-        .andReturn();
-
-    return objectMapper.readTree(signupResult.getResponse().getContentAsString()).get("accessToken").asText();
   }
 
   @Test
   void shouldIngestSensorData() throws Exception {
-    String token = signupAndGetToken();
-
     BatchEntity batch = new BatchEntity();
     batch.setTemplateName("Test Template");
+    batch.setPlannedInputKg(BigDecimal.ZERO);
     batch.setStartedAt(Instant.now());
     batch.setOutputUnits(BigDecimal.valueOf(100));
     batch.setWasteKg(BigDecimal.ZERO);
@@ -96,15 +77,35 @@ class SensorControllerIntegrationTest {
         BigDecimal.valueOf(50.5),
         "kg",
         "weight",
+        null,
         null
     );
 
     mockMvc.perform(post("/api/v1/sensors/ingest")
-            .header("Authorization", "Bearer " + token)
+            .header("X-Sensor-API-Key", "test-sensor-ingest-key")
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.source").value("sensor"))
         .andExpect(jsonPath("$.type").value("IN"));
+  }
+
+  @Test
+  void shouldRejectSensorIngestWithoutValidSensorKey() throws Exception {
+    SensorIngestRequest request = new SensorIngestRequest(
+        "not-used", "Cotton", BigDecimal.valueOf(1), "kg", "weight", null, null);
+
+    mockMvc.perform(post("/api/v1/sensors/ingest")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value("SENSOR_AUTHENTICATION_FAILED"));
+
+    mockMvc.perform(post("/api/v1/sensors/ingest")
+            .header("X-Sensor-API-Key", "incorrect")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value("SENSOR_AUTHENTICATION_FAILED"));
   }
 }

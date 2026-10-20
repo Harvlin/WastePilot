@@ -77,14 +77,19 @@ public class GeminiOcrService {
   }
 
   private String callGeminiApi(String requestBody) {
-    String url = String.format("%s/%s:generateContent?key=%s",
+    String url = String.format("%s/%s:generateContent",
         geminiProperties.baseUrl(),
-        geminiProperties.model(),
-        geminiProperties.apiKey());
+        geminiProperties.model());
+
+    // Generate a correlation ID for this call so we can trace issues in the log
+    // without logging the raw response body (which may contain PII from invoice scans).
+    String callId = UUID.randomUUID().toString().substring(0, 8);
+    log.debug("Gemini OCR call [{}] starting", callId);
 
     HttpRequest request = HttpRequest.newBuilder()
         .uri(URI.create(url))
         .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+        .header("x-goog-api-key", geminiProperties.apiKey())
         .timeout(TIMEOUT)
         .POST(HttpRequest.BodyPublishers.ofString(requestBody))
         .build();
@@ -93,22 +98,27 @@ public class GeminiOcrService {
       HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
       if (response.statusCode() == 400) {
-        log.error("Gemini API bad request: {}", response.body());
+        // Log only a safe excerpt — not the full body which may echo back image data.
+        log.error("Gemini API bad request [{}]: status=400, body_excerpt={}",
+            callId, redact(response.body(), 200));
         throw new ApiException(HttpStatus.BAD_REQUEST, "GEMINI_BAD_REQUEST",
             "Invalid request to Gemini API. Check image format.");
       }
       if (response.statusCode() == 401 || response.statusCode() == 403) {
-        log.error("Gemini API auth error: {}", response.body());
+        log.error("Gemini API auth error [{}]: status={}", callId, response.statusCode());
         throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "GEMINI_AUTH_ERROR",
             "AI service authentication failed. Check your API key.");
       }
       if (response.statusCode() != 200) {
-        log.error("Gemini API error {}: {}", response.statusCode(), response.body());
+        log.error("Gemini API error [{}]: status={}, body_excerpt={}",
+            callId, response.statusCode(), redact(response.body(), 200));
         throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "GEMINI_ERROR",
             "AI service returned an unexpected error.");
       }
 
-      return extractTextFromGeminiResponse(response.body());
+      String extracted = extractTextFromGeminiResponse(response.body());
+      log.debug("Gemini OCR call [{}] completed: {} chars extracted", callId, extracted.length());
+      return extracted;
 
     } catch (ApiException e) {
       throw e;
@@ -117,7 +127,7 @@ public class GeminiOcrService {
       throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "GEMINI_TIMEOUT",
           "Request to AI service was interrupted.");
     } catch (IOException e) {
-      log.error("Gemini API IO error", e);
+      log.error("Gemini API IO error [{}]", callId, e);
       throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "GEMINI_UNAVAILABLE",
           "AI service is currently unavailable.");
     }
@@ -161,7 +171,8 @@ public class GeminiOcrService {
       JsonNode root = objectMapper.readTree(rawResponse);
       JsonNode candidates = root.path("candidates");
       if (!candidates.isArray() || candidates.isEmpty()) {
-        log.warn("Gemini returned no candidates: {}", rawResponse);
+        // Do NOT log rawResponse — it may contain invoice PII
+        log.warn("Gemini returned no candidates (response omitted to avoid PII leakage)");
         return "[]";
       }
       String text = candidates.get(0)
@@ -172,7 +183,8 @@ public class GeminiOcrService {
           .asText("[]");
       return text.isBlank() ? "[]" : text;
     } catch (Exception e) {
-      log.error("Failed to parse Gemini response structure: {}", rawResponse, e);
+      // Do NOT log rawResponse — it may contain invoice PII
+      log.error("Failed to parse Gemini response structure (raw body omitted to avoid PII leakage)", e);
       return "[]";
     }
   }
@@ -187,7 +199,8 @@ public class GeminiOcrService {
 
       JsonNode array = objectMapper.readTree(cleaned);
       if (!array.isArray()) {
-        log.warn("Gemini OCR response is not an array: {}", cleaned);
+        // Do not log cleaned — it is the extracted text from the invoice image
+        log.warn("Gemini OCR response is not a JSON array (content omitted to avoid PII leakage)");
         return List.of();
       }
 
@@ -206,7 +219,8 @@ public class GeminiOcrService {
       }
       return result;
     } catch (Exception e) {
-      log.error("Failed to parse Gemini OCR JSON: {}", jsonText, e);
+      // Do not log jsonText — it is the extracted text from the invoice image
+      log.error("Failed to parse Gemini OCR JSON (content omitted to avoid PII leakage)", e);
       return List.of();
     }
   }
@@ -244,5 +258,16 @@ public class GeminiOcrService {
       case "image/webp" -> "image/webp";
       default -> "image/jpeg";
     };
+  }
+
+  /**
+   * Returns a safe, truncated excerpt of a response body for logging.
+   * Never log the full body — it may contain PII extracted from invoice images.
+   */
+  private String redact(String body, int maxChars) {
+    if (body == null) return "<null>";
+    String trimmed = body.strip();
+    if (trimmed.length() <= maxChars) return trimmed;
+    return trimmed.substring(0, maxChars) + "...[truncated, " + trimmed.length() + " chars total]";
   }
 }

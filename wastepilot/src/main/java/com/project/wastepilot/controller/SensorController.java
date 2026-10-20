@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -21,7 +22,10 @@ public class SensorController {
 
     @PostMapping("/ingest")
     @ResponseStatus(HttpStatus.CREATED)
-    public InventoryLogResponse ingest(@Valid @RequestBody SensorIngestRequest request) {
-        return sensorService.ingest(request);
+    public InventoryLogResponse ingest(
+            @RequestHeader(value = "X-Sensor-API-Key", required = false) String sensorApiKey,
+            @Valid @RequestBody SensorIngestRequest request
+    ) {
+        return sensorService.ingest(sensorApiKey, request);
     }
 }
