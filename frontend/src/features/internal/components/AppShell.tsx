@@ -1,7 +1,7 @@
 import { ArrowLeft, Menu, Search, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { MouseEvent as ReactMouseEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation, useMatch, useNavigate } from "react-router-dom";
 import { internalNav } from "@/features/internal/components/navigation";
 import { resolveSearchDestination } from "@/features/internal/components/search-index";
 import { useAuth } from "@/features/auth/use-auth";
@@ -42,10 +42,62 @@ const scheduleGlobalUnlock = () => {
   window.setTimeout(unlock, 120);
 };
 
-const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `group relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-body transition-colors ${
-    isActive ? "text-white" : "text-secondary-foreground hover:bg-muted hover:text-foreground"
-  }`;
+/** Standalone nav item — uses useMatch() as the single source of truth for all active-state
+ * visual indicators: className (text colour) and the AnimatePresence background pill.
+ *
+ * Key design decisions:
+ *  1. useMatch() rather than NavLink's className/style function props — in jsdom (test env) the
+ *     function props receive isActive:false while aria-current="page" is set correctly, making
+ *     function-prop-based assertions unreliable. useMatch() is consistent across all environments.
+ *  2. text-brand-foreground (not text-white) — the CSS legacy-remap rule in index.css only targets
+ *     .app-shell-page-content descendants; the sidebar never enters that scope, so using the brand
+ *     token directly is safe and correct.
+ *  3. AnimatePresence without layoutId — the sidebar <aside> has overflow-hidden which clips
+ *     cross-sibling shared-layout animations. Per-item enter/exit animations work correctly.
+ *  4. Background colour via inline style — bypasses Tailwind's alpha-value template and any
+ *     remaining cascade specificity concerns on the motion span itself.
+ */
+const NavItem = ({
+  to,
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  to: string;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  onClick?: () => void;
+}) => {
+  const isActive = Boolean(useMatch({ path: to, end: true }));
+  return (
+    <NavLink
+      to={to}
+      onClick={onClick}
+      className={`group relative isolate flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-body transition-colors ${
+        isActive
+          ? "text-brand-foreground"
+          : "text-secondary-foreground hover:bg-muted hover:text-foreground"
+      }`}
+    >
+      <AnimatePresence>
+        {isActive && (
+          <motion.span
+            key="active-bg"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            className="absolute inset-0 -z-10 rounded-md"
+            style={{ backgroundColor: "hsl(var(--brand))" }}
+          />
+        )}
+      </AnimatePresence>
+      <Icon className="relative z-10 h-4 w-4 shrink-0" />
+      <span className="relative z-10">{label}</span>
+    </NavLink>
+  );
+};
+
 
 const SidebarContent = ({ closeMobile }: { closeMobile?: () => void }) => {
   return (
@@ -53,7 +105,7 @@ const SidebarContent = ({ closeMobile }: { closeMobile?: () => void }) => {
       <div className="flex items-center justify-between border-b border-border px-4 py-5">
         <Link to="/" className="flex min-w-0 items-center hover:opacity-80 transition-opacity">
           <img
-            src="/logoDevSpeak.png"
+            src="/logo-wordmark-dark.png"
             alt="WastePilot"
             className="h-7 w-auto max-w-full object-contain"
           />
@@ -78,28 +130,15 @@ const SidebarContent = ({ closeMobile }: { closeMobile?: () => void }) => {
         <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
           Workspace
         </p>
-        {internalNav.map((item) => {
-          const Icon = item.icon;
-          return (
-            <NavLink key={item.to} to={item.to} className={navLinkClass} onClick={closeMobile}>
-              {({ isActive }) => (
-                <>
-                  {isActive && (
-                    <motion.span
-                      layoutId="internal-nav-active"
-                      className="absolute inset-0 rounded-md bg-brand"
-                      transition={{ duration: 0.16, ease: "easeOut" }}
-                    />
-                  )}
-                  <Icon
-                    className="relative z-10 h-4 w-4 shrink-0"
-                  />
-                  <span className="relative z-10">{item.label}</span>
-                </>
-              )}
-            </NavLink>
-          );
-        })}
+        {internalNav.map((item) => (
+          <NavItem
+            key={item.to}
+            to={item.to}
+            icon={item.icon}
+            label={item.label}
+            onClick={closeMobile}
+          />
+        ))}
       </nav>
 
       <div className="border-t border-border p-4">
