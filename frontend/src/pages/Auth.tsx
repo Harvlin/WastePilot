@@ -121,7 +121,7 @@ const Auth = () => {
             className="flex justify-center mb-8"
           >
             <img
-              src="/logoDevSpeak.png"
+              src="/logo-wordmark-dark.png"
               alt="WastePilot"
               className="h-12 w-auto object-contain"
             />
