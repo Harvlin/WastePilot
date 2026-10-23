@@ -33,7 +33,7 @@ const AppRouteFallback = () => (
 );
 
 const App = () => {
-  const [showBootLoading, setShowBootLoading] = useState(true);
+  const [showBootLoading, setShowBootLoading] = useState(() => window.location.pathname !== "/");
   const [bootProgress, setBootProgress] = useState(0);
 
   useEffect(() => {
@@ -43,7 +43,7 @@ const App = () => {
 
     let animationFrameId = 0;
     const start = performance.now();
-    const durationMs = 1400;
+    const durationMs = 800;
 
     const tick = (time: number) => {
       const ratio = Math.min((time - start) / durationMs, 1);

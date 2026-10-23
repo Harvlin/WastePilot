@@ -79,18 +79,6 @@ export const searchDestinations: SearchDestination[] = [
     keywords: ["features", "feature", "services", "service", "capabilities"],
   },
   {
-    label: "Stats Section",
-    to: "/#stats",
-    kind: "landing",
-    keywords: ["stats", "numbers", "kpi", "performance"],
-  },
-  {
-    label: "FAQ Section",
-    to: "/#faq",
-    kind: "landing",
-    keywords: ["faq", "questions", "help", "support"],
-  },
-  {
     label: "Get Started Section",
     to: "/#get-started",
     kind: "landing",
