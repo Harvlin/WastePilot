@@ -475,6 +475,8 @@ Playwright end-to-end tests cover authentication, the core shift flow, and RBAC.
 - **Backend migration coverage.** The H2 test profile does not execute Flyway migrations against MySQL.
 - **Demo data and images.** No built-in demo seed/reset is provided; checked-in screenshots may be stale and their displayed values are not live.
 - **Provider dependency.** Invoice OCR requires a working Gemini credential and service availability; OCR output still requires human review.
+- **Railway database SSL mode.** Railway's managed MySQL uses a self-signed certificate not present in the JVM's default trust store. `VERIFY_CA` and `VERIFY_IDENTITY` cannot be used without extracting and bundling Railway's CA certificate manually, which Railway does not expose for standard (non-HA) MySQL. The correct setting for same-project internal networking is `DB_SSL_MODE=DISABLED`; traffic stays within Railway's private virtual network. `SecurityStartupValidator` does not and cannot check SSL mode, so a misconfigured value will only fail at runtime when Flyway or HikariCP first attempts a connection. See `.env.example` for the full decision tree.
+- **No pre-deploy SSL validation gap.** CI connects to a local MySQL container with `sslMode=DISABLED` and cannot test against Railway's actual managed database or detect TLS certificate chain issues before deployment. A failed SSL handshake will only appear in Railway's deploy logs, not in CI.
 
 ## Product direction
 
