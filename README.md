@@ -10,10 +10,6 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/Harvlin/WastePilot/ci.yml?style=for-the-badge&label=CI)](https://github.com/Harvlin/WastePilot/actions)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 
-**ITECHNO CUP 2026 — Web Development | SDG 9: Industry, Innovation and Infrastructure**
-
-**WastePilot Team**
-
 </div>
 
 ---
@@ -48,6 +44,8 @@ The primary shift workflow is:
 
 The application is designed for small and mid-size manufacturers, with textile and garment production as an initial target context. It is an operational record-keeping and review tool; its indicators depend on the completeness and accuracy of the data entered. Repository code does not establish that WastePilot has been validated in a production factory, nor does it guarantee reductions in waste or environmental impact.
 
+A public-facing landing page (`/`) serves as the marketing entry point and is separate from the authenticated internal application. The internal app routes begin at `/app` and require a valid JWT.
+
 For requirement-level behavior and additional implementation detail, see the [Product Requirements Document](docs/PRD.md).
 
 ### Product goals
@@ -72,12 +70,12 @@ For requirement-level behavior and additional implementation detail, see the [Pr
 | Insights and anomalies | Deterministic rules and statistical checks generate review signals. They are not proof of misconduct and are not presented as model-generated AI output. |
 | Integrity | Activity logs, audit trail, integrity overview, anomaly review, pattern review, manual/OCR-versus-sensor cross-validation, and audit hash-chain verification. Some review actions are Supervisor-only. |
 | Reports | Weekly or monthly summaries with CSV and PDF export. Exported content has the limitations described under [Reports and exports](#reports-and-exports). |
-| Sensor prototype | An authenticated ingestion endpoint and a Python simulator for testing request shape. This does not certify or validate physical sensor hardware. |
+| Sensor prototype | An authenticated ingestion endpoint and a Python simulator for testing request shape. Supports a shared global key and optional per-device keys. This does not certify or validate physical sensor hardware. |
 | Settings | Company, timezone, notification preferences, and token-budget settings. Notification delivery and end-to-end token-budget enforcement are not implemented. |
 
 ## Roles and access
 
-The application uses two authenticated roles: `OPERATOR` and `SUPERVISOR`. Newly registered users default to `OPERATOR`; the self-service settings API does not allow users to change their role.
+The application uses two authenticated roles: `OPERATOR` and `SUPERVISOR`. Newly registered users default to `OPERATOR`; the self-service settings API does not allow users to change their own role. Roles are stored in and read from `auth_users.role`; the `user_settings` table does not contain role information.
 
 | Capability | Operator | Supervisor |
 | --- | :---: | :---: |
@@ -94,7 +92,7 @@ The application uses two authenticated roles: `OPERATOR` and `SUPERVISOR`. Newly
 | Verify the audit hash chain | No | Yes |
 | Read or update personal settings | Yes | Yes |
 
-These restrictions are enforced by backend authorization, not only by hiding UI controls. The sensor endpoint uses a separate shared API key rather than either user role or a JWT.
+These restrictions are enforced by backend authorization, not only by hiding UI controls. The sensor endpoint uses a separate API key credential rather than either user role or a JWT.
 
 ## Metrics and integrity rules
 
@@ -234,14 +232,17 @@ The following images are checked-in snapshots, not evidence of live data. They m
 ## Architecture and data model
 
 ```text
-React + TypeScript frontend
+Public landing page (/)
+       │ navigation
+       ▼
+React + TypeScript frontend (/app/*)
        │ REST API / JWT
        ▼
-Spring Boot API ─────── MySQL 8
+Spring Boot API ─────── MySQL 8.4 (runtime) / 9.7 (CI)
        ├─────────────── Google Gemini (invoice OCR)
        └─────────────── Actuator / Prometheus endpoints
 
-Python sensor simulator ── shared-key HTTP request ──► sensor ingestion endpoint
+Python sensor simulator ── shared-key or per-device-key HTTP request ──► sensor ingestion endpoint
 ```
 
 The backend follows a controller → service → repository structure, with JPA entities, DTOs, MapStruct mappers, Spring Security, and Flyway-managed schema migrations.
@@ -250,26 +251,44 @@ The backend follows a controller → service → repository structure, with JPA 
 
 | Entity/table | Purpose |
 | --- | --- |
-| `auth_users`, `password_reset_tokens`, `user_settings` | User credentials, reset tokens, profile and role settings. |
+| `auth_users` | User credentials and role (`OPERATOR` or `SUPERVISOR`). Role is the authoritative source; `user_settings` does not store role information. |
+| `password_reset_tokens` | Password reset flow tokens. |
+| `user_settings` | Company, timezone, notification preferences, and token-budget settings. |
 | `materials`, `templates`, `template_lines` | Material catalogue, reusable production recipes, and planned material lines. |
-| `batches` | Production runs, status, output, and close information. |
+| `batches` | Production runs, status, output, close information, and snapshotted planned input. |
 | `inventory_logs`, `waste_logs` | Material input/output records, waste destinations, and recovery state. |
-| `activity_logs`, `audit_trail` | Operational activity and reasoned field changes. |
+| `activity_logs`, `audit_trail`, `audit_chain_head` | Operational activity, reasoned field changes, and HMAC-keyed chain head for tamper-evidence. |
 | `red_flags`, `insights`, `anomalies` | Review signals, deterministic recommendations, and statistical alerts. |
 | `ai_usage_logs`, `ai_job_runs` | AI usage and background-job records. |
 
-Database migrations currently run from V1 to V10: core schema; users; settings/timezone; waste recovery metadata; password reset tokens; anomaly and insight rules; role enum; audit reason; audit hash chain; and configurable anomaly cold-start threshold.
+Database migrations run from V1 to V13:
 
-Recovery metadata is persisted with the waste record. Audit entries are linked by hashes and checked against a chain head stored in the same database; this is tamper evidence, not protection against a privileged database administrator rewriting both the entries and the head.
+| Migration | Description |
+| --- | --- |
+| V1 | Core schema (batches, inventory, waste, materials, templates, activity logs) |
+| V2 | `auth_users` table |
+| V3 | `user_settings` timezone column |
+| V4 | Waste recovery metadata columns |
+| V5 | Password reset tokens |
+| V6 | Anomaly and insight rule tables |
+| V7 | RBAC role enum on `user_settings` (superseded by V13) |
+| V8 | Audit trail `reason` column |
+| V9 | Audit trail HMAC chain columns (`chain_sequence`, `previous_hash`, `entry_hash`) and `audit_chain_head` table |
+| V10 | Configurable anomaly cold-start threshold |
+| V11 | Performance indexes on hot query paths (batch status/started_at, waste and inventory log timestamps, type/batch composite) |
+| V12 | Snapshot `planned_input_kg` onto `batches` at close time |
+| V13 | Move `role` from `user_settings` to `auth_users`; drop `user_settings.role` |
+
+Audit entries are linked by HMAC-SHA256 hashes using a key held outside the database (`AUDIT_CHAIN_HMAC_KEY`). A chain head row in `audit_chain_head` tracks the current tail. The service also performs a scheduled chain verification every four hours and logs the result. This is tamper evidence, not protection against a privileged database administrator rewriting both entries and the chain head simultaneously.
 
 ## Technology stack
 
 | Layer | Technologies |
 | --- | --- |
-| Frontend | React 18.3, TypeScript 5.8, Vite 5.4, Tailwind CSS 3.4, shadcn/ui/Radix, TanStack Query, React Router |
-| Frontend quality | Vitest, Testing Library, ESLint, Playwright |
+| Frontend | React 18.3, TypeScript 5.8, Vite 5.4, Tailwind CSS 3.4, shadcn/ui/Radix, TanStack Query, React Router, Framer Motion |
+| Frontend quality | Vitest, Testing Library, ESLint, TypeScript compiler (`tsc --noEmit`), Playwright |
 | Backend | Java 21, Spring Boot 3.3.6, Spring Security, OAuth2 Resource Server/JWT, Spring Data JPA, MapStruct |
-| Persistence | MySQL 8.4 at runtime, Flyway migrations, H2 for the backend test profile |
+| Persistence | MySQL 8.4 at runtime, MySQL 9.7 in CI, Flyway migrations (V1–V13), H2 for the backend test profile |
 | Integrations | Google Gemini Vision for OCR; Python sensor simulator |
 | Reports and observability | OpenPDF, Spring Boot Actuator, Micrometer Prometheus registry, Logback JSON encoder |
 | Local infrastructure and CI | Docker Compose, GitHub Actions |
@@ -305,11 +324,12 @@ On macOS/Linux, use `cp .env.example .env` instead. Edit `wastepilot/.env` and r
 ```env
 DB_PASSWORD=<strong application database password>
 DB_ROOT_PASSWORD=<strong MySQL root password>
-JWT_SECRET=<strong random secret>
+JWT_SECRET=<openssl rand -base64 32>
+AUDIT_CHAIN_HMAC_KEY=<openssl rand -hex 32>
 SENSOR_INGEST_API_KEY=<strong shared prototype key>
 ```
 
-`GEMINI_API_KEY` is needed for live invoice OCR, but not for the rest of the application. Do not commit `.env` or share credentials. Docker/production profiles reject unsafe or missing JWT and sensor-key configuration.
+`GEMINI_API_KEY` is needed for live invoice OCR, but not for the rest of the application. Do not commit `.env` or share credentials. Docker/production profiles check JWT secret, audit HMAC key, and sensor key on startup and refuse to start if any are missing or set to development defaults. See `wastepilot/.env.example` for the full required-variable checklist.
 
 Start the services from `wastepilot/`:
 
@@ -354,7 +374,7 @@ $env:SENSOR_INGEST_API_KEY = "<the configured shared key>"
 python simulator.py
 ```
 
-The simulator key is a deployment-level prototype credential, not an individual sensor identity. The repository does not include an automatic demo-data seed or reset mechanism; create records through the application workflow.
+The simulator uses the shared global key. Per-device keys can be configured separately in `application.properties` under `wastepilot.sensor.device-keys.{deviceId}`. The repository does not include an automatic demo-data seed or reset mechanism; create records through the application workflow.
 
 ## User workflows
 
@@ -389,7 +409,7 @@ The list below summarizes routes found in the current controllers. It is not a s
 | Dashboard | `GET /dashboard` | Authenticated |
 | Operations | `GET /operations`; `POST /operations/batches`, `/operations/inventory-logs`, `/operations/waste-logs`, `/operations/waste-logs/recover`; `GET /operations/batch-close/summary/{batchId}`, `/operations/floor-view` | Authenticated |
 | Batch close | `POST /operations/batch-close`; `PATCH /operations/batches/{batchId}/output-units` | Supervisor |
-| Sensor ingestion | `POST /sensors/ingest` | `X-Sensor-API-Key` shared key, not JWT |
+| Sensor ingestion | `POST /sensors/ingest` | `X-Sensor-API-Key` (shared global key or per-device key), not JWT |
 | Integrity | `GET /integrity/activity-logs`, `/audit-trail`, `/overview` | Authenticated |
 | Integrity review | `GET /integrity/audit-trail/verify`, `/pattern-review`, `/cross-validation` | Supervisor |
 | OCR and review signals | `POST /ai/ocr`; `GET /ai/insights`, `/ai/anomalies`; `PATCH /ai/insights/{id}/status`, `/ai/anomalies/{id}/status` | Reads/OCR authenticated; status changes Supervisor |
@@ -397,7 +417,7 @@ The list below summarizes routes found in the current controllers. It is not a s
 | Templates | `GET/POST /templates`; `PUT/DELETE /templates/{id}` | Authenticated |
 | Analytics and reports | `GET /analytics`; `GET /reports?period=weekly\|monthly`; `GET /reports/export?format=csv\|pdf&period=...` | Authenticated |
 | Settings | `GET/PUT /settings` | Authenticated; role is not self-editable |
-| Operations endpoints | `GET /actuator/health`, `/actuator/info`, `/actuator/metrics`, `/actuator/prometheus` | Health is public; other listed actuator endpoints require authentication |
+| Actuator | `GET /actuator/health`, `/actuator/info`, `/actuator/metrics`, `/actuator/prometheus` | Health is public; other listed actuator endpoints require authentication |
 | API documentation | `/v3/api-docs/**`, `/swagger-ui/**` | Public in the current security configuration |
 
 Use a bearer access token for authenticated routes. The sensor endpoint instead requires the configured `X-Sensor-API-Key`. Some responses include structured error codes; validation and authorization failures should be handled using their returned HTTP status and error payload.
@@ -438,6 +458,7 @@ Frontend commands, run from `frontend/`:
 ```bash
 npm ci
 npm run lint
+npx tsc --noEmit -p tsconfig.app.json
 npm run test
 npm run build
 npm run test:e2e
@@ -445,11 +466,33 @@ npm run test:e2e
 
 The backend test profile uses Hibernate schema generation with Flyway disabled; passing those tests does not validate the MySQL Flyway migrations. The Testcontainers dependency is present, but the current backend test suite uses H2 and does not start Testcontainers.
 
-Playwright end-to-end tests cover authentication, the core shift flow, and RBAC. CI builds the E2E frontend with `VITE_INTERNAL_API_PROVIDER=mock`; these tests exercise the mock-backed UI and do not verify connection to a live backend or production services.
+Playwright end-to-end tests cover authentication, the core shift flow, and RBAC. The local `test:e2e` command runs against the mock API provider by default unless the frontend is built with `VITE_INTERNAL_API_PROVIDER=spring`.
 
 ### GitHub Actions
 
-`.github/workflows/ci.yml` runs on pushes and pull requests targeting `main` or `master`. It runs backend tests, frontend lint/unit tests/build, and Playwright E2E. The E2E job runs after the backend and frontend jobs and uploads Playwright artifacts when it fails.
+`.github/workflows/ci.yml` runs on pushes and pull requests targeting `main` or `master`. It has three jobs:
+
+**backend-test** (Java 21 / Maven):
+- Starts a MySQL 9.7 service container.
+- Runs `./mvnw -B -ntp test` against the H2 profile.
+- Verifies the backend Docker image builds (`docker build`).
+- Uploads Surefire reports on failure.
+
+**frontend-test** (Node 20 / npm):
+- Runs ESLint (`npm run lint`).
+- Runs TypeScript type check (`tsc --noEmit -p tsconfig.app.json`).
+- Runs Vitest unit tests (`npm run test`).
+- Validates the production bundle builds (`npm run build`).
+
+**e2e** (Playwright, runs after both above jobs pass):
+- Starts a MySQL 9.7 service container.
+- Builds the backend JAR and starts it against MySQL with real credentials (not a mock).
+- Seeds a Supervisor account directly via SQL (`UPDATE auth_users SET role='SUPERVISOR'`).
+- Builds the frontend with `VITE_INTERNAL_API_PROVIDER=spring` pointing at the live backend.
+- Runs Playwright tests against the Spring-backed UI.
+- Uploads Playwright artifacts on failure.
+
+The E2E job exercises a real HTTP request path from browser to Spring backend to MySQL; it does not use mock data.
 
 ## Security and known limitations
 
@@ -457,10 +500,11 @@ Playwright end-to-end tests cover authentication, the core shift flow, and RBAC.
 
 - JWT access and refresh tokens, with BCrypt password hashing.
 - Authentication rate limiting and temporary account lockout after repeated failed login attempts.
-- Backend Spring Security role checks for Supervisor-only operations.
-- Fail-fast validation of JWT and sensor credentials for Docker/production profiles.
+- Backend Spring Security role checks for Supervisor-only operations. Role authority is read from `auth_users.role`.
+- Centralised fail-fast startup validation: `SecurityStartupValidator` checks `JWT_SECRET`, `AUDIT_CHAIN_HMAC_KEY`, and `SENSOR_INGEST_API_KEY` together and reports all missing secrets in a single error message before the application accepts traffic.
+- HMAC-SHA256 audit chain using an external key (`AUDIT_CHAIN_HMAC_KEY`) stored outside the database. The chain is verified on demand (Supervisor-only) and automatically every four hours.
 - File type and size validation for invoice images.
-- Sensor ingestion bounds validation plus a constant-time checked shared API key.
+- Sensor ingestion bounds validation. Key lookup is time-constant (MessageDigest.isEqual) to prevent timing attacks.
 - Health is public; other listed Actuator endpoints require authentication. Actual exposure still depends on runtime profile and deployment.
 
 ### Known limitations
@@ -469,7 +513,7 @@ Playwright end-to-end tests cover authentication, the core shift flow, and RBAC.
 - **Password reset delivery is incomplete.** There is no email provider in the repository to deliver reset tokens.
 - **Notification preferences are not notifications.** Settings are stored, but no delivery channel is implemented.
 - **Token budget enforcement is not verified end-to-end.** A daily token-budget setting and usage records exist; enforcement should not be assumed.
-- **Shared sensor credential.** The prototype key does not provide per-device identity, rotation, or revocation.
+- **Shared sensor credential.** The global sensor key does not provide per-device identity, rotation, or revocation. Per-device keys can be configured via `wastepilot.sensor.device-keys.{deviceId}` properties, but this is a configuration-only mechanism with no key management UI or rotation workflow.
 - **Audit-chain trust boundary.** The chain head and audit entries share a database, so a privileged database writer could rewrite both.
 - **Analytics and exports have known bounds.** Analytics circularity trend is limited to five completed batches. CSV export has placeholder trend columns and an approximate summary transaction count; PDF export includes a summary and highlights rather than charts.
 - **Backend migration coverage.** The H2 test profile does not execute Flyway migrations against MySQL.
@@ -500,9 +544,3 @@ The possible SaaS pricing model and target-market assumptions have not been vali
 | Jessline Aglecia | Frontend Developer | Profile link not provided |
 
 WastePilot is licensed under the [MIT License](LICENSE).
-
-<div align="center">
-
-**Made by the WastePilot Team for ITECHNO CUP 2026**
-
-</div>
