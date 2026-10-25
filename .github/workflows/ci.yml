@@ -40,7 +40,7 @@ jobs:
       - name: Build and run tests
         working-directory: wastepilot
         env:
-          WASTEPILOT_MYSQL_TEST_URL: "jdbc:mysql://127.0.0.1:3306/wastepilot?serverTimezone=UTC&sslMode=DISABLED"
+          WASTEPILOT_MYSQL_TEST_URL: "jdbc:mysql://127.0.0.1:3306/wastepilot?serverTimezone=UTC&sslMode=DISABLED&allowPublicKeyRetrieval=true"
           WASTEPILOT_MYSQL_TEST_USER: wastepilot
           WASTEPILOT_MYSQL_TEST_PASSWORD: wastepilot-test-password
         run: |
