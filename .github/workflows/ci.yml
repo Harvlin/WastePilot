@@ -40,7 +40,7 @@ jobs:
       - name: Build and run tests
         working-directory: wastepilot
         env:
-          WASTEPILOT_MYSQL_TEST_URL: "jdbc:mysql://127.0.0.1:3306/wastepilot?serverTimezone=UTC&sslMode=DISABLED"
+          WASTEPILOT_MYSQL_TEST_URL: "jdbc:mysql://127.0.0.1:3306/wastepilot?serverTimezone=UTC&sslMode=DISABLED&allowPublicKeyRetrieval=true"
           WASTEPILOT_MYSQL_TEST_USER: wastepilot
           WASTEPILOT_MYSQL_TEST_PASSWORD: wastepilot-test-password
         run: |
@@ -149,11 +149,15 @@ jobs:
           DB_USER: wastepilot
           DB_PASSWORD: wastepilot-test-password
           DB_SSL_MODE: DISABLED
+          SPRING_DATASOURCE_URL: "jdbc:mysql://127.0.0.1:3306/wastepilot?serverTimezone=UTC&sslMode=DISABLED&allowPublicKeyRetrieval=true"
           CORS_ALLOWED_ORIGIN_0: http://127.0.0.1:4173
           JWT_SECRET: e2e-test-jwt-secret-that-is-at-least-256-bits-long-0001
           GEMINI_API_KEY: e2e-test-key
           GEMINI_MODEL: gemini-1.5-flash
           AUDIT_CHAIN_HMAC_KEY: e2e-test-audit-hmac-key-that-is-long-enough
+          # CI-ONLY placeholder. Never use this value in Railway or any real environment;
+          # it is not a credential and exists only so the E2E backend passes startup validation.
+          SENSOR_INGEST_API_KEY: ci-e2e-placeholder-not-a-real-key
         run: |
           nohup java -jar wastepilot/target/wastepilot-0.0.1-SNAPSHOT.jar > /tmp/wastepilot-backend.log 2>&1 &
           for attempt in {1..60}; do
