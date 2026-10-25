@@ -21,16 +21,20 @@ const chartConfig = {
   reused: { label: "Reused (kg)", color: chartPalette.tertiary },
 };
 
-function describeInsightStatus(status: InsightStatus): { label: string; tone: string } {
-  switch (status) {
+function describeInsightStatus(status: InsightStatus | string): { label: string; tone: string } {
+  const normalized = typeof status === "string" ? status.toLowerCase() : status;
+  switch (normalized) {
     case InsightStatus.New:
+    case "new":
       return { label: "New", tone: "bg-sky-100 text-sky-800" };
     case InsightStatus.Applied:
+    case "applied":
       return { label: "Applied", tone: "bg-emerald-100 text-emerald-800" };
     case InsightStatus.Ignored:
+    case "ignored":
       return { label: "Ignored", tone: "border border-border text-muted-foreground" };
     default:
-      throw new Error(`Unsupported insight status: ${status satisfies never}`);
+      return { label: String(status), tone: "border border-border text-muted-foreground" };
   }
 }
 

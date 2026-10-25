@@ -148,7 +148,7 @@ public class DashboardServiceImpl implements DashboardService {
         entity.getTitle(),
         entity.getContent(),
         entity.getImpactCategory(),
-        entity.getStatus().name(),
+        entity.getStatus().toValue(),
         entity.getTimestamp()
     );
   }
@@ -168,7 +168,7 @@ public class DashboardServiceImpl implements DashboardService {
         entity.getDetectionMode(),
         entity.getProvisionalThresholdKg(),
         entity.getWasteKg(),
-        entity.getStatus().name(),
+        entity.getStatus().toValue(),
         entity.getNote()
     );
   }

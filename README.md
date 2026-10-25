@@ -541,6 +541,5 @@ The possible SaaS pricing model and target-market assumptions have not been vali
 | --- | --- | --- |
 | Harvlin Maximillian | Project Lead and Full Stack Developer | [harvlin](https://github.com/harvlin) |
 | Kledya Abigail Sinaga | UI/UX Designer | Profile link not provided |
-| Jessline Aglecia | Frontend Developer | Profile link not provided |
 
 WastePilot is licensed under the [MIT License](LICENSE).

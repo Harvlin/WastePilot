@@ -187,8 +187,9 @@ public class AuditChainService {
 
   private AuditChainHeadEntity lockHead() {
     return headRepository.findByIdForUpdate(HEAD_ID).orElseGet(() -> {
-      boolean isTestProfile = List.of(environment.getActiveProfiles()).contains("test");
-      if (!isTestProfile) {
+      boolean isSafeProfile = List.of(environment.getActiveProfiles()).contains("test")
+          || List.of(environment.getActiveProfiles()).contains("local");
+      if (!isSafeProfile) {
         throw new IllegalStateException("Audit chain head row is missing.");
       }
       AuditChainHeadEntity head = new AuditChainHeadEntity();

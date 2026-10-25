@@ -9,16 +9,20 @@ import { Anomaly, CircularInsight, InsightStatus } from "@/features/internal/typ
 import { internalApi } from "@/lib/api/internal-api";
 import { toast } from "sonner";
 
-function describeInsightStatus(status: InsightStatus): { label: string; tone: string } {
-  switch (status) {
+function describeInsightStatus(status: InsightStatus | string): { label: string; tone: string } {
+  const normalized = typeof status === "string" ? status.toLowerCase() : status;
+  switch (normalized) {
     case InsightStatus.New:
+    case "new":
       return { label: "new", tone: "bg-sky-500/15 text-sky-300" };
     case InsightStatus.Applied:
+    case "applied":
       return { label: "applied", tone: "bg-emerald-500/15 text-emerald-300" };
     case InsightStatus.Ignored:
+    case "ignored":
       return { label: "ignored", tone: "bg-white/10 text-white/70" };
     default:
-      throw new Error(`Unsupported insight status: ${status satisfies never}`);
+      return { label: String(status), tone: "bg-white/10 text-white/70" };
   }
 }
 
