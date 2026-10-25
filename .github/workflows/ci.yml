@@ -149,6 +149,7 @@ jobs:
           DB_USER: wastepilot
           DB_PASSWORD: wastepilot-test-password
           DB_SSL_MODE: DISABLED
+          SPRING_DATASOURCE_URL: "jdbc:mysql://127.0.0.1:3306/wastepilot?serverTimezone=UTC&sslMode=DISABLED&allowPublicKeyRetrieval=true"
           CORS_ALLOWED_ORIGIN_0: http://127.0.0.1:4173
           JWT_SECRET: e2e-test-jwt-secret-that-is-at-least-256-bits-long-0001
           GEMINI_API_KEY: e2e-test-key
