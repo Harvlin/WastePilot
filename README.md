@@ -199,32 +199,38 @@ The repository contains this frontend link, but does not establish current avail
 
 ### Repository screenshots
 
-The following images are checked-in snapshots, not evidence of live data. They may not represent the current UI, and displayed values can be sample or historical content. The Floor View image shows an empty state.
+The following images are checked-in interface previews captured from a local development environment seeded with realistic textile manufacturing records (`tools/seed-demo-data.ps1`). They demonstrate the primary workflows, live operational metrics, anomaly review, and reporting interfaces.
 
 <div align="center">
   <img src="page-preview/Dashboard.png" alt="WastePilot dashboard screenshot" width="800"/>
-  <p><em>Dashboard snapshot with circularity and operational summaries.</em></p>
+  <p><em>Dashboard command center: Composite Circular Score (76.4), operational summary, 7-day trend, top anomaly alert, and AI circularity recommendations.</em></p>
 
-  <img src="page-preview/HowToUse.png" alt="How-to-use guide screenshot" width="800"/>
-  <p><em>How-to-use guide snapshot. The 8–15 minute onboarding estimate visible in the image has not been validated through measurement.</em></p>
+  <img src="page-preview/Operations.png" alt="Operations workflow screenshot" width="800"/>
+  <p><em>Operations: Guided 5-step shift workflow (Start Batch, Log Material, Log Waste, Close Batch, Integrity Check) and active batch management table.</em></p>
+
+  <img src="page-preview/FloorView.png" alt="Live Factory Floor View screenshot" width="800"/>
+  <p><em>Live Factory Floor View: Real-time line status displaying an active batch (#BATCH-2026-0019, Organic Denim Workwear Jacket) with green health status (+1.3% variance).</em></p>
 
   <img src="page-preview/Scan.png" alt="Invoice scan screenshot" width="800"/>
-  <p><em>Invoice scan flow; extracted lines are reviewed before they are saved.</em></p>
+  <p><em>AI Vision Scan: Invoice and bill-of-lading OCR extraction powered by Gemini Vision with editable line-item review before inventory commit.</em></p>
 
-  <img src="page-preview/FloorView.png" alt="Floor View empty-state screenshot" width="800"/>
-  <p><em>Floor View empty state when there are no running batches.</em></p>
-
-  <img src="page-preview/Insights.png" alt="Insights and integrity screenshot" width="800"/>
-  <p><em>Insights and integrity review snapshot.</em></p>
-
-  <img src="page-preview/Analytics.png" alt="Analytics screenshot" width="800"/>
-  <p><em>Analytics snapshot. The circularity trend is limited to the five most recently completed batches.</em></p>
-
-  <img src="page-preview/Materials.png" alt="Materials screenshot" width="800"/>
-  <p><em>Materials and waste logging snapshot.</em></p>
+  <img src="page-preview/Materials.png" alt="Materials and waste log screenshot" width="800"/>
+  <p><em>Materials: Master textile catalog, Inventory Log (IN / OUT movements), and Waste Log tracking reuse, repair, and disposal.</em></p>
 
   <img src="page-preview/Template.png" alt="Production templates screenshot" width="800"/>
-  <p><em>Production templates snapshot.</em></p>
+  <p><em>Production Templates: Reusable Bill of Materials (BOM) defining planned input weights and component ratios.</em></p>
+
+  <img src="page-preview/Insights.png" alt="Insights and integrity screenshot" width="800"/>
+  <p><em>Insights & Integrity: Action queue, statistical anomaly detection (z = 8.82 on Recycled Polyester offcuts), and suggested recovery actions.</em></p>
+
+  <img src="page-preview/Analytics.png" alt="Analytics circularity screenshot" width="800"/>
+  <p><em>Analytics: Per-batch circularity index progression across recent batches, waste destination breakdown donut, and material efficiency metrics.</em></p>
+
+  <img src="page-preview/Analytics-Report.png" alt="Analytics period report screenshot" width="800"/>
+  <p><em>Executive Period Report: Weekly circularity performance, daily waste flow distributions, and top contributor analysis with export capabilities.</em></p>
+
+  <img src="page-preview/HowToUse.png" alt="How-to-use guide screenshot" width="800"/>
+  <p><em>How-to-Use Guide: Interactive standard operating procedure (SOP) documentation covering daily manufacturing shift protocols.</em></p>
 </div>
 
 **Video demo:** `[Video URL to be added]` — no published video URL is currently recorded in this repository.
@@ -374,7 +380,26 @@ $env:SENSOR_INGEST_API_KEY = "<the configured shared key>"
 python simulator.py
 ```
 
-The simulator uses the shared global key. Per-device keys can be configured separately in `application.properties` under `wastepilot.sensor.device-keys.{deviceId}`. The repository does not include an automatic demo-data seed or reset mechanism; create records through the application workflow.
+The simulator uses the shared global key. Per-device keys can be configured separately in `application.properties` under `wastepilot.sensor.device-keys.{deviceId}`.
+
+### 5. Optional: seed or reset demo data (local development only)
+
+For product walkthroughs, demo video recording, or testing calculation formulas under realistic volume, a local-only seeding script is available:
+
+```powershell
+.\tools\seed-demo-data.ps1
+```
+
+This seeds realistic textile manufacturing records (Organic Cotton Denim, Recycled Polyester Canvas, Denim Workwear Jackets), completes historical batches across 7 days with authentic circularity metrics, launches an active running batch (`#BATCH-2026-0019`) for live floor demonstration, triggers a statistical Z-score anomaly ($z=8.82$) on Recycled Polyester offcuts, and creates valid HMAC-SHA256 audit log chains.
+
+> [!NOTE]
+> Demo seeding is strictly gated behind the backend's `local` Spring profile (`http://localhost:8080`) and is explicitly rejected in `docker` or `production` profiles to protect persistent databases.
+
+To return the local database to an empty state:
+
+```powershell
+.\tools\seed-demo-data.ps1 -Reset
+```
 
 ## User workflows
 
@@ -517,7 +542,7 @@ The E2E job exercises a real HTTP request path from browser to Spring backend to
 - **Audit-chain trust boundary.** The chain head and audit entries share a database, so a privileged database writer could rewrite both.
 - **Analytics and exports have known bounds.** Analytics circularity trend is limited to five completed batches. CSV export has placeholder trend columns and an approximate summary transaction count; PDF export includes a summary and highlights rather than charts.
 - **Backend migration coverage.** The H2 test profile does not execute Flyway migrations against MySQL.
-- **Demo data and images.** No built-in demo seed/reset is provided; checked-in screenshots may be stale and their displayed values are not live.
+- **Demo data and images.** A local demo-data seeding tool (`tools/seed-demo-data.ps1`) is provided for local development and demonstration recording (gated to the `local` Spring profile to prevent execution against production/Railway). Checked-in screenshots are captured from this seeded environment; live deployment values depend on actual entered records.
 - **Provider dependency.** Invoice OCR requires a working Gemini credential and service availability; OCR output still requires human review.
 - **Railway database SSL mode.** Railway's managed MySQL uses a self-signed certificate not present in the JVM's default trust store. `VERIFY_CA` and `VERIFY_IDENTITY` cannot be used without extracting and bundling Railway's CA certificate manually, which Railway does not expose for standard (non-HA) MySQL. The correct setting for same-project internal networking is `DB_SSL_MODE=DISABLED`; traffic stays within Railway's private virtual network. `SecurityStartupValidator` does not and cannot check SSL mode, so a misconfigured value will only fail at runtime when Flyway or HikariCP first attempts a connection. See `.env.example` for the full decision tree.
 - **No pre-deploy SSL validation gap.** CI connects to a local MySQL container with `sslMode=DISABLED` and cannot test against Railway's actual managed database or detect TLS certificate chain issues before deployment. A failed SSL handshake will only appear in Railway's deploy logs, not in CI.
