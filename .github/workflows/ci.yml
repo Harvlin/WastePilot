@@ -149,6 +149,10 @@ jobs:
           DB_USER: wastepilot
           DB_PASSWORD: wastepilot-test-password
           DB_SSL_MODE: DISABLED
+          # CI-only: allowPublicKeyRetrieval lets Connector/J fetch the MySQL 9 RSA key over this plain local connection. Never set this in Railway or any real environment.
+          SPRING_DATASOURCE_URL: "jdbc:mysql://127.0.0.1:3306/wastepilot?serverTimezone=UTC&sslMode=DISABLED&allowPublicKeyRetrieval=true"
+          # CI-only placeholder, obviously fake. Never use this value in Railway or any real environment.
+          SENSOR_INGEST_API_KEY: ci-e2e-placeholder-not-a-real-key
           CORS_ALLOWED_ORIGIN_0: http://127.0.0.1:4173
           JWT_SECRET: e2e-test-jwt-secret-that-is-at-least-256-bits-long-0001
           GEMINI_API_KEY: e2e-test-key
