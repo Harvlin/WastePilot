@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { authenticateAs } from "./helpers";
 
-test("operator completes the full shift workflow", async ({ page }) => {
+test("operator completes the full shift workflow and supervisor closes batch", async ({ page }) => {
   await authenticateAs(page, "OPERATOR");
   await page.goto("/operations");
 
@@ -14,10 +14,14 @@ test("operator completes the full shift workflow", async ({ page }) => {
   await page.getByRole("button", { name: "Log Waste", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Batch Close Assistant" })).toBeVisible();
 
-  const closeReason = page.locator('input[placeholder*="Reason"]');
-  if (await closeReason.isVisible()) {
-    await closeReason.fill("Verified final shift totals.");
-  }
+  // Handover: Supervisor reviews and finalizes the batch close
+  await authenticateAs(page, "SUPERVISOR");
+  await page.goto("/operations");
+
+  await page.getByRole("button", { name: /^4\. Close Batch/ }).click();
+  await expect(page.getByRole("heading", { name: "Batch Close Assistant" })).toBeVisible();
+
+  await page.locator("#close-reason-input").fill("Verified final shift totals.");
 
   await page.getByRole("button", { name: "Confirm Batch Close" }).click();
   await page.getByRole("button", { name: "Yes, close batch" }).click();

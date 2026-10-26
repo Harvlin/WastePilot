@@ -16,6 +16,7 @@ import com.project.wastepilot.repository.AuthUserRepository;
 import com.project.wastepilot.repository.BatchRepository;
 import com.project.wastepilot.repository.InventoryLogRepository;
 import com.project.wastepilot.repository.UserSettingsRepository;
+import com.project.wastepilot.repository.WasteLogRepository;
 import com.project.wastepilot.security.JwtService;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -48,6 +49,9 @@ public class CrossValidationIntegrationTest {
     private InventoryLogRepository inventoryLogRepository;
 
     @Autowired
+    private WasteLogRepository wasteLogRepository;
+
+    @Autowired
     private JwtService jwtService;
 
     private String supervisorToken;
@@ -55,6 +59,8 @@ public class CrossValidationIntegrationTest {
     @BeforeEach
     void setUp() {
         inventoryLogRepository.deleteAll();
+        // Other test classes share this H2 database and can leave waste_logs rows that reference batches.
+        wasteLogRepository.deleteAll();
         batchRepository.deleteAll();
         userSettingsRepository.deleteAll();
         authUserRepository.deleteAll();
