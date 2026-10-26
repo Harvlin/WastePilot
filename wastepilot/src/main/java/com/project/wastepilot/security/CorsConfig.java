@@ -17,7 +17,10 @@ public class CorsConfig {
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration cfg = new CorsConfiguration();
-    cfg.setAllowedOrigins(securityProps.corsAllowedOrigins());
+    // Unset CORS_ALLOWED_ORIGIN_n variables bind to ""; drop them so no empty origin is registered.
+    cfg.setAllowedOrigins(securityProps.corsAllowedOrigins().stream()
+        .filter(origin -> origin != null && !origin.isBlank())
+        .toList());
     cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     cfg.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Correlation-Id"));
     cfg.setExposedHeaders(List.of("X-Correlation-Id"));
