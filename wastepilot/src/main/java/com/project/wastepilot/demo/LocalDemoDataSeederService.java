@@ -201,6 +201,14 @@ public class LocalDemoDataSeederService {
     supervisorSettings.setNotifyOverdueBatches(true);
     userSettingsRepository.save(supervisorSettings);
 
+    // Also seed E2E supervisor account for local Playwright testing
+    AuthUserEntity e2eSupervisor = new AuthUserEntity();
+    e2eSupervisor.setFullName("E2E Supervisor");
+    e2eSupervisor.setEmail("e2e-supervisor@wastepilot.local");
+    e2eSupervisor.setPasswordHash(passwordEncoder.encode("SecurePass123!"));
+    e2eSupervisor.setRole(UserRole.SUPERVISOR);
+    authUserRepository.save(e2eSupervisor);
+
     // ── 2. Create Materials (Textile Context) ───────────────────────────────────
     MaterialEntity matCotton = createMaterial("Organic Cotton Twill Roll", MaterialCategory.Organic,
         CircularGrade.A, "kg", new BigDecimal("2450.000"), "EcoWeave Textiles Ltd.");
