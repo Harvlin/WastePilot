@@ -279,6 +279,10 @@ const OperationsPage = () => {
       return;
     }
 
+    if (activeTab !== "batch-close") {
+      return;
+    }
+
     let mounted = true;
 
     const fetchCloseSummary = async () => {
@@ -308,7 +312,7 @@ const OperationsPage = () => {
     return () => {
       mounted = false;
     };
-  }, [activeCloseBatchId]);
+  }, [activeCloseBatchId, activeTab]);
 
   const summary = useMemo(() => {
     if (!data) return { running: 0, completed: 0, wasteTotal: 0 };
@@ -1102,6 +1106,7 @@ const OperationsPage = () => {
                     )}
 
                     <Input
+                      id="close-reason-input"
                       value={closeReason}
                       onChange={(e) => setCloseReason(e.target.value)}
                       className="rounded-xl bg-white/[0.04] border-white/10 text-white"
